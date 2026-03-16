@@ -134,7 +134,8 @@ const SD={"أبو عريش2":[[30.63,95.79],[27.72,141.1667],[47.07,141.1667],[1
 // ══════════════════════════════════════════════════
 
 // ── helpers ──
-const fmt=n=>isNaN(+n)?'0':Math.round(+n).toLocaleString('ar-SA');
+const fmt=n=>{if(isNaN(+n))return'0';const v=(+n)*1000;if(v>=1000000)return(v/1000000).toFixed(2)+' م';if(v>=1000)return(v/1000).toFixed(1)+' ألف';return Math.round(v).toLocaleString('ar-SA');};
+const fmtFull=n=>{if(isNaN(+n))return'0 ر.س';const v=Math.round((+n)*1000);return v.toLocaleString('ar-SA')+' ر.س';};
 const fd=s=>new Date(s).toLocaleDateString('ar-SA',{month:'short',day:'numeric'});
 const pc=p=>p>=100?'pg':p>=70?'py':'pr';
 const hmcol=v=>{if(!v||v<=0)return'#1a2535';if(v>=150)return'#16a34a';if(v>=100)return'#4ade80';if(v>=80)return'#3b82f6';if(v>=60)return'#f59e0b';return'#ef4444';};
