@@ -1,1 +1,826 @@
-404: Not Found
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة المبيعات 2026</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-primary:   #0d0f1a;
+      --bg-secondary: #141728;
+      --bg-card:      #181c2e;
+      --bg-hover:     #1f2440;
+      --accent:       #6c63ff;
+      --accent2:      #00d4aa;
+      --accent3:      #ff6b6b;
+      --accent4:      #ffd93d;
+      --text-primary: #e8eaf6;
+      --text-secondary:#9fa8da;
+      --text-muted:   #4a5568;
+      --border:       #252a45;
+      --success:      #00c853;
+      --warning:      #ffab00;
+      --danger:       #ff4444;
+      --radius:       12px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg-primary);color:var(--text-primary);direction:rtl;min-height:100vh}
+
+    /* ── Password ─────────────────────────────── */
+    #pw-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0d0f1a 0%,#1a1d2e 100%);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .pw-card{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:52px 44px;text-align:center;width:380px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+    .pw-logo{font-size:52px;margin-bottom:14px}
+    .pw-card h2{font-size:22px;margin-bottom:6px}
+    .pw-card p{color:var(--text-secondary);font-size:13px;margin-bottom:30px}
+    .pw-input{width:100%;padding:14px 18px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;color:var(--text-primary);font-size:18px;text-align:center;letter-spacing:6px;margin-bottom:14px;direction:ltr;transition:border .2s}
+    .pw-input:focus{outline:none;border-color:var(--accent)}
+    .pw-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),#8b82ff);border:none;border-radius:10px;color:#fff;font-size:15px;cursor:pointer;font-weight:700;font-family:inherit;transition:opacity .2s,transform .2s}
+    .pw-btn:hover{opacity:.9;transform:translateY(-1px)}
+    .pw-err{color:var(--danger);font-size:13px;margin-top:10px;display:none}
+
+    /* ── Header ───────────────────────────────── */
+    #dashboard{display:none}
+    .header{background:var(--bg-secondary);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(8px)}
+    .hbrand{display:flex;align-items:center;gap:12px}
+    .hbrand .logo{font-size:30px}
+    .hbrand h1{font-size:18px;font-weight:700}
+    .hbrand small{color:var(--text-secondary);font-size:11px;display:block}
+    .hmeta{display:flex;align-items:center;gap:14px}
+    .badge{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700}
+    .badge-live{background:rgba(0,200,83,.15);color:var(--success)}
+    .badge-off{background:rgba(255,171,0,.15);color:var(--warning)}
+    .htime{color:var(--text-muted);font-size:11px}
+
+    /* ── Tabs ─────────────────────────────────── */
+    .tabs{background:var(--bg-secondary);border-bottom:1px solid var(--border);padding:0 20px;display:flex;gap:2px;overflow-x:auto}
+    .tabs::-webkit-scrollbar{height:0}
+    .tbtn{padding:13px 20px;background:none;border:none;color:var(--text-secondary);font-size:13px;cursor:pointer;border-bottom:3px solid transparent;transition:all .25s;font-family:inherit;white-space:nowrap}
+    .tbtn:hover{color:var(--text-primary)}
+    .tbtn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+
+    /* ── Layout ───────────────────────────────── */
+    .content{padding:22px;max-width:1440px;margin:0 auto}
+    .panel{display:none}.panel.active{display:block}
+
+    /* ── KPI ──────────────────────────────────── */
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:22px}
+    .kpi{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px 18px;position:relative;overflow:hidden;transition:transform .2s}
+    .kpi:hover{transform:translateY(-2px)}
+    .kpi::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%}
+    .kpi.c1::before{background:var(--accent)}
+    .kpi.c2::before{background:var(--accent2)}
+    .kpi.c3::before{background:var(--accent3)}
+    .kpi.c4::before{background:var(--accent4)}
+    .kpi.c5::before{background:var(--success)}
+    .kpi-ico{font-size:30px;margin-bottom:10px}
+    .kpi-val{font-size:24px;font-weight:700;direction:ltr;text-align:right;line-height:1.1}
+    .kpi-lbl{color:var(--text-secondary);font-size:12px;margin-top:4px}
+    .kpi-chg{font-size:11px;margin-top:5px}
+    .up{color:var(--success)}.down{color:var(--danger)}
+
+    /* ── Chart cards ──────────────────────────── */
+    .cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px;margin-bottom:20px}
+    .ccard{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+    .ccard.full{grid-column:1/-1}
+    .chead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+    .ctitle{font-size:15px;font-weight:700}
+    .csub{font-size:11px;color:var(--text-secondary);margin-top:3px}
+    .cwrap{position:relative}
+
+    /* ── Table ────────────────────────────────── */
+    .dtable{width:100%;border-collapse:collapse;font-size:12px}
+    .dtable th{background:var(--bg-secondary);color:var(--text-secondary);padding:11px 14px;text-align:right;font-weight:600;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
+    .dtable td{padding:10px 14px;border-bottom:1px solid rgba(37,42,69,.5);color:var(--text-primary)}
+    .dtable tr:hover td{background:var(--bg-hover)}
+    .rbadge{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+    .r1{background:#ffd700;color:#000}.r2{background:#c0c0c0;color:#000}.r3{background:#cd7f32;color:#fff}.rx{background:var(--bg-secondary);color:var(--text-muted)}
+    .pbar{height:5px;background:var(--bg-secondary);border-radius:3px;overflow:hidden;min-width:70px}
+    .pfill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+
+    /* ── Heatmap ──────────────────────────────── */
+    .hmap-wrap{overflow-x:auto;padding-bottom:8px}
+    .hmap{display:grid;gap:2px}
+    .hrow{display:flex;align-items:center;gap:2px}
+    .hname{font-size:10px;color:var(--text-secondary);width:136px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:6px}
+    .hdlbl{font-size:9px;color:var(--text-muted);text-align:center;flex:1;padding:3px 0}
+    .hcell{flex:1;height:26px;border-radius:3px;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative}
+    .hcell:hover{transform:scale(1.15);z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+    .hcell .tt{position:absolute;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:11px;color:var(--text-primary);white-space:nowrap;z-index:100;pointer-events:none;display:none;bottom:120%;right:50%;transform:translateX(50%);box-shadow:0 4px 16px rgba(0,0,0,.4)}
+    .hcell:hover .tt{display:block}
+    .leg{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:11px;color:var(--text-muted)}
+    .legbar{display:flex;height:10px;flex:1;max-width:180px;border-radius:5px;overflow:hidden}
+
+    /* ── Comparison ───────────────────────────── */
+    .ctrls{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:20px}
+    .ctrls h3{font-size:13px;color:var(--text-secondary);margin-bottom:12px}
+    .chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{padding:6px 12px;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:11px;color:var(--text-secondary);background:var(--bg-secondary);transition:all .2s;font-family:inherit}
+    .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+    .chip:hover:not(.on){border-color:var(--accent);color:var(--accent)}
+
+    /* ── Filter bar ───────────────────────────── */
+    .fbar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+    .fsel{padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:12px;cursor:pointer;font-family:inherit}
+    .fsel:focus{outline:none;border-color:var(--accent)}
+    .flbl{color:var(--text-secondary);font-size:12px}
+
+    /* ── Scrollbar ────────────────────────────── */
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:var(--bg-primary)}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+    @media(max-width:768px){
+      .cgrid{grid-template-columns:1fr}
+      .kpi-grid{grid-template-columns:repeat(2,1fr)}
+      .content{padding:12px}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ PASSWORD SCREEN ══════════════ -->
+<div id="pw-screen">
+  <div class="pw-card">
+    <div class="pw-logo">📊</div>
+    <h2>لوحة المبيعات 2026</h2>
+    <p>أدخل كلمة المرور للمتابعة</p>
+    <input id="pw-in" type="password" class="pw-input" placeholder="••••••••"
+           onkeydown="if(event.key==='Enter')checkPW()">
+    <button class="pw-btn" onclick="checkPW()">دخول ←</button>
+    <div class="pw-err" id="pw-err">❌ كلمة المرور غير صحيحة</div>
+  </div>
+</div>
+
+<!-- ══════════════ DASHBOARD ══════════════ -->
+<div id="dashboard">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="hbrand">
+      <span class="logo">📊</span>
+      <div>
+        <h1>لوحة المبيعات</h1>
+        <small>28 فرع · 5 مناطق · آخر 15 يوم</small>
+      </div>
+    </div>
+    <div class="hmeta">
+      <span id="dbadge" class="badge badge-off">⚡ بيانات محلية</span>
+      <span id="dtime" class="htime">جاري التحميل…</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tbtn active" onclick="go('overview')">🏠 نظرة عامة</button>
+    <button class="tbtn" onclick="go('regions')">🗺️ المناطق</button>
+    <button class="tbtn" onclick="go('branches')">🏪 الفروع</button>
+    <button class="tbtn" onclick="go('heatmap')">🔥 خريطة الحرارة</button>
+    <button class="tbtn" onclick="go('comparison')">⚖️ المقارنة</button>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ── Overview ── -->
+    <div id="tab-overview" class="panel active">
+      <div class="kpi-grid" id="kpis"></div>
+      <div class="cgrid">
+        <div class="ccard full">
+          <div class="chead"><div><div class="ctitle">اتجاه المبيعات اليومية</div><div class="csub">إجمالي جميع الفروع · آخر 15 يوم</div></div></div>
+          <div class="cwrap" style="height:270px"><canvas id="c-trend"></canvas></div>
+        </div>
+        <div class="ccard">
+          <div class="chead"><div><div class="ctitle">توزيع المبيعات حسب المنطقة</div><div class="csub">النسبة المئوية</div></div></div>
+          <div class="cwrap" style="height:250px"><canvas id="c-pie"></canvas></div>
+        </div>
+        <div class="ccard">
+          <div class="chead"><div><div class="ctitle">أفضل 10 فروع</div><div class="csub">الإجمالي</div></div></div>
+          <div class="cwrap" style="height:250px"><canvas id="c-top10"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Regions ── -->
+    <div id="tab-regions" class="panel">
+      <div class="cgrid">
+        <div class="ccard full">
+          <div class="chead"><div><div class="ctitle">المبيعات اليومية حسب المنطقة</div><div class="csub">مقارنة أداء المناطق الخمس</div></div></div>
+          <div class="cwrap" style="height:290px"><canvas id="c-rdaily"></canvas></div>
+        </div>
+        <div class="ccard">
+          <div class="chead"><div><div class="ctitle">الإجمالي حسب المنطقة</div></div></div>
+          <div class="cwrap" style="height:250px"><canvas id="c-rbar"></canvas></div>
+        </div>
+        <div class="ccard">
+          <div class="chead"><div><div class="ctitle">متوسط اليومي للمنطقة</div></div></div>
+          <div class="cwrap" style="height:250px"><canvas id="c-rpolar"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Branches ── -->
+    <div id="tab-branches" class="panel">
+      <div class="fbar">
+        <span class="flbl">تصفية:</span>
+        <select class="fsel" id="f-region" onchange="renderBranches()">
+          <option value="">جميع المناطق</option>
+          <option value="central">المنطقة الوسطى</option>
+          <option value="western">المنطقة الغربية</option>
+          <option value="eastern">المنطقة الشرقية</option>
+          <option value="northern">المنطقة الشمالية</option>
+          <option value="southern">المنطقة الجنوبية</option>
+        </select>
+        <select class="fsel" id="f-sort" onchange="renderBranches()">
+          <option value="td">الأعلى مبيعاً</option>
+          <option value="ta">الأقل مبيعاً</option>
+          <option value="nm">الاسم</option>
+          <option value="av">أعلى متوسط</option>
+        </select>
+      </div>
+      <div class="ccard" style="margin-bottom:18px">
+        <div class="ctitle" style="margin-bottom:14px">مقارنة إجمالي الفروع</div>
+        <div class="cwrap" style="height:300px"><canvas id="c-bbar"></canvas></div>
+      </div>
+      <div class="ccard">
+        <div style="overflow-x:auto">
+          <table class="dtable">
+            <thead><tr>
+              <th>#</th><th>الفرع</th><th>المنطقة</th>
+              <th>الإجمالي</th><th>المتوسط اليومي</th><th>أعلى يوم</th><th>الحصة</th>
+            </tr></thead>
+            <tbody id="btbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Heatmap ── -->
+    <div id="tab-heatmap" class="panel">
+      <div class="ccard">
+        <div class="chead">
+          <div><div class="ctitle">خريطة حرارة المبيعات</div><div class="csub">الفروع × الأيام — اللون الأفتح = مبيعات أعلى</div></div>
+        </div>
+        <div class="hmap-wrap" id="hmap-cont"></div>
+        <div class="leg">
+          <span>منخفض</span>
+          <div class="legbar" id="legbar"></div>
+          <span>مرتفع</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Comparison ── -->
+    <div id="tab-comparison" class="panel">
+      <div class="ctrls">
+        <h3>اختر الفروع للمقارنة (حتى 4 فروع)</h3>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="cgrid">
+        <div class="ccard full">
+          <div class="chead"><div><div class="ctitle">الأداء اليومي المقارن</div></div></div>
+          <div class="cwrap" style="height:290px"><canvas id="c-cline"></canvas></div>
+        </div>
+        <div class="ccard">
+          <div class="chead"><div><div class="ctitle">مجموع المبيعات</div></div></div>
+          <div class="cwrap" style="height:250px"><canvas id="c-cbar"></canvas></div>
+        </div>
+        <div class="ccard">
+          <div class="chead"><div><div class="ctitle">رادار الأداء الشامل</div></div></div>
+          <div class="cwrap" style="height:250px"><canvas id="c-crad"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /dashboard -->
+
+<script>
+/* ═══════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════ */
+const SB_URL  = 'https://rcyekrrzxgteoajafgys.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeWVrcnJ6eGd0ZW9hamFmZ3lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MTY3MTMsImV4cCI6MjA4OTE5MjcxM30.D0ApHlWJFxnhq3cLAHdgFXpZZ8e3wh25IR0wzSAJczk';
+const PWD     = 'Sales2026';
+
+/* ═══════════════════════════════════════════════
+   BRANCHES
+═══════════════════════════════════════════════ */
+const BRANCHES = [
+  // ── المنطقة الوسطى (8)
+  {id:1,  name:'الرياض - العليا',      rid:'central', region:'المنطقة الوسطى'},
+  {id:2,  name:'الرياض - النزهة',      rid:'central', region:'المنطقة الوسطى'},
+  {id:3,  name:'الرياض - السليمانية',  rid:'central', region:'المنطقة الوسطى'},
+  {id:4,  name:'الرياض - الملقا',      rid:'central', region:'المنطقة الوسطى'},
+  {id:5,  name:'الرياض - العزيزية',    rid:'central', region:'المنطقة الوسطى'},
+  {id:6,  name:'الخرج',                rid:'central', region:'المنطقة الوسطى'},
+  {id:7,  name:'الدرعية',              rid:'central', region:'المنطقة الوسطى'},
+  {id:8,  name:'الرياض - البديعة',     rid:'central', region:'المنطقة الوسطى'},
+  // ── المنطقة الغربية (7)
+  {id:9,  name:'جدة - التحلية',        rid:'western', region:'المنطقة الغربية'},
+  {id:10, name:'جدة - الروضة',         rid:'western', region:'المنطقة الغربية'},
+  {id:11, name:'جدة - المدينة',        rid:'western', region:'المنطقة الغربية'},
+  {id:12, name:'مكة المكرمة',          rid:'western', region:'المنطقة الغربية'},
+  {id:13, name:'المدينة المنورة',      rid:'western', region:'المنطقة الغربية'},
+  {id:14, name:'الطائف',               rid:'western', region:'المنطقة الغربية'},
+  {id:15, name:'رابغ',                 rid:'western', region:'المنطقة الغربية'},
+  // ── المنطقة الشرقية (6)
+  {id:16, name:'الدمام',               rid:'eastern', region:'المنطقة الشرقية'},
+  {id:17, name:'الخبر',                rid:'eastern', region:'المنطقة الشرقية'},
+  {id:18, name:'الأحساء',              rid:'eastern', region:'المنطقة الشرقية'},
+  {id:19, name:'القطيف',               rid:'eastern', region:'المنطقة الشرقية'},
+  {id:20, name:'الجبيل',               rid:'eastern', region:'المنطقة الشرقية'},
+  {id:21, name:'حفر الباطن',           rid:'eastern', region:'المنطقة الشرقية'},
+  // ── المنطقة الشمالية (4)
+  {id:22, name:'تبوك',                 rid:'northern', region:'المنطقة الشمالية'},
+  {id:23, name:'القصيم - بريدة',       rid:'northern', region:'المنطقة الشمالية'},
+  {id:24, name:'القصيم - عنيزة',       rid:'northern', region:'المنطقة الشمالية'},
+  {id:25, name:'حائل',                 rid:'northern', region:'المنطقة الشمالية'},
+  // ── المنطقة الجنوبية (3)
+  {id:26, name:'أبها',                 rid:'southern', region:'المنطقة الجنوبية'},
+  {id:27, name:'جازان',                rid:'southern', region:'المنطقة الجنوبية'},
+  {id:28, name:'نجران',                rid:'southern', region:'المنطقة الجنوبية'},
+];
+
+const REGIONS = [
+  {id:'central',  name:'الوسطى',  full:'المنطقة الوسطى'},
+  {id:'western',  name:'الغربية', full:'المنطقة الغربية'},
+  {id:'eastern',  name:'الشرقية', full:'المنطقة الشرقية'},
+  {id:'northern', name:'الشمالية',full:'المنطقة الشمالية'},
+  {id:'southern', name:'الجنوبية',full:'المنطقة الجنوبية'},
+];
+
+/* ═══════════════════════════════════════════════
+   DATES  (15 days ending 2026-03-16)
+═══════════════════════════════════════════════ */
+function makeDates(){
+  const out=[], base=new Date('2026-03-16');
+  for(let i=14;i>=0;i--){
+    const d=new Date(base); d.setDate(base.getDate()-i);
+    out.push(d.toISOString().split('T')[0]);
+  }
+  return out;
+}
+const DATES = makeDates();
+
+/* ═══════════════════════════════════════════════
+   FALLBACK DATA  (28 × 15 = 420 points)
+═══════════════════════════════════════════════ */
+function rng(seed){ // LCG
+  let s=seed>>>0;
+  return()=>{ s=(Math.imul(s,1664525)+1013904223)>>>0; return s/0xffffffff; };
+}
+
+const BASE = {
+  1:88,2:74,3:69,4:77,5:63,6:46,7:39,8:57,
+  9:94,10:80,11:67,12:91,13:73,14:54,15:32,
+  16:78,17:71,18:56,19:48,20:60,21:42,
+  22:44,23:50,24:38,25:34,
+  26:36,27:29,28:23,
+}; // thousands SAR
+
+function buildFallback(){
+  const D={};
+  BRANCHES.forEach(b=>{
+    D[b.id]={};
+    const r=rng(b.id*9973);
+    DATES.forEach((dt,i)=>{
+      const dow=new Date(dt).getDay();
+      const wkf = dow===5?0.48 : dow===6?0.72 : 1.0;   // Fri/Sat effect
+      const trend = 1+i*0.004;                           // slight growth
+      const noise = 0.72+r()*0.56;
+      D[b.id][dt] = Math.round(BASE[b.id]*1000*wkf*trend*noise/500)*500;
+    });
+  });
+  return D;
+}
+
+let SD = {};   // Sales Data  { branchId: { date: amount } }
+
+/* ═══════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════ */
+const bTotal  = id => DATES.reduce((s,d)=>s+(SD[id]?.[d]||0),0);
+const bAvg    = id => Math.round(bTotal(id)/DATES.length);
+const bMax    = id => Math.max(...DATES.map(d=>SD[id]?.[d]||0));
+const bLast   = id => SD[id]?.[DATES.at(-1)]||0;
+const daySum  = d  => BRANCHES.reduce((s,b)=>s+(SD[b.id]?.[d]||0),0);
+const rSum    = rid=> BRANCHES.filter(b=>b.rid===rid).reduce((s,b)=>s+bTotal(b.id),0);
+const rDay    = (rid,d)=>BRANCHES.filter(b=>b.rid===rid).reduce((s,b)=>s+(SD[b.id]?.[d]||0),0);
+const grandT  = ()  => BRANCHES.reduce((s,b)=>s+bTotal(b.id),0);
+
+function fSAR(v){
+  if(v>=1e6) return (v/1e6).toFixed(1)+'م';
+  if(v>=1e3) return (v/1e3).toFixed(0)+'ألف';
+  return v.toLocaleString('ar');
+}
+function fSARf(v){ return v.toLocaleString('ar-SA')+' ر.س'; }
+function fDate(s){
+  return new Date(s).toLocaleDateString('ar-SA',{month:'short',day:'numeric'});
+}
+
+/* ═══════════════════════════════════════════════
+   CHART DEFAULTS
+═══════════════════════════════════════════════ */
+Chart.defaults.color='#9fa8da';
+Chart.defaults.borderColor='#252a45';
+Chart.defaults.font.family="'Segoe UI',Tahoma,Arial,sans-serif";
+const CC=['#6c63ff','#00d4aa','#ff6b6b','#ffd93d','#a78bfa','#34d399','#f87171','#facc15'];
+const charts={};
+function dc(k){ if(charts[k]){charts[k].destroy();delete charts[k];} }
+
+/* ═══════════════════════════════════════════════
+   OVERVIEW
+═══════════════════════════════════════════════ */
+function renderKPIs(){
+  const tot  = grandT();
+  const tod  = daySum(DATES.at(-1));
+  const yes  = daySum(DATES.at(-2));
+  const pct  = yes>0?((tod-yes)/yes*100).toFixed(1):0;
+  const top  = BRANCHES.reduce((a,b)=>bTotal(a.id)>bTotal(b.id)?a:b);
+  document.getElementById('kpis').innerHTML=[
+    {i:'💰',l:'إجمالي المبيعات', v:fSARf(tot),   c:null,         cls:'c1'},
+    {i:'📅',l:'مبيعات اليوم',    v:fSARf(tod),   c:`${pct>=0?'▲':'▼'} ${Math.abs(pct)}% عن أمس`, dir:pct>=0?'up':'down', cls:'c2'},
+    {i:'📊',l:'المتوسط اليومي',  v:fSARf(Math.round(tot/DATES.length)), c:null, cls:'c4'},
+    {i:'🏆',l:'أفضل فرع',       v:top.name,      c:fSARf(bTotal(top.id)), cls:'c5'},
+    {i:'🏪',l:'الفروع',          v:BRANCHES.length,c:'5 مناطق',  cls:'c3'},
+  ].map(k=>`
+    <div class="kpi ${k.cls}">
+      <div class="kpi-ico">${k.i}</div>
+      <div class="kpi-val">${k.v}</div>
+      <div class="kpi-lbl">${k.l}</div>
+      ${k.c?`<div class="kpi-chg ${k.dir||''}">${k.c}</div>`:''}
+    </div>`).join('');
+}
+
+function renderOverview(){
+  renderKPIs();
+
+  // Trend line
+  dc('trend');
+  charts.trend=new Chart(document.getElementById('c-trend'),{
+    type:'line',
+    data:{
+      labels:DATES.map(fDate),
+      datasets:[{
+        label:'إجمالي المبيعات',
+        data:DATES.map(daySum),
+        borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,.12)',
+        borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#6c63ff',
+        fill:true,tension:0.4
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fSARf(c.raw)}}},
+      scales:{y:{ticks:{callback:v=>fSAR(v)},grid:{color:'#181c2e'}},x:{grid:{display:false}}}
+    }
+  });
+
+  // Doughnut by region
+  dc('pie');
+  charts.pie=new Chart(document.getElementById('c-pie'),{
+    type:'doughnut',
+    data:{
+      labels:REGIONS.map(r=>r.name),
+      datasets:[{data:REGIONS.map(r=>rSum(r.id)),backgroundColor:CC,borderWidth:2,borderColor:'#181c2e'}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{padding:14,boxWidth:11}},
+        tooltip:{callbacks:{label:c=>` ${c.label}: ${fSARf(c.raw)}`}}
+      }
+    }
+  });
+
+  // Top-10 horizontal bar
+  dc('top10');
+  const top10=[...BRANCHES].sort((a,b)=>bTotal(b.id)-bTotal(a.id)).slice(0,10);
+  charts.top10=new Chart(document.getElementById('c-top10'),{
+    type:'bar',
+    data:{
+      labels:top10.map(b=>b.name),
+      datasets:[{label:'المبيعات',data:top10.map(b=>bTotal(b.id)),
+        backgroundColor:CC.map(c=>c+'cc'),borderRadius:5}]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fSARf(c.raw)}}},
+      scales:{x:{ticks:{callback:v=>fSAR(v)},grid:{color:'#181c2e'}},y:{grid:{display:false},ticks:{font:{size:10}}}}
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   REGIONS
+═══════════════════════════════════════════════ */
+function renderRegions(){
+  // Multi-line daily
+  dc('rdaily');
+  charts.rdaily=new Chart(document.getElementById('c-rdaily'),{
+    type:'line',
+    data:{
+      labels:DATES.map(fDate),
+      datasets:REGIONS.map((r,i)=>({
+        label:r.name,
+        data:DATES.map(d=>rDay(r.id,d)),
+        borderColor:CC[i],backgroundColor:'transparent',
+        borderWidth:2,pointRadius:3,tension:0.4
+      }))
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{padding:14,boxWidth:11}},
+               tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fSARf(c.raw)}`}}},
+      scales:{y:{ticks:{callback:v=>fSAR(v)},grid:{color:'#181c2e'}},x:{grid:{display:false}}}
+    }
+  });
+
+  // Bar totals
+  dc('rbar');
+  charts.rbar=new Chart(document.getElementById('c-rbar'),{
+    type:'bar',
+    data:{
+      labels:REGIONS.map(r=>r.name),
+      datasets:[{label:'الإجمالي',data:REGIONS.map(r=>rSum(r.id)),
+        backgroundColor:CC,borderRadius:8}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fSARf(c.raw)}}},
+      scales:{y:{ticks:{callback:v=>fSAR(v)},grid:{color:'#181c2e'}},x:{grid:{display:false}}}
+    }
+  });
+
+  // Polar area – avg per branch per region
+  dc('rpolar');
+  charts.rpolar=new Chart(document.getElementById('c-rpolar'),{
+    type:'polarArea',
+    data:{
+      labels:REGIONS.map(r=>r.name),
+      datasets:[{
+        data:REGIONS.map(r=>{
+          const bs=BRANCHES.filter(b=>b.rid===r.id);
+          return Math.round(rSum(r.id)/(bs.length*DATES.length));
+        }),
+        backgroundColor:CC.map(c=>c+'99'),borderColor:CC,borderWidth:2
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{padding:12,boxWidth:10}},
+               tooltip:{callbacks:{label:c=>` ${c.label}: ${fSARf(c.raw)}`}}},
+      scales:{r:{ticks:{callback:v=>fSAR(v),backdropColor:'transparent'},grid:{color:'#252a45'}}}
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   BRANCHES TABLE
+═══════════════════════════════════════════════ */
+function renderBranches(){
+  const rf=document.getElementById('f-region').value;
+  const sf=document.getElementById('f-sort').value;
+  let br=[...BRANCHES];
+  if(rf) br=br.filter(b=>b.rid===rf);
+  br.sort((a,b)=>{
+    if(sf==='td') return bTotal(b.id)-bTotal(a.id);
+    if(sf==='ta') return bTotal(a.id)-bTotal(b.id);
+    if(sf==='nm') return a.name.localeCompare(b.name,'ar');
+    if(sf==='av') return bAvg(b.id)-bAvg(a.id);
+  });
+  const gt=grandT(), mx=Math.max(...BRANCHES.map(b=>bTotal(b.id)));
+  document.getElementById('btbody').innerHTML=br.map((b,i)=>{
+    const tot=bTotal(b.id), avg=bAvg(b.id), mx2=bMax(b.id);
+    const pct=((tot/gt)*100).toFixed(1);
+    const pw=((tot/mx)*100).toFixed(0);
+    const rc=i===0?'r1':i===1?'r2':i===2?'r3':'rx';
+    return `<tr>
+      <td><span class="rbadge ${rc}">${i+1}</span></td>
+      <td>${b.name}</td><td>${b.region}</td>
+      <td style="font-weight:700">${fSARf(tot)}</td>
+      <td>${fSARf(avg)}</td><td>${fSARf(mx2)}</td>
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <div class="pbar"><div class="pfill" style="width:${pw}%"></div></div>
+        <span style="font-size:10px;color:var(--text-muted)">${pct}%</span>
+      </div></td></tr>`;
+  }).join('');
+
+  // Branch bar chart
+  dc('bbar');
+  charts.bbar=new Chart(document.getElementById('c-bbar'),{
+    type:'bar',
+    data:{
+      labels:br.map(b=>b.name),
+      datasets:[{label:'إجمالي المبيعات',data:br.map(b=>bTotal(b.id)),
+        backgroundColor:br.map((_,i)=>CC[i%CC.length]+'cc'),borderRadius:4}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fSARf(c.raw)}}},
+      scales:{
+        y:{ticks:{callback:v=>fSAR(v)},grid:{color:'#181c2e'}},
+        x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}}
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   HEATMAP
+═══════════════════════════════════════════════ */
+function renderHeatmap(){
+  const all=BRANCHES.flatMap(b=>DATES.map(d=>SD[b.id]?.[d]||0));
+  const mn=Math.min(...all), mx=Math.max(...all);
+  function col(v){
+    const t=(v-mn)/(mx-mn);
+    // dark navy → bright teal
+    const r=Math.round(13+t*(0-13));
+    const g=Math.round(15+t*(212-15));
+    const b2=Math.round(50+t*(170-50));
+    return `rgb(${r},${g},${b2})`;
+  }
+  let h='<div class="hmap">';
+  // header
+  h+='<div class="hrow"><div class="hname"></div>';
+  DATES.forEach(d=>{ h+=`<div class="hdlbl">${fDate(d)}</div>`; });
+  h+='</div>';
+  // rows
+  BRANCHES.forEach(b=>{
+    h+=`<div class="hrow"><div class="hname">${b.name}</div>`;
+    DATES.forEach(d=>{
+      const v=SD[b.id]?.[d]||0;
+      h+=`<div class="hcell" style="background:${col(v)}">
+            <div class="tt">${b.name}<br>${fDate(d)}<br>${fSARf(v)}</div>
+          </div>`;
+    });
+    h+='</div>';
+  });
+  h+='</div>';
+  document.getElementById('hmap-cont').innerHTML=h;
+  // legend
+  const lb=document.getElementById('legbar');
+  lb.innerHTML=Array.from({length:24},(_,i)=>{
+    const v=mn+(i/23)*(mx-mn);
+    return `<div style="flex:1;background:${col(v)}"></div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   COMPARISON
+═══════════════════════════════════════════════ */
+let SEL=[1,9,16,22];
+function renderChips(){
+  document.getElementById('chips').innerHTML=BRANCHES.map(b=>
+    `<button class="chip ${SEL.includes(b.id)?'on':''}" onclick="toggleChip(${b.id})">${b.name}</button>`
+  ).join('');
+}
+function toggleChip(id){
+  if(SEL.includes(id)){ if(SEL.length>1) SEL=SEL.filter(x=>x!==id); }
+  else { if(SEL.length<4) SEL.push(id); }
+  renderChips(); renderComparison();
+}
+function renderComparison(){
+  const brs=BRANCHES.filter(b=>SEL.includes(b.id));
+
+  dc('cline');
+  charts.cline=new Chart(document.getElementById('c-cline'),{
+    type:'line',
+    data:{
+      labels:DATES.map(fDate),
+      datasets:brs.map((b,i)=>({
+        label:b.name,data:DATES.map(d=>SD[b.id]?.[d]||0),
+        borderColor:CC[i],backgroundColor:'transparent',
+        borderWidth:2.5,pointRadius:4,tension:0.4
+      }))
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{padding:14,boxWidth:11}},
+               tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fSARf(c.raw)}`}}},
+      scales:{y:{ticks:{callback:v=>fSAR(v)},grid:{color:'#181c2e'}},x:{grid:{display:false}}}
+    }
+  });
+
+  dc('cbar');
+  charts.cbar=new Chart(document.getElementById('c-cbar'),{
+    type:'bar',
+    data:{
+      labels:brs.map(b=>b.name),
+      datasets:[{label:'الإجمالي',data:brs.map(b=>bTotal(b.id)),
+        backgroundColor:CC.slice(0,brs.length),borderRadius:8}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fSARf(c.raw)}}},
+      scales:{y:{ticks:{callback:v=>fSAR(v)},grid:{color:'#181c2e'}},x:{grid:{display:false}}}
+    }
+  });
+
+  dc('crad');
+  const nrm=(v,mx)=>mx>0?(v/mx*100):0;
+  const mxT=Math.max(...brs.map(b=>bTotal(b.id)));
+  const mxM=Math.max(...brs.map(b=>bMax(b.id)));
+  const mxA=Math.max(...brs.map(b=>bAvg(b.id)));
+  const mxL=Math.max(...brs.map(b=>bLast(b.id)));
+  charts.crad=new Chart(document.getElementById('c-crad'),{
+    type:'radar',
+    data:{
+      labels:['الإجمالي','أعلى يوم','المتوسط','آخر يوم'],
+      datasets:brs.map((b,i)=>({
+        label:b.name,
+        data:[nrm(bTotal(b.id),mxT),nrm(bMax(b.id),mxM),nrm(bAvg(b.id),mxA),nrm(bLast(b.id),mxL)],
+        borderColor:CC[i],backgroundColor:CC[i]+'33',borderWidth:2,pointRadius:4
+      }))
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{padding:12,boxWidth:10}}},
+      scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:'#252a45'},
+                 pointLabels:{color:'#9fa8da',font:{size:12}}}}
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════ */
+const rendered=new Set();
+function go(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.tbtn').forEach(b=>{
+    if(b.getAttribute('onclick').includes(name)) b.classList.add('active');
+  });
+  if(!rendered.has(name)){
+    rendered.add(name);
+    if(name==='regions')    renderRegions();
+    if(name==='branches')   renderBranches();
+    if(name==='heatmap')    renderHeatmap();
+    if(name==='comparison') { renderChips(); renderComparison(); }
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   SUPABASE FETCH
+═══════════════════════════════════════════════ */
+async function fetchLive(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/sales_data?select=*&limit=5000`,{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const rows=await r.json();
+    if(!Array.isArray(rows)||rows.length===0) throw new Error('empty');
+    const D={};
+    rows.forEach(row=>{ if(!D[row.branch_id])D[row.branch_id]={}; D[row.branch_id][row.date]=row.amount; });
+    return D;
+  }catch(e){
+    console.warn('[Dashboard] Supabase unavailable, using fallback:',e.message);
+    return null;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   PASSWORD
+═══════════════════════════════════════════════ */
+function checkPW(){
+  if(document.getElementById('pw-in').value===PWD){
+    document.getElementById('pw-screen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    init();
+  } else {
+    const e=document.getElementById('pw-err');
+    e.style.display='block';
+    document.getElementById('pw-in').value='';
+    setTimeout(()=>e.style.display='none',3000);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+async function init(){
+  SD=buildFallback();
+  renderOverview();
+  rendered.add('overview');
+  document.getElementById('dtime').textContent='آخر تحديث: '+new Date().toLocaleTimeString('ar-SA');
+
+  const live=await fetchLive();
+  if(live){
+    SD=live;
+    document.getElementById('dbadge').className='badge badge-live';
+    document.getElementById('dbadge').textContent='🟢 بيانات مباشرة';
+    // Re-render all open tabs
+    rendered.clear(); rendered.add('overview');
+    renderOverview();
+    document.getElementById('dtime').textContent='آخر تحديث: '+new Date().toLocaleTimeString('ar-SA');
+  }
+}
+
+document.getElementById('pw-in').focus();
+</script>
+</body>
+</html>
