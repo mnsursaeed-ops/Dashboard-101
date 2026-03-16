@@ -29,7 +29,6 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
 .lo:hover{border-color:var(--rd);color:var(--rd)}
 .wp{max-width:1480px;margin:0 auto;padding:16px 20px}
 .g6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
-.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .mk{background:var(--s2);border-radius:10px;padding:14px 16px}
 .ml{font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px}
 .mv{font-size:20px;font-weight:700}
@@ -53,14 +52,8 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
 .brb{background:var(--s3);border-radius:4px;height:6px}
 .brf{height:6px;border-radius:4px;transition:width 1s}
 .hm{overflow-x:auto}
-/* employee tab */
-.ef{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-.ei{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:7px 12px;color:var(--tx);font-size:12px;outline:none;font-family:inherit;direction:rtl}
-.ei:focus{border-color:var(--ac)}
-.es{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:7px 10px;color:var(--tx);font-size:12px;cursor:pointer;font-family:inherit}
-.ec{font-size:11px;color:var(--mu);margin-right:auto}
-@media(max-width:900px){.g6{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(2,1fr)}.g2,.g3{grid-template-columns:1fr}}
-@media(max-width:500px){.g6{grid-template-columns:repeat(2,1fr)}.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.g6{grid-template-columns:repeat(3,1fr)}.g2,.g3{grid-template-columns:1fr}}
+@media(max-width:500px){.g6{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -82,7 +75,6 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
       <button class="tb" onclick="sw('rg',this)">المناطق</button>
       <button class="tb" onclick="sw('br',this)">الفروع</button>
       <button class="tb" onclick="sw('hm',this)">الخارطة الحرارية</button>
-      <button class="tb" onclick="sw('em',this)">الموظفون</button>
     </div>
     <div class="nr">
       <span id="dbg" class="bx bo">⚡ بيانات محلية</span>
@@ -91,8 +83,6 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
   </nav>
   <div class="wp">
     <div class="g6" id="kpis"></div>
-
-    <!-- Overview -->
     <div class="sc on" id="sc-ov">
       <div class="g3">
         <div class="cd"><div class="ct">المبيعات اليومية<span style="font-size:10px;color:var(--mu);font-weight:400">الأعمدة = مبيعات · الخط = هدف</span></div><div class="ch" style="height:230px"><canvas id="dc"></canvas></div></div>
@@ -103,8 +93,6 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
         <div class="cd"><div class="ct">أضعف 5 أيام</div><table class="tb2"><thead><tr><th>التاريخ</th><th>المبيعات</th><th>التحقيق</th></tr></thead><tbody id="botd"></tbody></table></div>
       </div>
     </div>
-
-    <!-- Regions -->
     <div class="sc" id="sc-rg">
       <div class="cd"><div class="ct">مقارنة المناطق — مبيعات وهدف</div><div class="ch" style="height:260px"><canvas id="rc"></canvas></div></div>
       <div class="g2">
@@ -112,14 +100,10 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
         <div class="cd"><div class="ct">نسب التحقيق</div><div class="ch" style="height:200px"><canvas id="rpc"></canvas></div></div>
       </div>
     </div>
-
-    <!-- Branches -->
     <div class="sc" id="sc-br">
       <div class="cd" style="margin-bottom:14px"><div class="ct">جميع الفروع — مرتبة حسب المبيعات</div><div style="overflow-y:auto;max-height:420px"><table class="tb2"><thead><tr><th>#</th><th>الفرع</th><th>المنطقة</th><th>إجمالي المبيعات</th><th>إجمالي الهدف</th><th>التحقيق</th></tr></thead><tbody id="btbl"></tbody></table></div></div>
       <div class="cd"><div class="ct">أعلى 15 فرعاً — نسبة التحقيق</div><div class="ch" style="height:400px"><canvas id="bpc"></canvas></div></div>
     </div>
-
-    <!-- Heatmap -->
     <div class="sc" id="sc-hm">
       <div class="cd">
         <div class="ct">الخارطة الحرارية — نسبة تحقيق الهدف اليومي<span style="font-size:10px;color:var(--mu);font-weight:400">(مبيعات ÷ هدف × 100)</span></div>
@@ -133,46 +117,6 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
         </div>
       </div>
     </div>
-
-    <!-- Employees -->
-    <div class="sc" id="sc-em">
-      <div class="g4" id="em-kpis"></div>
-      <div class="cd">
-        <div class="ef">
-          <input class="ei" type="text" id="em-srch" placeholder="🔍  ابحث بالاسم أو الرقم الوظيفي…" style="min-width:220px" oninput="renderEmpTable()">
-          <select class="es" id="em-branch" onchange="renderEmpTable()">
-            <option value="">جميع الفروع</option>
-          </select>
-          <select class="es" id="em-sort" onchange="renderEmpTable()">
-            <option value="sd">الأعلى مبيعاً</option>
-            <option value="sa">الأقل مبيعاً</option>
-            <option value="pd">أعلى تحقيق</option>
-            <option value="nm">الاسم أبجدياً</option>
-          </select>
-          <span class="ec" id="em-cnt"></span>
-        </div>
-        <div style="overflow-y:auto;max-height:440px">
-          <table class="tb2">
-            <thead><tr>
-              <th>#</th><th>الرقم</th><th>الاسم</th><th>الفرع</th><th>المنطقة</th>
-              <th>المبيعات</th><th>الهدف</th><th>التحقيق</th><th>أيام العمل</th>
-            </tr></thead>
-            <tbody id="em-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="g2">
-        <div class="cd">
-          <div class="ct">أفضل 10 موظفين — المبيعات</div>
-          <div class="ch" style="height:320px"><canvas id="em-c1"></canvas></div>
-        </div>
-        <div class="cd">
-          <div class="ct">أفضل 10 موظفين — نسبة التحقيق</div>
-          <div class="ch" style="height:320px"><canvas id="em-c2"></canvas></div>
-        </div>
-      </div>
-    </div>
-
     <div style="font-size:10px;color:var(--mu);text-align:center;padding:10px;border-top:1px solid var(--bd);margin-top:6px" id="lu"></div>
   </div>
 </div>
@@ -185,13 +129,12 @@ const PW='Sales2026';
 const BRANCHES=[{"n":"أبو عريش2","r":"عسير/جيزان","c":"#d97706"},{"n":"أبو عريش3","r":"عسير/جيزان","c":"#d97706"},{"n":"البوادي","r":"الغربية","c":"#db2777"},{"n":"الرياض 1","r":"الرياض","c":"#2563eb"},{"n":"الرياض 2","r":"الرياض","c":"#2563eb"},{"n":"الرياض 3","r":"الرياض","c":"#2563eb"},{"n":"الرياض 4","r":"الرياض","c":"#2563eb"},{"n":"الرياض 5","r":"الرياض","c":"#2563eb"},{"n":"العلا","r":"المدينة المنورة","c":"#7c3aed"},{"n":"المدينة 5","r":"المدينة المنورة","c":"#7c3aed"},{"n":"المدينة 6","r":"المدينة المنورة","c":"#7c3aed"},{"n":"المدينة 8","r":"المدينة المنورة","c":"#7c3aed"},{"n":"المدينة 9","r":"المدينة المنورة","c":"#7c3aed"},{"n":"حائل 1","r":"حائل","c":"#16a34a"},{"n":"حائل 2","r":"حائل","c":"#16a34a"},{"n":"حائل 3","r":"حائل","c":"#16a34a"},{"n":"حائل 4","r":"حائل","c":"#16a34a"},{"n":"حائل 5","r":"حائل","c":"#16a34a"},{"n":"حفر الباطن 1","r":"حفر الباطن","c":"#0891b2"},{"n":"حفر الباطن 2","r":"حفر الباطن","c":"#0891b2"},{"n":"حفر الباطن 3","r":"حفر الباطن","c":"#0891b2"},{"n":"حفر الباطن 4","r":"حفر الباطن","c":"#0891b2"},{"n":"حفر الباطن 7","r":"حفر الباطن","c":"#0891b2"},{"n":"خميس مشيط 1","r":"عسير/جيزان","c":"#d97706"},{"n":"خميس مشيط 2","r":"عسير/جيزان","c":"#d97706"},{"n":"خميس مشيط 5","r":"عسير/جيزان","c":"#d97706"},{"n":"صبيا","r":"عسير/جيزان","c":"#d97706"},{"n":"مكة 2","r":"الغربية","c":"#db2777"}];
 const DATES=["2026-02-28","2026-03-01","2026-03-02","2026-03-03","2026-03-04","2026-03-05","2026-03-06","2026-03-07","2026-03-08","2026-03-09","2026-03-10","2026-03-11","2026-03-12","2026-03-13","2026-03-14"];
 const SD={"أبو عريش2":[[30.63,95.79],[27.72,141.1667],[47.07,141.1667],[110.92,141.1667],[48.45,141.1667],[5.42,141.1667],[0,141.1667],[156.7,141.1667],[46.36,141.1667],[19.49,141.1667],[68.71,141.1667],[13.02,141.1667],[41.99,141.1667],[32.56,141.1667],[37.89,141.1667]],"أبو عريش3":[[0,82.73],[0,121.9167],[67.41,121.9167],[72.01,121.9167],[123.93,121.9167],[18.11,121.9167],[68.29,121.9167],[40.16,121.9167],[72.25,121.9167],[124.67,121.9167],[73.68,121.9167],[21.13,121.9167],[66.9,121.9167],[94.19,121.9167],[78.84,121.9167]],"البوادي":[[163.84,115.27],[15.76,169.8709],[147.76,169.8709],[98.9,169.8709],[33.26,169.8709],[167.13,169.8709],[59.74,169.8709],[310.87,169.8709],[20.0,169.8709],[305.79,169.8709],[111.58,169.8709],[160.38,169.8709],[107.42,169.8709],[113.62,169.8709],[158.4,169.8709]],"الرياض 1":[[277.41,278.37],[534.01,410.2249],[173.08,410.2249],[258.99,410.2249],[201.14,410.2249],[159.4,410.2249],[270.28,410.2249],[471.95,410.2249],[249.36,410.2249],[143.09,410.2249],[358.44,410.2249],[175.11,410.2249],[310.72,410.2249],[392.5,410.2249],[805.28,410.2249]],"الرياض 2":[[723.36,275.32],[566.75,405.7414],[442.61,405.7414],[384.26,405.7414],[398.77,405.7414],[198.93,405.7414],[504.76,405.7414],[508.55,405.7414],[345.71,405.7414],[213.13,405.7414],[407.09,405.7414],[566.79,405.7414],[310.8,405.7414],[597.25,405.7414],[489.6,405.7414]],"الرياض 3":[[72.8,164.59],[234.64,242.5605],[147.5,242.5605],[129.09,242.5605],[453.25,242.5605],[133.69,242.5605],[148.66,242.5605],[361.18,242.5605],[191.94,242.5605],[117.42,242.5605],[160.23,242.5605],[58.92,242.5605],[193.47,242.5605],[222.12,242.5605],[297.96,242.5605]],"الرياض 4":[[198.68,144.08],[416.24,212.3355],[193.89,212.3355],[136.67,212.3355],[62.23,212.3355],[94.25,212.3355],[101.53,212.3355],[182.44,212.3355],[124.89,212.3355],[152.7,212.3355],[97.7,212.3355],[102.21,212.3355],[226.12,212.3355],[270.12,212.3355],[235.26,212.3355]],"الرياض 5":[[351.0,269.17],[393.3,396.6667],[133.44,396.6667],[191.18,396.6667],[370.59,396.6667],[482.54,396.6667],[500.86,396.6667],[373.54,396.6667],[330.82,396.6667],[582.73,396.6667],[382.93,396.6667],[324.08,396.6667],[566.97,396.6667],[817.65,396.6667],[468.74,396.6667]],"العلا":[[0,12.61],[0,18.5892],[2.7,18.5892],[0,18.5892],[0,18.5892],[0,18.5892],[0,18.5892],[0,18.5892],[0,18.5892],[0,18.5892],[0,18.5892],[0,18.5892],[0,18.5892],[0,18.5892],[0,18.5892]],"المدينة 5":[[431.14,333.14],[510.56,490.9474],[253.94,490.9474],[270.34,490.9474],[529.11,490.9474],[338.23,490.9474],[582.78,490.9474],[497.91,490.9474],[579.51,490.9474],[229.55,490.9474],[189.93,490.9474],[221.34,490.9474],[417.05,490.9474],[164.95,490.9474],[486.54,490.9474]],"المدينة 6":[[287.2,471.76],[526.26,695.2189],[269.11,695.2189],[281.56,695.2189],[344.19,695.2189],[238.88,695.2189],[466.23,695.2189],[819.76,695.2189],[430.84,695.2189],[227.21,695.2189],[511.07,695.2189],[340.3,695.2189],[552.94,695.2189],[413.43,695.2189],[458.17,695.2189]],"المدينة 8":[[121.55,95.79],[221.44,141.1667],[63.09,141.1667],[186.8,141.1667],[247.1,141.1667],[169.4,141.1667],[38.0,141.1667],[73.46,141.1667],[278.22,141.1667],[62.94,141.1667],[130.6,141.1667],[280.17,141.1667],[217.99,141.1667],[148.94,141.1667],[194.41,141.1667]],"المدينة 9":[[84.47,79.68],[132.45,117.425],[0,117.425],[12.25,117.425],[40.72,117.425],[4.88,117.425],[10.0,117.425],[150.22,117.425],[0,117.425],[2.0,117.425],[1.34,117.425],[114.21,117.425],[100.03,117.425],[7.09,117.425],[102.55,117.425]],"حائل 1":[[416.26,101.51],[23.5,149.5967],[153.34,149.5967],[36.25,149.5967],[295.91,149.5967],[114.02,149.5967],[118.36,149.5967],[134.67,149.5967],[212.94,149.5967],[269.81,149.5967],[0,149.5967],[537.05,149.5967],[220.67,149.5967],[148.61,149.5967],[291.74,149.5967]],"حائل 2":[[300.01,121.45],[133.39,178.9813],[1.36,178.9813],[394.88,178.9813],[154.53,178.9813],[201.01,178.9813],[141.71,178.9813],[171.24,178.9813],[196.31,178.9813],[148.44,178.9813],[120.79,178.9813],[291.34,178.9813],[205.89,178.9813],[102.2,178.9813],[1.62,178.9813]],"حائل 3":[[374.91,90.77],[0,133.7598],[128.23,133.7598],[0,133.7598],[0.71,133.7598],[5.0,133.7598],[26.04,133.7598],[124.52,133.7598],[89.91,133.7598],[194.63,133.7598],[72.04,133.7598],[90.31,133.7598],[153.28,133.7598],[0,133.7598],[13.12,133.7598]],"حائل 4":[[233.66,142.77],[198.66,210.4025],[4.02,210.4025],[223.37,210.4025],[71.35,210.4025],[29.07,210.4025],[77.52,210.4025],[150.68,210.4025],[92.36,210.4025],[119.48,210.4025],[439.21,210.4025],[212.83,210.4025],[205.48,210.4025],[170.3,210.4025],[244.59,210.4025]],"حائل 5":[[244.36,81.01],[70.36,119.387],[5.62,119.387],[133.19,119.387],[138.53,119.387],[141.2,119.387],[74.67,119.387],[72.24,119.387],[64.61,119.387],[209.96,119.387],[21.67,119.387],[105.91,119.387],[82.33,119.387],[0,119.387],[285.01,119.387]],"حفر الباطن 1":[[83.38,117.26],[96.9,172.8085],[207.35,172.8085],[165.25,172.8085],[161.22,172.8085],[135.55,172.8085],[59.62,172.8085],[237.02,172.8085],[79.6,172.8085],[133.95,172.8085],[113.76,172.8085],[93.5,172.8085],[58.76,172.8085],[148.43,172.8085],[173.18,172.8085]],"حفر الباطن 2":[[361.26,261.25],[273.06,385.0],[278.16,385.0],[177.41,385.0],[318.76,385.0],[203.11,385.0],[346.24,385.0],[212.53,385.0],[464.66,385.0],[162.23,385.0],[277.21,385.0],[295.69,385.0],[161.42,385.0],[246.63,385.0],[458.99,385.0]],"حفر الباطن 3":[[145.44,121.92],[116.96,179.6667],[148.3,179.6667],[125.37,179.6667],[108.28,179.6667],[54.02,179.6667],[77.37,179.6667],[93.93,179.6667],[229.0,179.6667],[85.8,179.6667],[129.82,179.6667],[125.4,179.6667],[83.92,179.6667],[123.53,179.6667],[57.37,179.6667]],"حفر الباطن 4":[[234.53,239.48],[194.4,352.9167],[339.06,352.9167],[89.45,352.9167],[142.48,352.9167],[246.37,352.9167],[220.61,352.9167],[291.31,352.9167],[311.78,352.9167],[348.42,352.9167],[232.5,352.9167],[292.06,352.9167],[184.12,352.9167],[212.46,352.9167],[350.56,352.9167]],"حفر الباطن 7":[[228.14,113.21],[159.98,166.8333],[79.85,166.8333],[44.06,166.8333],[166.04,166.8333],[96.72,166.8333],[219.31,166.8333],[74.12,166.8333],[148.56,166.8333],[84.98,166.8333],[142.18,166.8333],[137.08,166.8333],[75.6,166.8333],[193.76,166.8333],[191.2,166.8333]],"خميس مشيط 1":[[68.21,152.4],[327.81,224.5833],[95.36,224.5833],[234.36,224.5833],[357.81,224.5833],[105.82,224.5833],[87.13,224.5833],[269.4,224.5833],[180.32,224.5833],[79.86,224.5833],[316.6,224.5833],[177.25,224.5833],[215.86,224.5833],[234.44,224.5833],[271.83,224.5833]],"خميس مشيط 2":[[215.46,160.28],[166.87,236.209],[164.2,236.209],[307.82,236.209],[238.2,236.209],[206.13,236.209],[187.77,236.209],[148.98,236.209],[206.73,236.209],[181.22,236.209],[120.82,236.209],[182.76,236.209],[170.43,236.209],[183.08,236.209],[181.33,236.209]],"خميس مشيط 5":[[193.7,115.39],[272.13,170.0417],[421.49,170.0417],[176.88,170.0417],[217.75,170.0417],[222.52,170.0417],[110.7,170.0417],[144.79,170.0417],[106.67,170.0417],[162.89,170.0417],[130.14,170.0417],[154.57,170.0417],[48.91,170.0417],[253.04,170.0417],[207.53,170.0417]],"صبيا":[[93.5,190.0],[190.45,280.0],[184.46,280.0],[215.03,280.0],[57.61,280.0],[296.08,280.0],[195.71,280.0],[111.7,280.0],[131.27,280.0],[174.5,280.0],[220.43,280.0],[65.26,280.0],[401.39,280.0],[268.75,280.0],[154.19,280.0]],"مكة 2":[[39.28,99.47],[68.32,146.5823],[30.34,146.5823],[185.99,146.5823],[113.24,146.5823],[156.4,146.5823],[24.41,146.5823],[205.67,146.5823],[95.79,146.5823],[110.83,146.5823],[111.12,146.5823],[126.46,146.5823],[130.42,146.5823],[240.42,146.5823],[273.82,146.5823]]};
-// SD[branch_name][date_index] = [net_sales_thousands, daily_target_thousands]
+// SD[branch_name][date_index] = [net_sales, daily_target]
+// Total net sales embedded: 79,813.52 thousand SAR
 // ══════════════════════════════════════════════════
 
 // ── helpers ──
-// Values in SD are in thousands of SAR → multiply by 1000 for display
-const fmt=n=>{if(isNaN(+n))return'0';const v=(+n)*1000;if(v>=1000000)return(v/1000000).toFixed(2)+' م';if(v>=1000)return(v/1000).toFixed(1)+' ألف';return Math.round(v).toLocaleString('ar-SA');};
-const fmtFull=n=>{if(isNaN(+n))return'0 ر.س';const v=Math.round((+n)*1000);return v.toLocaleString('ar-SA')+' ر.س';};
+const fmt=n=>isNaN(+n)?'0':Math.round(+n).toLocaleString('ar-SA');
 const fd=s=>new Date(s).toLocaleDateString('ar-SA',{month:'short',day:'numeric'});
 const pc=p=>p>=100?'pg':p>=70?'py':'pr';
 const hmcol=v=>{if(!v||v<=0)return'#1a2535';if(v>=150)return'#16a34a';if(v>=100)return'#4ade80';if(v>=80)return'#3b82f6';if(v>=60)return'#f59e0b';return'#ef4444';};
@@ -206,12 +149,12 @@ const rgnet=r=>BRANCHES.filter(b=>b.r===r).reduce((s,b)=>s+bnet(b.n),0);
 const rgtgt=r=>BRANCHES.filter(b=>b.r===r).reduce((s,b)=>s+btgt(b.n),0);
 const regions=[...new Set(BRANCHES.map(b=>b.r))];
 const rcol=r=>BRANCHES.find(b=>b.r===r)?.c||'#6b7280';
-// charts registry
+// charts
 const CH={};
 const dc2=k=>{if(CH[k]){CH[k].destroy();delete CH[k];}};
 Chart.defaults.color='#64748b';Chart.defaults.borderColor='#1e3050';
 
-// ── KPIs ──
+// KPIs
 function renderKPIs(){
   const tot=BRANCHES.reduce((s,b)=>s+bnet(b.n),0);
   const totT=BRANCHES.reduce((s,b)=>s+btgt(b.n),0);
@@ -222,15 +165,14 @@ function renderKPIs(){
   const worst=[...BRANCHES].sort((a,b)=>bpct(a.n)-bpct(b.n))[0];
   const chg=yes>0?((tod-yes)/yes*100).toFixed(1):null;
   document.getElementById('kpis').innerHTML=`
-    <div class="mk"><div class="ml">إجمالي المبيعات</div><div class="mv" style="color:#60a5fa">${fmt(tot)}</div><div class="ms">ريال سعودي · 15 يوم</div></div>
+    <div class="mk"><div class="ml">إجمالي المبيعات</div><div class="mv" style="color:#60a5fa">${fmt(tot)}</div><div class="ms">ألف ريال · 15 يوم</div></div>
     <div class="mk"><div class="ml">نسبة التحقيق</div><div class="mv" style="color:#4ade80">${pct}%</div><div class="ms">من هدف ${fmt(totT)}</div></div>
     <div class="mk"><div class="ml">مبيعات اليوم (14/03)</div><div class="mv" style="color:#67e8f9">${fmt(tod)}</div><div class="ms">${chg?chg+'% عن أمس':''}</div></div>
-    <div class="mk"><div class="ml">المتوسط اليومي</div><div class="mv" style="color:#fcd34d">${fmt(tot/DATES.length)}</div><div class="ms">ريال سعودي متوسط</div></div>
+    <div class="mk"><div class="ml">المتوسط اليومي</div><div class="mv" style="color:#fcd34d">${fmt(tot/DATES.length)}</div><div class="ms">ألف ريال لكل يوم</div></div>
     <div class="mk"><div class="ml">أفضل فرع تحقيقاً</div><div class="mv" style="color:#c4b5fd;font-size:13px">${best?.n||''}</div><div class="ms">${bpct(best?.n||'').toFixed(1)}%</div></div>
     <div class="mk"><div class="ml">أضعف فرع تحقيقاً</div><div class="mv" style="color:#fca5a5;font-size:13px">${worst?.n||''}</div><div class="ms">${bpct(worst?.n||'').toFixed(1)}%</div></div>`;
 }
 
-// ── Daily chart ──
 function renderDaily(){
   dc2('dc');
   const nets=DATES.map((_,i)=>daynet(i));
@@ -240,25 +182,23 @@ function renderDaily(){
     {data:nets,backgroundColor:cols,borderRadius:4,label:'المبيعات',order:1},
     {data:tgts,type:'line',borderColor:'#f59e0b88',borderDash:[5,3],borderWidth:1.5,pointRadius:0,fill:false,label:'الهدف',order:0}
   ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)} ألف`}}},
     scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},
-            y:{ticks:{color:'#64748b',font:{size:10},callback:v=>fmt(v)},grid:{color:'rgba(30,48,80,.4)'}}}}});
+            y:{ticks:{color:'#64748b',font:{size:10},callback:v=>Math.round(v/1000)+'k'},grid:{color:'rgba(30,48,80,.4)'}}}}});
 }
 
-// ── Region progress bars ──
 function renderRgBars(){
   document.getElementById('rgb').innerHTML=regions.map(r=>{
     const n=rgnet(r),t=rgtgt(r),p=t>0?n/t*100:0;
     const c=p>=90?'#22c55e':p>=75?'#3b82f6':'#f59e0b';
     return`<div class="br">
       <div class="brh"><span style="font-weight:600">${r}</span><span style="color:${c};font-weight:700">${p.toFixed(1)}%</span></div>
-      <div style="font-size:10px;color:var(--mu);margin-bottom:3px">${fmt(n)} / ${fmt(t)}</div>
+      <div style="font-size:10px;color:var(--mu);margin-bottom:3px">${fmt(n)} / ${fmt(t)} ألف</div>
       <div class="brb"><div class="brf" style="width:${Math.min(p,100)}%;background:${c}"></div></div>
     </div>`;
   }).join('');
 }
 
-// ── Best / worst days ──
 function renderTopBot(){
   const days=DATES.map((d,i)=>({d,n:daynet(i),t:daytgt(i)})).sort((a,b)=>b.n-a.n);
   const row=d=>`<tr><td>${fd(d.d)}</td><td style="font-weight:600">${fmt(d.n)}</td><td><span class="pl ${pc(d.t>0?d.n/d.t*100:0)}">${d.t>0?(d.n/d.t*100).toFixed(1)+'%':'—'}</span></td></tr>`;
@@ -266,7 +206,6 @@ function renderTopBot(){
   document.getElementById('botd').innerHTML=days.slice(-5).reverse().map(row).join('');
 }
 
-// ── Regions tab ──
 function renderRegions(){
   dc2('rc');dc2('rpc');
   const rd=regions.map(r=>({r,n:rgnet(r),t:rgtgt(r),p:rgtgt(r)>0?rgnet(r)/rgtgt(r)*100:0,c:rcol(r)}));
@@ -274,9 +213,9 @@ function renderRegions(){
     {label:'المبيعات',data:rd.map(r=>r.n),backgroundColor:rd.map(r=>r.c),borderRadius:4},
     {label:'الهدف',data:rd.map(r=>r.t),backgroundColor:'rgba(255,255,255,.07)',borderRadius:4}
   ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},
+    plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
     scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},
-            y:{ticks:{color:'#64748b',font:{size:10},callback:v=>fmt(v)}}}}});
+            y:{ticks:{color:'#64748b',font:{size:10},callback:v=>Math.round(v/1000)+'k'}}}}});
   document.getElementById('rtbl').innerHTML=rd.sort((a,b)=>b.n-a.n).map(r=>
     `<tr><td style="font-weight:600">${r.r}</td><td>${fmt(r.n)}</td><td>${fmt(r.t)}</td><td><span class="pl ${pc(r.p)}">${r.p.toFixed(1)}%</span></td></tr>`).join('');
   CH.rpc=new Chart(document.getElementById('rpc'),{type:'bar',data:{labels:rd.map(r=>r.r),datasets:[
@@ -286,7 +225,6 @@ function renderRegions(){
     scales:{x:{min:0,ticks:{color:'#64748b',font:{size:10},callback:v=>v+'%'}},y:{ticks:{color:'#94a3b8',font:{size:10}}}}}});
 }
 
-// ── Branches tab ──
 function renderBranches(){
   const sorted=[...BRANCHES].sort((a,b)=>bnet(b.n)-bnet(a.n));
   document.getElementById('btbl').innerHTML=sorted.map((b,i)=>{
@@ -303,7 +241,6 @@ function renderBranches(){
             y:{ticks:{color:'#94a3b8',font:{size:10}}}}}});
 }
 
-// ── Heatmap ──
 function renderHeatmap(){
   const cols=`100px ${DATES.map(()=>'1fr').join(' ')}`;
   let h=`<div style="display:grid;grid-template-columns:${cols};gap:2px;margin-bottom:3px">`;
@@ -321,119 +258,7 @@ function renderHeatmap(){
   document.getElementById('hmg').innerHTML=h;
 }
 
-// ══════════════════════════════════════════════════
-// EMPLOYEES  (145 employees across 28 branches)
-// ══════════════════════════════════════════════════
-const FN=['محمد','أحمد','عبدالله','علي','عمر','خالد','ماجد','سلطان','فيصل','حمد','ناصر','طلال','ياسر','بدر','وليد','سعد','نواف','رياض','كريم','حسام','تركي','راشد','صالح','زياد','حمزة','عبدالرحمن','عبدالعزيز'];
-const LN=['الغامدي','العتيبي','الزهراني','القحطاني','الدوسري','الحربي','الشمري','المطيري','الرشيدي','العمري','البلوي','الصاعدي','الحازمي','الثقفي','البيشي','الشهري','الخثلاني','العنزي','السلمي','الجهني','البقمي','الغانمي','الأسمري','المالكي','السبيعي'];
-// 28 branches → exactly 145 employees
-const BCOUNTS={'الرياض 1':8,'الرياض 2':7,'الرياض 3':6,'الرياض 4':5,'الرياض 5':6,
-  'المدينة 5':7,'المدينة 6':8,'المدينة 8':5,'المدينة 9':3,'العلا':2,
-  'حائل 1':5,'حائل 2':5,'حائل 3':4,'حائل 4':5,'حائل 5':4,
-  'حفر الباطن 1':5,'حفر الباطن 2':7,'حفر الباطن 3':5,'حفر الباطن 4':6,'حفر الباطن 7':4,
-  'خميس مشيط 1':6,'خميس مشيط 2':5,'خميس مشيط 5':5,
-  'أبو عريش2':4,'أبو عريش3':4,'صبيا':5,'البوادي':5,'مكة 2':4};
-
-function lcg(seed){let s=seed>>>0;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/0xffffffff;};}
-
-let EMPLOYEES=[];
-function buildEmployees(){
-  const out=[];let eid=1;
-  BRANCHES.forEach((b,bi)=>{
-    const n=BCOUNTS[b.n]||5;
-    const r=lcg((bi+1)*7919+31337);
-    const brSales=bnet(b.n), brTarget=btgt(b.n);
-    // distribute sales with random weights (sums exactly to branch total)
-    const w=Array.from({length:n},()=>0.4+r()*1.2);
-    const ws=w.reduce((a,c)=>a+c,0);
-    for(let i=0;i<n;i++){
-      const sales=+(w[i]/ws*brSales).toFixed(2);
-      const target=+(brTarget/n).toFixed(2);
-      const pct=target>0?sales/target*100:0;
-      const days=10+Math.floor(r()*6); // 10–15
-      const fn=FN[Math.floor(r()*FN.length)];
-      const ln=LN[Math.floor(r()*LN.length)];
-      out.push({id:'EMP-'+String(eid++).padStart(4,'0'),name:fn+' '+ln,branch:b.n,region:b.r,sales,target,pct,days});
-    }
-  });
-  return out;
-}
-
-function renderEmployeeKPIs(){
-  const tot=EMPLOYEES.length;
-  const avgPct=(EMPLOYEES.reduce((s,e)=>s+e.pct,0)/tot).toFixed(1);
-  const above=EMPLOYEES.filter(e=>e.pct>=100).length;
-  const top=[...EMPLOYEES].sort((a,b)=>b.pct-a.pct)[0];
-  document.getElementById('em-kpis').innerHTML=`
-    <div class="mk"><div class="ml">إجمالي الموظفين</div><div class="mv" style="color:#60a5fa">${tot}</div><div class="ms">في ${BRANCHES.length} فرع</div></div>
-    <div class="mk"><div class="ml">متوسط التحقيق</div><div class="mv" style="color:#4ade80">${avgPct}%</div><div class="ms">لجميع الموظفين</div></div>
-    <div class="mk"><div class="ml">فوق الهدف ✅</div><div class="mv" style="color:#fcd34d">${above}</div><div class="ms">موظف حقق 100%+</div></div>
-    <div class="mk"><div class="ml">أفضل موظف تحقيقاً</div><div class="mv" style="color:#c4b5fd;font-size:14px">${top?.name||''}</div><div class="ms">${top?.pct.toFixed(1)||0}% · ${top?.branch||''}</div></div>`;
-}
-
-function filteredEmps(){
-  const q=(document.getElementById('em-srch')?.value||'').trim().toLowerCase();
-  const br=document.getElementById('em-branch')?.value||'';
-  const so=document.getElementById('em-sort')?.value||'sd';
-  let e=[...EMPLOYEES];
-  if(q) e=e.filter(x=>x.name.includes(q)||x.id.toLowerCase().includes(q)||x.branch.includes(q));
-  if(br) e=e.filter(x=>x.branch===br);
-  e.sort((a,b)=>so==='sd'?b.sales-a.sales:so==='sa'?a.sales-b.sales:so==='pd'?b.pct-a.pct:a.name.localeCompare(b.name,'ar'));
-  return e;
-}
-
-function renderEmpTable(){
-  const e=filteredEmps();
-  document.getElementById('em-cnt').textContent=`${e.length} موظف`;
-  document.getElementById('em-tbody').innerHTML=e.map((x,i)=>`<tr>
-    <td style="color:var(--mu)">${i+1}</td>
-    <td style="color:var(--mu);font-size:11px">${x.id}</td>
-    <td style="font-weight:600">${x.name}</td>
-    <td>${x.branch}</td>
-    <td style="color:var(--mu);font-size:11px">${x.region}</td>
-    <td>${fmt(x.sales)}</td>
-    <td style="color:var(--mu)">${fmt(x.target)}</td>
-    <td><span class="pl ${pc(x.pct)}">${x.pct.toFixed(1)}%</span></td>
-    <td style="text-align:center">${x.days}</td>
-  </tr>`).join('');
-}
-
-function renderEmpCharts(){
-  // top 10 by sales
-  dc2('ec1');
-  const ts=[...EMPLOYEES].sort((a,b)=>b.sales-a.sales).slice(0,10);
-  CH.ec1=new Chart(document.getElementById('em-c1'),{type:'bar',
-    data:{labels:ts.map(e=>e.name),datasets:[{label:'المبيعات',data:ts.map(e=>e.sales),
-      backgroundColor:'#3b82f6cc',borderRadius:4}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${fmt(c.raw)}`}}},
-      scales:{x:{ticks:{color:'#64748b',font:{size:9},callback:v=>fmt(v)},grid:{color:'rgba(30,48,80,.4)'}},
-              y:{ticks:{color:'#94a3b8',font:{size:10}}}}}});
-  // top 10 by achievement
-  dc2('ec2');
-  const tp=[...EMPLOYEES].sort((a,b)=>b.pct-a.pct).slice(0,10);
-  CH.ec2=new Chart(document.getElementById('em-c2'),{type:'bar',
-    data:{labels:tp.map(e=>e.name),datasets:[{label:'%',data:tp.map(e=>+e.pct.toFixed(1)),
-      backgroundColor:tp.map(e=>e.pct>=100?'#22c55ecc':e.pct>=80?'#3b82f6cc':'#f59e0bcc'),borderRadius:4}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw}%`}}},
-      scales:{x:{min:0,ticks:{color:'#64748b',font:{size:9},callback:v=>v+'%'},grid:{color:'rgba(30,48,80,.4)'}},
-              y:{ticks:{color:'#94a3b8',font:{size:10}}}}}});
-}
-
-function renderEmployees(){
-  if(!EMPLOYEES.length) EMPLOYEES=buildEmployees();
-  renderEmployeeKPIs();
-  // populate branch filter once
-  const sel=document.getElementById('em-branch');
-  if(sel.options.length<=1){
-    [...new Set(EMPLOYEES.map(e=>e.branch))].sort().forEach(b=>sel.add(new Option(b,b)));
-  }
-  renderEmpTable();
-  renderEmpCharts();
-}
-
-// ── Supabase live fetch ──
+// Live Supabase fetch — updates SD in place
 async function fetchLive(){
   try{
     const r=await fetch(`${SB}/rest/v1/v_branch_daily?select=branch,sale_date,net_sales,daily_target`,
@@ -449,7 +274,7 @@ async function fetchLive(){
   }catch(e){console.warn('Supabase:',e.message);return false;}
 }
 
-// ── Tabs ──
+// Tabs
 const built={};
 function sw(id,btn){
   document.querySelectorAll('.sc').forEach(s=>s.classList.remove('on'));
@@ -457,14 +282,13 @@ function sw(id,btn){
   document.getElementById('sc-'+id).classList.add('on');
   btn.classList.add('on');
   if(!built[id]){built[id]=1;
-    if(id==='rg') renderRegions();
-    if(id==='br') renderBranches();
-    if(id==='hm') renderHeatmap();
-    if(id==='em') renderEmployees();
+    if(id==='rg')renderRegions();
+    if(id==='br')renderBranches();
+    if(id==='hm')renderHeatmap();
   }
 }
 
-// ── Auth ──
+// Auth
 function login(){
   if(document.getElementById('pw').value===PW){
     sessionStorage.setItem('a','1');
@@ -483,16 +307,13 @@ if(sessionStorage.getItem('a')){
   document.getElementById('app').style.display='block';
 }
 
-// ── Init ──
 async function init(){
-  EMPLOYEES=buildEmployees();
   renderKPIs();renderDaily();renderRgBars();renderTopBot();built.ov=1;
   document.getElementById('lu').textContent='آخر تحديث: '+new Date().toLocaleString('ar-SA');
   const live=await fetchLive();
   if(live){
     document.getElementById('dbg').className='bx bl';
     document.getElementById('dbg').textContent='🟢 بيانات مباشرة';
-    EMPLOYEES=buildEmployees(); // rebuild with live data
     Object.keys(built).forEach(k=>delete built[k]);
     renderKPIs();renderDaily();renderRgBars();renderTopBot();built.ov=1;
     document.getElementById('lu').textContent='تحديث مباشر: '+new Date().toLocaleString('ar-SA');
