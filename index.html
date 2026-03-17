@@ -501,7 +501,9 @@ html,body{height:100%;font-family:'Tajawal','Segoe UI',system-ui,sans-serif;back
           <div class="pm" id="pm"></div>
         </div>
         <div class="cd">
-          <div class="ct">📋 سجل الرفع <span class="ct-b" id="hist-count"></span></div>
+          <div class="ct">📋 سجل الرفع <span class="ct-b" id="hist-count"></span>
+            <button onclick="clearAllData()" style="padding:5px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;float:left" id="clear-btn">🗑️ مسح كل البيانات</button>
+          </div>
           <div id="hist-list"><div style="text-align:center;color:var(--mu);padding:24px;font-size:12px">⏳ جاري التحميل...</div></div>
         </div>
       </div>
@@ -1389,6 +1391,46 @@ async function processAndSave(){
     sw('ov',document.querySelectorAll('.sbb')[1]);
   }catch(err){sp(100,'❌ خطأ: '+err.message);console.error(err);}
   btn.disabled=false;
+}
+
+async function clearAllData(){
+  if(ROLE!=='super_admin'&&!PERMS.delete){alert('ليس لديك صلاحية المسح');return;}
+  if(!confirm('⚠️ هل أنت متأكد من مسح كل البيانات؟\nلا يمكن التراجع عن هذا الإجراء.'))return;
+  const btn=document.getElementById('clear-btn');
+  btn.disabled=true;btn.textContent='⏳ جاري المسح...';
+  try{
+    await Promise.all([
+      sbDel('branch_sales','id=gt.0'),
+      sbDel('branch_purchases','id=gt.0'),
+      sbDel('employee_sales','id=gt.0'),
+      sbDel('mothan_transactions','id=gt.0'),
+      sbDel('upload_log','id=gt.0'),
+    ]);
+    DATA.branches=[];DATA.employees=EB.employees;DATA.mothan=[];DATA.dates=[];
+    btn.textContent='✅ تم المسح';
+    setTimeout(()=>{btn.disabled=false;btn.textContent='🗑️ مسح كل البيانات';},3000);
+    loadHistory();
+    setBadge('📂 لا بيانات — ارفع ملفات','b-warn');
+    alert('✅ تم مسح كل البيانات بنجاح');
+  }catch(e){
+    alert('❌ خطأ: '+e.message);
+    btn.disabled=false;btn.textContent='🗑️ مسح كل البيانات';
+  }
+}
+
+async function deleteRecord(date, fileType){
+  if(!confirm(`حذف بيانات ${fileType} بتاريخ ${date}؟`))return;
+  try{
+    const tableMap={sales:'branch_sales',purchases:'branch_purchases',
+      employees:'employee_sales',mothan:'mothan_transactions'};
+    const tbl=tableMap[fileType];
+    if(tbl)await sbDel(tbl,'report_date=eq.'+date);
+    await sbDel('upload_log',`report_date=eq.${date}&file_type=eq.${fileType}`);
+    loadHistory();
+    // Reload data
+    if(DATA.dates.length)await setDF('latest',document.querySelector('.dfb'));
+    alert('✅ تم الحذف');
+  }catch(e){alert('❌ '+e.message);}
 }
 
 async function loadHistory(){
