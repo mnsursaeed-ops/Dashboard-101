@@ -1100,10 +1100,13 @@ function parsePurchases(wb){
 function parseMothanFile(wb){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
   return rows.filter(r=>String(r[0]).match(/\d{2}\/\d{2}\/\d{4}/)&&BM[String(r[2])]).map(r=>{
-    const d=String(r[0]).split('/').reverse().join('-');
+    const raw=String(r[0]).trim().split('\n')[0].trim();
+    const dm=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    const d=dm?`${dm[3]}-${dm[2]}-${dm[1]}`:'';
+    if(!d)return null;
     return{transaction_date:d,doc_ref:String(r[1]||''),branch_code:String(r[2]),branch_name:BM[String(r[2])]||'',
       description:String(r[3]||''),amount_sar:Math.abs(+String(r[5]||'').replace(/,/g,'')||0),balance:Math.abs(+String(r[6]||'').replace(/,/g,'')||0)};
-  });
+  }).filter(Boolean);
 }
 
 async function processAndSave(){
