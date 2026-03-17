@@ -769,7 +769,12 @@ async function loadRange(from,to){
       net:b.sar-b.purch,ai:b.pcs>0?Math.round(b.sar/b.pcs):0,
       mothan_amount:m.amount,mothan_weight:m.weight};
   }).sort((a,b_)=>b_.sar-a.sar);   DATA.mothan=mothan;
-    if(emps.length)DATA.employees=emps.map(e=>{return{id:e.emp_id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:+e.total_sar||0,wn:+e.weight_net_g||0,wp:+e.weight_pure_g||0,pcs:+e.pieces||0,ai:+e.avg_invoice_sar||0,emkg:+e.emp_avg_mkg||0,pavg:+e.branch_purchase_avg||0,savg:+e.emp_avg_mkg||0,diff:+e.diff_avg||0,ok:e.achieved_target};});
+    // Build branch purchase rate map from loaded branches
+    const brPurchMap={};
+    DATA.branches.forEach(b=>{brPurchMap[b.code]=b.purch_rate||0;});
+    if(emps.length)DATA.employees=emps.map(e=>{
+      const pavg=brPurchMap[e.branch_code]||+e.branch_purchase_avg||0;
+      return{id:e.emp_id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:+e.total_sar||0,wn:+e.weight_net_g||0,wp:+e.weight_pure_g||0,pcs:+e.pieces||0,ai:+e.avg_invoice_sar||0,emkg:+e.emp_avg_mkg||0,pavg,savg:+e.emp_avg_mkg||0,diff:+e.diff_avg||0,ok:e.achieved_target};});
     document.getElementById('period-label').textContent=from+(from!==to?' — '+to:'');
     renderAll();
   }catch(e){console.warn('loadRange error:',e);loadEmbedded();}
