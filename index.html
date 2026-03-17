@@ -1186,12 +1186,26 @@ function rf(file,t){
   const r=new FileReader();
   r.onload=e=>{
     try{
-      const wb=XLSX.read(e.target.result,{type:'array'});
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true,raw:true});
+      const sheetCount=wb.SheetNames.length;
       FILES[t]={wb,name:file.name};
       document.getElementById('uc-'+t).classList.add('loaded');
-      const s=document.getElementById('st-'+t);s.textContent='✅ '+file.name;s.className='ust sok';
+      const s=document.getElementById('st-'+t);
+      s.textContent='✅ '+file.name+' ('+sheetCount+' ورقة)';
+      s.className='ust sok';
       document.getElementById('proc-btn').disabled=!(FILES.bsales||FILES.sales||FILES.purch||FILES.mothan);
-    }catch{const s=document.getElementById('st-'+t);s.textContent='❌ خطأ في القراءة';s.className='ust ser';}
+      console.log('✅ Loaded '+t+': '+file.name+', sheets='+sheetCount);
+    }catch(err){
+      const s=document.getElementById('st-'+t);
+      s.textContent='❌ خطأ: '+err.message;
+      s.className='ust ser';
+      console.error('❌ Error loading '+t+':',err);
+    }
+  };
+  r.onerror=()=>{
+    const s=document.getElementById('st-'+t);
+    s.textContent='❌ فشل قراءة الملف';
+    s.className='ust ser';
   };
   r.readAsArrayBuffer(file);
 }
@@ -1326,6 +1340,7 @@ async function processAndSave(){
   const sp=(p,m)=>{document.getElementById('pw').style.display='block';document.getElementById('pb2').style.width=p+'%';document.getElementById('pm').textContent=m;};
   try{
     sp(10,'⏳ قراءة الملفات...');await sl(60);
+    console.log('FILES:', {bsales:!!FILES.bsales,sales:!!FILES.sales,purch:!!FILES.purch,mothan:!!FILES.mothan});
     let empData=null,purchData=null,mothanRows=[];
     if(FILES.sales)empData=parseEmpSales(FILES.sales.wb);
     if(FILES.purch)purchData=parsePurchases(FILES.purch.wb);
