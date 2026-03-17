@@ -1451,11 +1451,11 @@ async function clearAllData(){
   btn.disabled=true;btn.textContent='⏳ جاري المسح...';
   try{
     await Promise.all([
-      sbDel('branch_sales','id=gt.0'),
-      sbDel('branch_purchases','id=gt.0'),
-      sbDel('employee_sales','id=gt.0'),
-      sbDel('mothan_transactions','id=gt.0'),
-      sbDel('upload_log','id=gt.0'),
+      sbDel('branch_sales','id=gte.1'),
+      sbDel('branch_purchases','id=gte.1'),
+      sbDel('employee_sales','id=gte.1'),
+      sbDel('mothan_transactions','id=gte.1'),
+      sbDel('upload_log','id=gte.1'),
     ]);
     DATA.branches=[];DATA.employees=EB.employees;DATA.mothan=[];DATA.dates=[];
     btn.textContent='✅ تم المسح';
@@ -1476,7 +1476,7 @@ async function deleteRecord(date, fileType){
       employees:'employee_sales',mothan:'mothan_transactions'};
     const tbl=tableMap[fileType];
     if(tbl)await sbDel(tbl,'report_date=eq.'+date);
-    await sbDel('upload_log',`report_date=eq.${date}&file_type=eq.${fileType}`);
+    await sbDel('upload_log',`report_date=eq.${date}&file_type=eq.${fileType}&id=gte.1`);
     loadHistory();
     // Reload data
     if(DATA.dates.length)await setDF('latest',document.querySelector('.dfb'));
