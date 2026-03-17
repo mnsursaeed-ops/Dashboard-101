@@ -3,261 +3,565 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لوحة المبيعات الذهبية</title>
+<title>💎 لوحة المبيعات الذهبية</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#060d1a;--s1:#0d1627;--s2:#111e33;--s3:#162440;--bd:#1e3354;--ac:#3b82f6;--gn:#22c55e;--am:#f59e0b;--rd:#ef4444;--pu:#8b5cf6;--tx:#e2e8f0;--mu:#64748b;--m2:#94a3b8}
+:root{
+  --bg:#060d1a;--s1:#0d1627;--s2:#111e33;--s3:#162440;--bd:#1e3354;
+  --ac:#3b82f6;--gn:#22c55e;--am:#f59e0b;--rd:#ef4444;--pu:#8b5cf6;
+  --tx:#e2e8f0;--mu:#64748b;--m2:#94a3b8;--gold:#f59e0b
+}
 html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);direction:rtl;overflow-x:hidden}
-::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--s1)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
-#ls{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#162440,#060d1a 70%)}
-.lc{background:linear-gradient(135deg,#0d1627,#111e33);border:1px solid var(--bd);border-radius:24px;padding:48px 44px;width:400px;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,.5)}
-.lc .logo{font-size:56px;margin-bottom:16px}.lc h1{font-size:22px;font-weight:800;background:linear-gradient(135deg,#f59e0b,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}.lc p{font-size:12px;color:var(--mu);margin-bottom:32px}
-.li{width:100%;padding:14px;background:var(--s3);border:1px solid var(--bd);border-radius:12px;color:var(--tx);font-size:15px;text-align:center;letter-spacing:4px;outline:none;margin-bottom:14px;font-family:inherit;transition:all .2s}
-.li:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(59,130,246,.2)}
-.lb{width:100%;padding:14px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s}
-.lb:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(245,158,11,.4)}
-.er{color:var(--rd);font-size:12px;margin-top:10px;min-height:16px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--s1)}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+
+/* ── Login ── */
+#ls{display:flex;align-items:center;justify-content:center;min-height:100vh;
+  background:radial-gradient(ellipse at 50% 0%,#162440,#060d1a 70%)}
+.lc{background:linear-gradient(135deg,#0d1627,#111e33);border:1px solid var(--bd);
+  border-radius:24px;padding:48px 44px;width:400px;text-align:center;
+  box-shadow:0 25px 60px rgba(0,0,0,.6)}
+.lc .logo{font-size:56px;margin-bottom:14px;filter:drop-shadow(0 0 20px #f59e0b66)}
+.lc h1{font-size:22px;font-weight:800;background:linear-gradient(135deg,#f59e0b,#fbbf24);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+.lc p{font-size:12px;color:var(--mu);margin-bottom:30px}
+.li{width:100%;padding:13px;background:var(--s3);border:1px solid var(--bd);
+  border-radius:12px;color:var(--tx);font-size:14px;outline:none;margin-bottom:12px;
+  font-family:inherit;transition:all .2s;direction:ltr;text-align:center}
+.li:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.lb{width:100%;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);
+  color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:all .2s;letter-spacing:.5px}
+.lb:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(245,158,11,.4)}
+.lb:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.er{color:var(--rd);font-size:12px;margin-top:8px;min-height:16px}
+
+/* ── App Layout ── */
 #app{display:none;min-height:100vh}
 .layout{display:flex;min-height:100vh}
-.sidebar{width:220px;background:var(--s1);border-left:1px solid var(--bd);display:flex;flex-direction:column;position:fixed;right:0;top:0;bottom:0;z-index:100;overflow-y:auto}
-.sb-logo{padding:20px 16px;border-bottom:1px solid var(--bd);text-align:center}
-.sb-logo .icon{font-size:36px}.sb-logo h2{font-size:13px;font-weight:700;margin-top:6px;background:linear-gradient(135deg,#f59e0b,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sb-logo p{font-size:10px;color:var(--mu);margin-top:2px}
-.sb-nav{flex:1;padding:10px 8px}
-.sb-sec{font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;padding:8px 8px 4px;font-weight:600}
-.sb-btn{width:100%;padding:9px 12px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;border:none;color:var(--mu);background:transparent;transition:all .15s;font-family:inherit;text-align:right;display:flex;align-items:center;gap:8px;margin-bottom:2px}
-.sb-btn:hover{color:var(--tx);background:var(--s3)}.sb-btn.on{color:var(--tx);background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.25)}
-.sb-btn .ico{font-size:15px;min-width:20px;text-align:center}
+
+/* ── Sidebar ── */
+.sb{width:224px;background:var(--s1);border-left:1px solid var(--bd);
+  display:flex;flex-direction:column;position:fixed;right:0;top:0;bottom:0;
+  z-index:100;overflow-y:auto;transition:width .2s}
+.sb-logo{padding:18px 16px;border-bottom:1px solid var(--bd);text-align:center}
+.sb-logo .ico{font-size:34px;filter:drop-shadow(0 0 10px #f59e0b66)}
+.sb-logo h2{font-size:12px;font-weight:800;margin-top:6px;
+  background:linear-gradient(135deg,#f59e0b,#fbbf24);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sb-logo p{font-size:10px;color:var(--mu);margin-top:2px}
+.sb-nav{flex:1;padding:8px}
+.sb-sec{font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;
+  padding:10px 8px 4px;font-weight:700}
+.sbb{width:100%;padding:8px 10px;border-radius:10px;font-size:12px;font-weight:500;
+  cursor:pointer;border:none;color:var(--mu);background:transparent;
+  transition:all .15s;font-family:inherit;text-align:right;
+  display:flex;align-items:center;gap:8px;margin-bottom:1px}
+.sbb .i{font-size:15px;min-width:20px;text-align:center}
+.sbb:hover{color:var(--tx);background:var(--s3)}
+.sbb.on{color:var(--tx);background:rgba(59,130,246,.12);
+  border:1px solid rgba(59,130,246,.2)}
 .sb-footer{padding:12px;border-top:1px solid var(--bd)}
-.logout-btn{width:100%;padding:8px;border-radius:8px;font-size:11px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--rd);cursor:pointer;font-family:inherit}
-.main{margin-right:220px;flex:1}
-.topbar{background:rgba(6,13,26,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:8px}
-.topbar h2{font-size:15px;font-weight:700}.topbar h2 span{color:#f59e0b}
-.badge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600}
-.bdg-ok{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)}.bdg-warn{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
-.date-bar{background:var(--s1);border-bottom:1px solid var(--bd);padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.date-btn{padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--bd);color:var(--mu);background:transparent;font-family:inherit;transition:all .15s}
-.date-btn:hover,.date-btn.on{background:var(--ac);color:#fff;border-color:var(--ac)}
-.d-input{padding:6px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:11px;outline:none;font-family:inherit}
-.d-input:focus{border-color:var(--ac)}
-.apply-btn{padding:6px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
-.wp{padding:20px 24px}
-.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
-.kpi{background:linear-gradient(135deg,var(--s1),var(--s2));border:1px solid var(--bd);border-radius:16px;padding:18px;position:relative;overflow:hidden;transition:transform .2s}
-.kpi:hover{transform:translateY(-2px)}.kpi::before{content:'';position:absolute;top:0;right:0;width:100%;height:3px;background:var(--kc,var(--ac))}
-.kpi .ki{font-size:26px;margin-bottom:8px;display:block}.kpi .kl{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;font-weight:600}
-.kpi .kv{font-size:20px;font-weight:800;color:var(--kc,var(--tx));line-height:1.1}.kpi .ks{font-size:10px;color:var(--mu);margin-top:5px}
-.cd{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:18px;margin-bottom:16px}
-.ct{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
-.ct-b{font-size:10px;padding:3px 10px;border-radius:20px;background:var(--s3);color:var(--m2);font-weight:500}
+.sb-user{font-size:10px;color:var(--mu);text-align:center;margin-bottom:6px;
+  padding:6px;background:var(--s2);border-radius:8px}
+.sb-user strong{color:var(--m2);display:block;font-size:11px}
+.lo-btn{width:100%;padding:7px;border-radius:8px;font-size:11px;
+  background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);
+  color:var(--rd);cursor:pointer;font-family:inherit;transition:all .2s}
+.lo-btn:hover{background:rgba(239,68,68,.15)}
+
+/* ── Main ── */
+.main{margin-right:224px;flex:1;min-height:100vh}
+.topbar{background:rgba(6,13,26,.96);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--bd);padding:11px 22px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:8px}
+.topbar h2{font-size:15px;font-weight:700}.topbar h2 span{color:var(--gold)}
+.top-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid}
+.b-ok{background:rgba(34,197,94,.08);color:#4ade80;border-color:rgba(34,197,94,.2)}
+.b-warn{background:rgba(245,158,11,.08);color:#fbbf24;border-color:rgba(245,158,11,.2)}
+.b-err{background:rgba(239,68,68,.08);color:#f87171;border-color:rgba(239,68,68,.2)}
+
+/* ── Date Filter Bar ── */
+.dfbar{background:var(--s1);border-bottom:1px solid var(--bd);
+  padding:9px 22px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dfb{padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid var(--bd);color:var(--mu);
+  background:transparent;font-family:inherit;transition:all .15s}
+.dfb:hover,.dfb.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.di{padding:5px 10px;background:var(--s2);border:1px solid var(--bd);
+  border-radius:8px;color:var(--tx);font-size:11px;outline:none;font-family:inherit}
+.di:focus{border-color:var(--ac)}
+.ap-btn{padding:5px 14px;background:var(--ac);color:#fff;border:none;
+  border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* ── Content ── */
+.wp{padding:18px 22px}
+.sc{display:none}.sc.on{display:block}
+
+/* ── KPI Grid ── */
+.kg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.kc{background:linear-gradient(135deg,var(--s1),var(--s2));border:1px solid var(--bd);
+  border-radius:16px;padding:16px;position:relative;overflow:hidden;transition:transform .2s}
+.kc:hover{transform:translateY(-2px)}
+.kc::before{content:'';position:absolute;top:0;right:0;width:100%;height:3px;background:var(--kcolor,var(--ac))}
+.kc .ki{font-size:24px;margin-bottom:8px;display:block}
+.kc .kl{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;font-weight:600}
+.kc .kv{font-size:19px;font-weight:800;color:var(--kcolor,var(--tx));line-height:1.1}
+.kc .ks{font-size:10px;color:var(--mu);margin-top:5px}
+.kc .kt{position:absolute;top:14px;left:14px;font-size:10px;font-weight:600;
+  padding:2px 7px;border-radius:20px}
+.kt-up{background:rgba(34,197,94,.15);color:#4ade80}
+.kt-dn{background:rgba(239,68,68,.15);color:#f87171}
+
+/* ── Cards ── */
+.cd{background:var(--s1);border:1px solid var(--bd);border-radius:16px;
+  padding:18px;margin-bottom:16px}
+.ct{font-size:13px;font-weight:700;margin-bottom:14px;
+  display:flex;justify-content:space-between;align-items:center}
+.ct-b{font-size:10px;padding:3px 10px;border-radius:20px;
+  background:var(--s3);color:var(--m2);font-weight:500}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 .g3{display:grid;grid-template-columns:1.8fr 1fr;gap:16px;margin-bottom:16px}
-.sc{display:none}.sc.on{display:block}
-.tbl-w{overflow-y:auto;max-height:420px;border-radius:10px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+
+/* ── Table ── */
+.tw{overflow-y:auto;border-radius:10px}
+.tw.h400{max-height:400px}.tw.h500{max-height:500px}.tw.h300{max-height:300px}
 .tbl{width:100%;border-collapse:collapse;font-size:12px}
-.tbl th{text-align:right;padding:9px 12px;color:var(--mu);font-size:10px;font-weight:700;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--s1);z-index:1;text-transform:uppercase;letter-spacing:.5px}
-.tbl td{padding:8px 12px;border-bottom:1px solid rgba(30,51,84,.4)}
+.tbl th{text-align:right;padding:9px 11px;color:var(--mu);font-size:10px;font-weight:700;
+  border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--s1);z-index:1;
+  text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.tbl td{padding:8px 11px;border-bottom:1px solid rgba(30,51,84,.4);white-space:nowrap}
 .tbl tr:hover td{background:rgba(59,130,246,.04)}
+.tbl tr:last-child td{border-bottom:none}
+
+/* ── Pills ── */
 .pl{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
-.pg{background:rgba(34,197,94,.15);color:#4ade80}.py{background:rgba(245,158,11,.15);color:#fbbf24}.pr{background:rgba(239,68,68,.15);color:#f87171}
-.up-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
-.up-card{background:var(--s1);border:2px dashed var(--bd);border-radius:16px;padding:24px 14px;text-align:center;cursor:pointer;transition:all .2s}
-.up-card:hover,.up-card.drag{border-color:var(--ac);background:rgba(59,130,246,.05)}
-.up-card.loaded{border-color:var(--gn);border-style:solid;background:rgba(34,197,94,.04)}
-.up-card input{display:none}.up-card .ui{font-size:32px;margin-bottom:8px}.up-card .ut{font-size:12px;font-weight:700;margin-bottom:4px}.up-card .us{font-size:10px;color:var(--mu);line-height:1.5}
-.up-st{margin-top:10px;font-size:10px;padding:3px 10px;border-radius:20px;display:inline-block}
-.uw{background:var(--s3);color:var(--mu)}.uok{background:rgba(34,197,94,.15);color:#4ade80}.uer{background:rgba(239,68,68,.15);color:#f87171}
-.proc-btn{width:100%;padding:15px;font-size:14px;font-weight:700;border:none;border-radius:14px;cursor:pointer;font-family:inherit;transition:all .2s;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff}
-.proc-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 30px rgba(245,158,11,.4)}.proc-btn:disabled{opacity:.4;cursor:not-allowed}
-.prog-w{background:var(--s3);border-radius:10px;height:8px;overflow:hidden;margin-top:14px;display:none}
-.prog-b{height:100%;background:linear-gradient(90deg,#f59e0b,#3b82f6);border-radius:10px;transition:width .3s;width:0}
-.prog-m{font-size:11px;color:var(--mu);text-align:center;margin-top:8px}
-.hist-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--s2);border-radius:10px;margin-bottom:6px;font-size:12px;border:1px solid var(--bd)}
-.al-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;margin-bottom:8px;font-size:12px}
-.al-danger{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2)}.al-warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2)}.al-ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2)}
-@media(max-width:1100px){.sidebar{width:60px}.main{margin-right:60px}.sb-btn span,.sb-logo h2,.sb-logo p,.sb-sec{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:700px){.g2,.g3,.up-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}}
+.pg{background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.py{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.pr{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.pp{background:rgba(139,92,246,.12);color:#a78bfa;border:1px solid rgba(139,92,246,.2)}
+
+/* ── Upload ── */
+.ug{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.uc{background:var(--s1);border:2px dashed var(--bd);border-radius:16px;
+  padding:22px 14px;text-align:center;cursor:pointer;transition:all .2s}
+.uc:hover,.uc.drag{border-color:var(--ac);background:rgba(59,130,246,.04)}
+.uc.loaded{border-color:var(--gn);border-style:solid;background:rgba(34,197,94,.04)}
+.uc input{display:none}
+.uc .ui{font-size:30px;margin-bottom:8px}
+.uc .ut{font-size:12px;font-weight:700;margin-bottom:4px}
+.uc .us{font-size:10px;color:var(--mu)}
+.ust{margin-top:9px;font-size:10px;padding:3px 10px;border-radius:20px;display:inline-block}
+.sw{background:var(--s3);color:var(--mu)}.sok{background:rgba(34,197,94,.15);color:#4ade80}.ser{background:rgba(239,68,68,.15);color:#f87171}
+.pb{width:100%;padding:14px;font-size:14px;font-weight:700;border:none;
+  border-radius:12px;cursor:pointer;font-family:inherit;transition:all .2s;
+  background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff}
+.pb:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(245,158,11,.4)}
+.pb:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.pw{background:var(--s3);border-radius:8px;height:7px;overflow:hidden;margin-top:12px;display:none}
+.pb2{height:100%;background:linear-gradient(90deg,#f59e0b,#3b82f6);border-radius:8px;transition:width .3s;width:0}
+.pm{font-size:11px;color:var(--mu);text-align:center;margin-top:6px}
+
+/* ── Admin Panel ── */
+.user-card{background:var(--s2);border:1px solid var(--bd);border-radius:12px;
+  padding:14px;margin-bottom:10px}
+.uc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.uc-name{font-size:13px;font-weight:700}
+.uc-email{font-size:11px;color:var(--mu);margin-top:2px}
+.uc-actions{display:flex;gap:6px}
+.ua{padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;
+  border:1px solid var(--bd);background:transparent;color:var(--mu);font-family:inherit;transition:all .15s}
+.ua:hover{border-color:var(--ac);color:var(--ac)}
+.ua.del{color:var(--rd)}.ua.del:hover{border-color:var(--rd);color:var(--rd)}
+.cb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.cb-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--m2)}
+.cb-item input{accent-color:var(--ac)}
+.branch-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.br-cb{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--m2);
+  padding:4px 8px;background:var(--s3);border-radius:6px}
+.br-cb input{accent-color:var(--ac)}
+.form-inp{width:100%;padding:9px 12px;background:var(--s2);border:1px solid var(--bd);
+  border-radius:8px;color:var(--tx);font-size:12px;outline:none;font-family:inherit;margin-bottom:8px}
+.form-inp:focus{border-color:var(--ac)}
+.form-sel{width:100%;padding:9px 12px;background:var(--s2);border:1px solid var(--bd);
+  border-radius:8px;color:var(--tx);font-size:12px;outline:none;font-family:inherit;cursor:pointer;margin-bottom:8px}
+.add-btn{padding:9px 20px;background:var(--gn);color:#fff;border:none;
+  border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.msg-ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#4ade80;
+  padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px;display:none}
+.msg-er{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171;
+  padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px;display:none}
+
+/* ── Alerts ── */
+.al{display:flex;align-items:flex-start;gap:12px;padding:13px 15px;
+  border-radius:12px;margin-bottom:8px;font-size:12px}
+.al-d{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)}
+.al-w{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15)}
+.al-g{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15)}
+.al-ico{font-size:22px;min-width:28px}
+.al-name{font-weight:700;margin-bottom:3px}
+.al-detail{color:var(--mu);line-height:1.5}
+
+/* ── Targets ── */
+.target-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 80px;gap:8px;
+  align-items:center;padding:8px 12px;background:var(--s2);
+  border-radius:8px;margin-bottom:6px}
+.ti{padding:6px 10px;background:var(--s1);border:1px solid var(--bd);
+  border-radius:6px;color:var(--tx);font-size:12px;outline:none;font-family:inherit;width:100%}
+.ti:focus{border-color:var(--ac)}
+.sv-btn{padding:6px 12px;background:var(--ac);color:#fff;border:none;
+  border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* ── Progress bar ── */
+.brow{margin-bottom:8px}
+.brh{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
+.brb{background:var(--s3);border-radius:4px;height:5px}
+.brf{height:5px;border-radius:4px;transition:width .8s}
+
+/* ── Filter bar ── */
+.fbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.fs{padding:7px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;
+  color:var(--tx);font-size:11px;outline:none;font-family:inherit;cursor:pointer}
+.fs:focus{border-color:var(--ac)}
+.fsrch{flex:1;min-width:160px;padding:7px 12px;background:var(--s2);border:1px solid var(--bd);
+  border-radius:8px;color:var(--tx);font-size:11px;outline:none;font-family:inherit}
+.fsrch:focus{border-color:var(--ac)}
+
+@media(max-width:1100px){.sb{width:62px}.main{margin-right:62px}.sbb span,.sb-logo h2,.sb-logo p,.sb-sec,.sb-user{display:none}.kg{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.g2,.g3,.g4,.ug{grid-template-columns:1fr}.kg{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
+
+<!-- ══ LOGIN ══ -->
 <div id="ls">
   <div class="lc">
     <div class="logo">💎</div>
     <h1>لوحة المبيعات الذهبية</h1>
-    <p>نظام متابعة المبيعات اليومي</p>
-    <input class="li" type="password" id="pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
-    <button class="lb" onclick="login()">🚀 دخول</button>
-    <div class="er" id="er"></div>
+    <p>نظام إدارة مبيعات المجوهرات المتكامل</p>
+    <input class="li" type="email" id="l-email" placeholder="البريد الإلكتروني" autocomplete="email">
+    <input class="li" type="password" id="l-pw" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="lb" id="l-btn" onclick="doLogin()">🚀 دخول</button>
+    <div class="er" id="l-err"></div>
   </div>
 </div>
+
+<!-- ══ APP ══ -->
 <div id="app">
  <div class="layout">
-  <aside class="sidebar">
-    <div class="sb-logo"><div class="icon">💎</div><h2>المبيعات الذهبية</h2><p id="sb-date"></p></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sb">
+    <div class="sb-logo">
+      <div class="ico">💎</div>
+      <h2>المبيعات الذهبية</h2>
+      <p id="sb-date"></p>
+    </div>
     <nav class="sb-nav">
-      <div class="sb-sec">البيانات</div>
-      <button class="sb-btn on" onclick="sw('up',this)"><span class="ico">📤</span><span>رفع البيانات</span></button>
-      <button class="sb-btn" onclick="sw('ov',this)"><span class="ico">🏠</span><span>نظرة عامة</span></button>
-      <button class="sb-btn" onclick="sw('al',this)"><span class="ico">🔔</span><span>التنبيهات</span></button>
+      <div class="sb-sec">الرئيسية</div>
+      <button class="sbb" onclick="sw('ov',this)"><span class="i">🏠</span><span>نظرة عامة</span></button>
+      <button class="sbb" onclick="sw('al',this)"><span class="i">🔔</span><span>التنبيهات</span></button>
       <div class="sb-sec">التحليلات</div>
-      <button class="sb-btn" onclick="sw('br',this)"><span class="ico">🏪</span><span>الفروع</span></button>
-      <button class="sb-btn" onclick="sw('rg',this)"><span class="ico">🗺</span><span>المناطق</span></button>
-      <button class="sb-btn" onclick="sw('kt',this)"><span class="ico">⚖️</span><span>العيار</span></button>
-      <button class="sb-btn" onclick="sw('pu',this)"><span class="ico">🛒</span><span>المشتريات</span></button>
-      <button class="sb-btn" onclick="sw('mo',this)"><span class="ico">🏦</span><span>موطن الذهب</span></button>
-      <div class="sb-sec">الموظفون</div>
-      <button class="sb-btn" onclick="sw('em',this)"><span class="ico">👤</span><span>أداء الموظفين</span></button>
-      <div class="sb-sec">المقارنة</div>
-      <button class="sb-btn" onclick="sw('cmp',this)"><span class="ico">📊</span><span>مقارنة الأيام</span></button>
+      <button class="sbb" onclick="sw('br',this)"><span class="i">🏪</span><span>الفروع</span></button>
+      <button class="sbb" onclick="sw('rg',this)"><span class="i">🗺</span><span>المناطق</span></button>
+      <button class="sbb" onclick="sw('em',this)"><span class="i">👤</span><span>الموظفون</span></button>
+      <button class="sbb" onclick="sw('kt',this)"><span class="i">⚖️</span><span>العيار</span></button>
+      <button class="sbb" onclick="sw('mo',this)"><span class="i">🏦</span><span>موطن الذهب</span></button>
+      <div class="sb-sec">الإدارة</div>
+      <button class="sbb" onclick="sw('tg',this)"><span class="i">🎯</span><span>الأهداف</span></button>
+      <button class="sbb" onclick="sw('up',this)"><span class="i">📤</span><span>رفع البيانات</span></button>
+      <button class="sbb" id="sb-admin" onclick="sw('ad',this)" style="display:none"><span class="i">⚙️</span><span>المستخدمون</span></button>
+      <button class="sbb" onclick="sw('rw',this)"><span class="i">🏅</span><span>المكافآت</span></button>
+      <button class="sbb" onclick="sw('cmp',this)"><span class="i">📊</span><span>المقارنة</span></button>
     </nav>
-    <div class="sb-footer"><button class="logout-btn" onclick="logout()">🚪 خروج</button></div>
+    <div class="sb-footer">
+      <div class="sb-user" id="sb-user">
+        <strong id="sb-uname">—</strong>
+        <span id="sb-role">—</span>
+      </div>
+      <button class="lo-btn" onclick="doLogout()">🚪 خروج</button>
+    </div>
   </aside>
+
+  <!-- MAIN -->
   <main class="main">
     <div class="topbar">
       <h2>لوحة <span>المبيعات الذهبية</span> ✨</h2>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span class="badge bdg-warn" id="db-badge">⏳ جاري الاتصال...</span>
-        <span style="font-size:11px;color:var(--mu)" id="dates-count"></span>
+      <div class="top-right">
+        <span class="badge b-warn" id="db-badge">⏳ جاري الاتصال...</span>
+        <span style="font-size:11px;color:var(--mu)" id="period-label"></span>
       </div>
     </div>
-    <div class="date-bar" id="date-bar" style="display:none">
-      <button class="date-btn on" onclick="setDF('latest',this)">آخر يوم</button>
-      <button class="date-btn" onclick="setDF('yesterday',this)">ما قبله</button>
-      <button class="date-btn" onclick="setDF('week',this)">آخر 7 أيام</button>
-      <button class="date-btn" onclick="setDF('all',this)">كل البيانات</button>
-      <div style="display:flex;align-items:center;gap:8px;margin-right:auto">
+
+    <!-- Date Filter Bar -->
+    <div class="dfbar" id="dfbar" style="display:none">
+      <button class="dfb on" onclick="setDF('latest',this)">آخر يوم</button>
+      <button class="dfb" onclick="setDF('week',this)">آخر 7 أيام</button>
+      <button class="dfb" onclick="setDF('month',this)">هذا الشهر</button>
+      <button class="dfb" onclick="setDF('all',this)">كل البيانات</button>
+      <div style="display:flex;align-items:center;gap:6px;margin-right:auto;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--mu)">من:</span>
-        <input type="date" class="d-input" id="d-from">
+        <input type="date" class="di" id="d-from">
         <span style="font-size:11px;color:var(--mu)">إلى:</span>
-        <input type="date" class="d-input" id="d-to">
-        <button class="apply-btn" onclick="applyCustom()">تطبيق</button>
+        <input type="date" class="di" id="d-to">
+        <button class="ap-btn" onclick="applyCustom()">تطبيق</button>
       </div>
     </div>
+
     <div class="wp">
 
-      <!-- UPLOAD -->
-      <div class="sc on" id="sc-up">
-        <div class="cd">
-          <div class="ct">📤 رفع بيانات يوم جديد <span class="ct-b">يُحفظ تلقائياً في Supabase</span></div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:600">📅 تاريخ التقرير:</span>
-            <input type="date" class="d-input" id="report-date" style="font-size:13px;padding:9px 14px">
-            <span style="font-size:11px;color:var(--mu)">اختر تاريخ الملفات قبل الرفع</span>
-          </div>
-          <div class="up-grid">
-            <div class="up-card" id="card-sales" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'sales')" onclick="document.getElementById('inp-sales').click()">
-              <input type="file" id="inp-sales" accept=".xlsx,.xls" onchange="hfile(this,'sales')">
-              <div class="ui">📊</div><div class="ut">صافي المبيعات</div><div class="us">تقرير المبيعات اليومي بالعيار</div>
-              <div class="up-st uw" id="st-sales">في انتظار الملف</div>
-            </div>
-            <div class="up-card" id="card-purch" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'purch')" onclick="document.getElementById('inp-purch').click()">
-              <input type="file" id="inp-purch" accept=".xlsx,.xls" onchange="hfile(this,'purch')">
-              <div class="ui">🛒</div><div class="ut">صافي المشتريات</div><div class="us">تقرير المشتريات اليومي بالعيار</div>
-              <div class="up-st uw" id="st-purch">في انتظار الملف</div>
-            </div>
-            <div class="up-card" id="card-mothan" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'mothan')" onclick="document.getElementById('inp-mothan').click()">
-              <input type="file" id="inp-mothan" accept=".xlsx,.xls" onchange="hfile(this,'mothan')">
-              <div class="ui">🏦</div><div class="ut">موطن الذهب</div><div class="us">كشف حساب المورّد</div>
-              <div class="up-st uw" id="st-mothan">في انتظار الملف</div>
-            </div>
-            <div class="up-card" id="card-emp" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'emp')" onclick="document.getElementById('inp-emp').click()">
-              <input type="file" id="inp-emp" accept=".xlsx,.xls" onchange="hfile(this,'emp')">
-              <div class="ui">👥</div><div class="ut">مبيعات الموظفين</div><div class="us">اختياري</div>
-              <div class="up-st uw" id="st-emp">اختياري</div>
-            </div>
-          </div>
-          <button class="proc-btn" id="proc-btn" onclick="processAndSave()" disabled>💾 معالجة وحفظ في قاعدة البيانات</button>
-          <div class="prog-w" id="prog-w"><div class="prog-b" id="prog-b"></div></div>
-          <div class="prog-m" id="prog-m"></div>
-        </div>
-        <div class="cd">
-          <div class="ct">📋 سجل الرفع <span class="ct-b" id="hist-count"></span></div>
-          <div id="hist-list"><div style="text-align:center;color:var(--mu);padding:30px;font-size:12px">⏳ جاري التحميل...</div></div>
-        </div>
-      </div>
-
-      <!-- OVERVIEW -->
-      <div class="sc" id="sc-ov">
-        <div class="kpi-grid" id="kpis"></div>
+      <!-- ══ OVERVIEW ══ -->
+      <div class="sc on" id="sc-ov">
+        <div class="kg" id="kpis"></div>
         <div class="g3">
-          <div class="cd"><div class="ct">📈 المبيعات والمشتريات</div><div style="height:260px;position:relative"><canvas id="ch-ov"></canvas></div></div>
-          <div class="cd"><div class="ct">🌍 توزيع بالمناطق</div><div style="height:260px;position:relative"><canvas id="ch-pie"></canvas></div></div>
+          <div class="cd"><div class="ct">📈 المبيعات والمشتريات <span class="ct-b" id="ov-period"></span></div><div style="height:260px;position:relative"><canvas id="ch-ov"></canvas></div></div>
+          <div class="cd"><div class="ct">🌍 المبيعات بالمناطق</div><div style="height:260px;position:relative"><canvas id="ch-pie"></canvas></div></div>
         </div>
         <div class="g2">
-          <div class="cd"><div class="ct">🏆 أعلى 5 فروع</div><table class="tbl"><thead><tr><th>#</th><th>الفرع</th><th>المبيعات</th><th>الوزن</th><th>القطع</th></tr></thead><tbody id="top5"></tbody></table></div>
+          <div class="cd"><div class="ct">🏆 أعلى 5 فروع</div><table class="tbl"><thead><tr><th>#</th><th>الفرع</th><th>المبيعات</th><th>الصافي</th><th>فرق المعدل</th></tr></thead><tbody id="top5"></tbody></table></div>
           <div class="cd"><div class="ct">⚠️ أدنى 5 فروع</div><table class="tbl"><thead><tr><th>#</th><th>الفرع</th><th>المبيعات</th><th>الصافي</th></tr></thead><tbody id="bot5"></tbody></table></div>
         </div>
       </div>
 
-      <!-- ALERTS -->
-      <div class="sc" id="sc-al"><div class="cd"><div class="ct">🔔 التنبيهات <span class="ct-b" id="al-count"></span></div><div id="al-list"></div></div></div>
+      <!-- ══ ALERTS ══ -->
+      <div class="sc" id="sc-al">
+        <div class="cd"><div class="ct">🔔 التنبيهات الذكية <span class="ct-b" id="al-count"></span></div><div id="al-list"></div></div>
+      </div>
 
-      <!-- BRANCHES -->
+      <!-- ══ BRANCHES ══ -->
       <div class="sc" id="sc-br">
-        <div class="cd"><div class="ct">🏪 الفروع <span class="ct-b" id="br-count"></span></div>
-          <div class="tbl-w"><table class="tbl"><thead><tr><th>#</th><th>الفرع</th><th>المنطقة</th><th>المبيعات</th><th>الوزن</th><th>القطع</th><th>المشتريات</th><th>الصافي</th><th>موطن الذهب</th></tr></thead><tbody id="br-tbl"></tbody></table></div>
+        <div class="kg" id="br-kpis"></div>
+        <div class="fbar">
+          <select class="fs" id="br-region" onchange="renderBranches()"><option value="">كل المناطق</option></select>
+          <select class="fs" id="br-sort" onchange="renderBranches()">
+            <option value="sar">الأعلى مبيعاً</option>
+            <option value="diff">الأعلى فرق معدل</option>
+            <option value="net">الأعلى صافياً</option>
+            <option value="pcs">الأكثر فواتير</option>
+          </select>
         </div>
-        <div class="cd"><div class="ct">📊 مقارنة الفروع</div><div style="height:400px;position:relative"><canvas id="ch-br"></canvas></div></div>
+        <div class="cd">
+          <div class="ct">🏪 تفصيل الفروع <span class="ct-b" id="br-count"></span></div>
+          <div class="tw h500"><table class="tbl"><thead><tr>
+            <th>#</th><th>الفرع</th><th>المنطقة</th>
+            <th>المبيعات (ر.س)</th><th>الوزن (جم)</th><th>الفواتير</th><th>متوسط الفاتورة</th>
+            <th>المشتريات (ر.س)</th><th>الصافي (ر.س)</th>
+            <th>معدل البيع/جم</th><th>معدل الشراء/جم</th><th>فرق المعدل</th>
+            <th>الحالة</th>
+          </tr></thead><tbody id="br-tbl"></tbody></table></div>
+        </div>
+        <div class="cd"><div class="ct">📊 مقارنة الفروع</div><div style="height:420px;position:relative"><canvas id="ch-br"></canvas></div></div>
       </div>
 
-      <!-- REGIONS -->
+      <!-- ══ REGIONS ══ -->
       <div class="sc" id="sc-rg">
-        <div class="kpi-grid" id="rg-kpis"></div>
+        <div class="kg" id="rg-kpis"></div>
         <div class="g2">
-          <div class="cd"><div class="ct">🗺 المبيعات والمشتريات</div><div style="height:300px;position:relative"><canvas id="ch-rg"></canvas></div></div>
-          <div class="cd"><div class="ct">📋 تفصيل</div><div class="tbl-w"><table class="tbl"><thead><tr><th>المنطقة</th><th>الفروع</th><th>المبيعات</th><th>الصافي</th></tr></thead><tbody id="rg-tbl"></tbody></table></div></div>
+          <div class="cd"><div class="ct">🗺 المبيعات والمشتريات بالمنطقة</div><div style="height:300px;position:relative"><canvas id="ch-rg"></canvas></div></div>
+          <div class="cd"><div class="ct">📋 تفصيل المناطق</div>
+            <div class="tw h300"><table class="tbl"><thead><tr><th>المنطقة</th><th>الفروع</th><th>المبيعات</th><th>المشتريات</th><th>الصافي</th><th>الحالة</th></tr></thead><tbody id="rg-tbl"></tbody></table></div>
+          </div>
         </div>
+        <div class="cd"><div class="ct">📊 فرق المعدل بالمنطقة</div><div style="height:240px;position:relative"><canvas id="ch-rg-diff"></canvas></div></div>
       </div>
 
-      <!-- KARAT -->
-      <div class="sc" id="sc-kt">
-        <div class="kpi-grid" id="kt-kpis"></div>
-        <div class="g2">
-          <div class="cd"><div class="ct">⚖️ توزيع العيار</div><div style="height:280px;position:relative"><canvas id="ch-kt-pie"></canvas></div></div>
-          <div class="cd"><div class="ct">📊 العيار لكل فرع</div><div style="height:280px;position:relative"><canvas id="ch-kt-bar"></canvas></div></div>
-        </div>
-        <div class="cd"><div class="ct">📋 تفصيل العيار</div>
-          <div class="tbl-w"><table class="tbl"><thead><tr><th>الفرع</th><th>المنطقة</th><th>18-ر.س</th><th>18-جم</th><th>21-ر.س</th><th>21-جم</th><th>24-ر.س</th><th>24-جم</th><th>الإجمالي</th></tr></thead><tbody id="kt-tbl"></tbody></table></div>
-        </div>
-      </div>
-
-      <!-- PURCHASES -->
-      <div class="sc" id="sc-pu">
-        <div class="kpi-grid" id="pu-kpis"></div>
-        <div class="cd"><div class="ct">🛒 تفصيل المشتريات</div>
-          <div class="tbl-w"><table class="tbl"><thead><tr><th>الفرع</th><th>المنطقة</th><th>18-ر.س</th><th>18-جم</th><th>21-ر.س</th><th>21-جم</th><th>24-ر.س</th><th>24-جم</th><th>الإجمالي</th><th>الوزن</th></tr></thead><tbody id="pu-tbl"></tbody></table></div>
-        </div>
-      </div>
-
-      <!-- MOTHAN -->
-      <div class="sc" id="sc-mo">
-        <div class="kpi-grid" id="mo-kpis"></div>
-        <div class="cd"><div class="ct">🏦 معاملات موطن الذهب</div>
-          <div class="tbl-w"><table class="tbl"><thead><tr><th>التاريخ</th><th>المرجع</th><th>الفرع</th><th>التفاصيل</th><th>المبلغ</th><th>الرصيد</th></tr></thead><tbody id="mo-tbl"></tbody></table></div>
-        </div>
-      </div>
-
-      <!-- EMPLOYEES -->
+      <!-- ══ EMPLOYEES ══ -->
       <div class="sc" id="sc-em">
-        <div class="kpi-grid" id="em-kpis"></div>
-        <div class="g2">
-          <div class="cd"><div class="ct">🏆 أعلى 10 مبيعاً</div><div style="height:280px;position:relative"><canvas id="ch-em1"></canvas></div></div>
-          <div class="cd"><div class="ct">🎯 أعلى 10 تحقيقاً</div><div style="height:280px;position:relative"><canvas id="ch-em2"></canvas></div></div>
+        <div class="kg" id="em-kpis"></div>
+        <div class="g2" style="margin-bottom:16px">
+          <div class="cd"><div class="ct">🏆 أعلى 10 مبيعاً (ر.س)</div><div style="height:280px;position:relative"><canvas id="ch-em1"></canvas></div></div>
+          <div class="cd"><div class="ct">🎯 أعلى 10 فرق معدل (ر.س/جم)</div><div style="height:280px;position:relative"><canvas id="ch-em2"></canvas></div></div>
         </div>
-        <div class="cd" style="margin-bottom:16px"><div class="ct">🏅 المكافآت</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" id="awards"></div></div>
+        <div class="cd" style="margin-bottom:16px">
+          <div class="ct">🏅 المكافآت والتصنيفات</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" id="awards"></div>
+        </div>
         <div class="cd">
           <div class="ct">👥 جميع الموظفين <span class="ct-b" id="em-count"></span></div>
-          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-            <input style="flex:1;min-width:160px;padding:8px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:12px;outline:none;font-family:inherit" type="text" id="em-srch" placeholder="🔍 ابحث..." oninput="filterEmps()">
-            <select style="padding:8px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:12px;font-family:inherit;cursor:pointer;outline:none" id="em-br" onchange="filterEmps()"><option value="">جميع الفروع</option></select>
-            <select style="padding:8px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:12px;font-family:inherit;cursor:pointer;outline:none" id="em-sort" onchange="filterEmps()"><option value="nt">الأعلى مبيعاً</option><option value="pc">الأعلى تحقيقاً</option><option value="nm">الاسم</option></select>
+          <div class="fbar">
+            <input class="fsrch" type="text" id="em-srch" placeholder="🔍 ابحث بالاسم أو الرقم..." oninput="filterEmps()">
+            <select class="fs" id="em-br" onchange="filterEmps()"><option value="">جميع الفروع</option></select>
+            <select class="fs" id="em-rg" onchange="filterEmps()"><option value="">كل المناطق</option></select>
+            <select class="fs" id="em-sort" onchange="filterEmps()">
+              <option value="sar">الأعلى مبيعاً</option>
+              <option value="diff">الأعلى فرق معدل</option>
+              <option value="wn">الأعلى وزناً</option>
+              <option value="pcs">الأكثر فواتير</option>
+              <option value="nm">الاسم</option>
+            </select>
           </div>
-          <div class="tbl-w"><table class="tbl"><thead><tr><th>#</th><th>الموظف</th><th>الرقم</th><th>الفرع</th><th>المبيعات(ألف)</th><th>الهدف/يوم</th><th>التحقيق</th><th>التصنيف</th></tr></thead><tbody id="em-tbl"></tbody></table></div>
+          <div class="tw h500"><table class="tbl"><thead><tr>
+            <th>#</th><th>الموظف</th><th>الرقم</th><th>الفرع</th><th>المنطقة</th>
+            <th>المبيعات (ر.س)</th><th>الوزن (جم)</th><th>الفواتير</th><th>متوسط الفاتورة</th>
+            <th>معدل البيع/جم</th><th>معدل الشراء/جم</th><th>فرق المعدل</th><th>التصنيف</th>
+          </tr></thead><tbody id="em-tbl"></tbody></table></div>
         </div>
       </div>
 
-      <!-- COMPARE -->
+      <!-- ══ KARAT ══ -->
+      <div class="sc" id="sc-kt">
+        <div class="kg" id="kt-kpis"></div>
+        <div class="g2">
+          <div class="cd"><div class="ct">⚖️ توزيع المشتريات بالعيار</div><div style="height:280px;position:relative"><canvas id="ch-kt-pie"></canvas></div></div>
+          <div class="cd"><div class="ct">📊 المشتريات بالعيار لكل فرع</div><div style="height:280px;position:relative"><canvas id="ch-kt-bar"></canvas></div></div>
+        </div>
+        <div class="cd"><div class="ct">📋 تفصيل المشتريات بالعيار</div>
+          <div class="tw h400"><table class="tbl"><thead><tr>
+            <th>الفرع</th><th>المنطقة</th>
+            <th>18 ر.س</th><th>18 جم</th>
+            <th>21 ر.س</th><th>21 جم</th>
+            <th>24 ر.س</th><th>24 جم</th>
+            <th>الإجمالي ر.س</th><th>معدل الشراء/جم</th>
+          </tr></thead><tbody id="kt-tbl"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══ MOTHAN ══ -->
+      <div class="sc" id="sc-mo">
+        <div class="kg" id="mo-kpis"></div>
+        <div class="cd"><div class="ct">🏦 معاملات موطن الذهب</div>
+          <div class="tw h500"><table class="tbl"><thead><tr><th>التاريخ</th><th>المرجع</th><th>الفرع</th><th>التفاصيل</th><th>المبلغ (ر.س)</th><th>الرصيد</th></tr></thead><tbody id="mo-tbl"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══ TARGETS ══ -->
+      <div class="sc" id="sc-tg">
+        <div class="cd">
+          <div class="ct">🎯 أهداف الفروع <span class="ct-b" id="tg-month"></span></div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--mu)">الشهر:</span>
+            <input type="month" class="di" id="tg-month-sel" style="font-size:12px">
+            <button onclick="loadTargets()" class="ap-btn">تحميل</button>
+            <button onclick="saveAllTargets()" style="padding:5px 14px;background:var(--gn);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">💾 حفظ الكل</button>
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;padding:8px 12px;background:var(--s3);border-radius:8px;margin-bottom:6px">
+            <span style="font-size:10px;color:var(--mu);font-weight:700">الفرع</span>
+            <span style="font-size:10px;color:var(--mu);font-weight:700">هدف المبيعات اليومي (ر.س)</span>
+            <span style="font-size:10px;color:var(--mu);font-weight:700">هدف الوزن اليومي (جم)</span>
+            <span style="font-size:10px;color:var(--mu);font-weight:700">هدف فرق المعدل (ر.س/جم)</span>
+          </div>
+          <div id="tg-rows"></div>
+        </div>
+        <div class="cd">
+          <div class="ct">👥 أهداف الموظفين</div>
+          <div id="emp-tg-rows"></div>
+        </div>
+      </div>
+
+      <!-- ══ UPLOAD ══ -->
+      <div class="sc" id="sc-up">
+        <div class="cd">
+          <div class="ct">📤 رفع البيانات <span class="ct-b">يُحفظ تلقائياً في Supabase</span></div>
+          <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--m2)">
+            💡 النظام يقرأ التاريخ من داخل الملف تلقائياً — تقدر ترفع ملفات قديمة وسيُحفظ كل ملف في تاريخه الصحيح
+          </div>
+          <div class="ug">
+            <div class="uc" id="uc-sales" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'sales')" onclick="document.getElementById('inp-sales').click()">
+              <input type="file" id="inp-sales" accept=".xlsx,.xls" multiple onchange="hfile(this,'sales')">
+              <div class="ui">📊</div><div class="ut">مبيعات الموظفين</div>
+              <div class="us">يحتوي على مبيعات كل موظف مع Avg.Mkg</div>
+              <div class="ust sw" id="st-sales">في انتظار الملف</div>
+            </div>
+            <div class="uc" id="uc-purch" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'purch')" onclick="document.getElementById('inp-purch').click()">
+              <input type="file" id="inp-purch" accept=".xlsx,.xls" multiple onchange="hfile(this,'purch')">
+              <div class="ui">🛒</div><div class="ut">المشتريات من بداية الشهر</div>
+              <div class="us">يحتوي على مشتريات الفروع بالعيار</div>
+              <div class="ust sw" id="st-purch">في انتظار الملف</div>
+            </div>
+            <div class="uc" id="uc-mothan" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'mothan')" onclick="document.getElementById('inp-mothan').click()">
+              <input type="file" id="inp-mothan" accept=".xlsx,.xls" multiple onchange="hfile(this,'mothan')">
+              <div class="ui">🏦</div><div class="ut">مشتريات موطن الذهب</div>
+              <div class="us">كشف حساب المورّد الرئيسي</div>
+              <div class="ust sw" id="st-mothan">في انتظار الملف</div>
+            </div>
+          </div>
+          <button class="pb" id="proc-btn" onclick="processAndSave()" disabled>💾 معالجة وحفظ في قاعدة البيانات</button>
+          <div class="pw" id="pw"><div class="pb2" id="pb2"></div></div>
+          <div class="pm" id="pm"></div>
+        </div>
+        <div class="cd">
+          <div class="ct">📋 سجل الرفع <span class="ct-b" id="hist-count"></span></div>
+          <div id="hist-list"><div style="text-align:center;color:var(--mu);padding:24px;font-size:12px">⏳ جاري التحميل...</div></div>
+        </div>
+      </div>
+
+      <!-- ══ ADMIN ══ -->
+      <div class="sc" id="sc-ad">
+        <div id="ad-denied" style="display:none;text-align:center;padding:60px;color:var(--mu)">
+          <div style="font-size:48px;margin-bottom:12px">🔒</div>
+          <div style="font-size:16px;font-weight:600;color:var(--tx)">هذه الصفحة للمديرين فقط</div>
+        </div>
+        <div id="ad-content">
+          <div class="msg-ok" id="ad-ok"></div>
+          <div class="msg-er" id="ad-er"></div>
+          <div class="g2">
+            <!-- Add User -->
+            <div class="cd">
+              <div class="ct">➕ إضافة مستخدم جديد</div>
+              <input class="form-inp" type="text" id="nu-name" placeholder="الاسم الكامل">
+              <input class="form-inp" type="email" id="nu-email" placeholder="البريد الإلكتروني">
+              <input class="form-inp" type="password" id="nu-pw" placeholder="كلمة المرور">
+              <select class="form-sel" id="nu-role">
+                <option value="viewer">👁️ اطلاع</option>
+                <option value="data_entry">📤 مدخل بيانات</option>
+                <option value="branch_manager">🏪 مدير فرع</option>
+                <option value="region_manager">🗺 مدير منطقة</option>
+                <option value="super_admin">👑 Super Admin</option>
+              </select>
+              <div style="font-size:11px;color:var(--mu);margin-bottom:8px">الصلاحيات:</div>
+              <div class="cb-grid" id="nu-perms">
+                <label class="cb-item"><input type="checkbox" id="p-view" checked> عرض البيانات</label>
+                <label class="cb-item"><input type="checkbox" id="p-upload"> رفع الملفات</label>
+                <label class="cb-item"><input type="checkbox" id="p-verify"> التحقق من البيانات</label>
+                <label class="cb-item"><input type="checkbox" id="p-targets"> إدخال الأهداف</label>
+                <label class="cb-item"><input type="checkbox" id="p-notes"> كتابة ملاحظات</label>
+                <label class="cb-item"><input type="checkbox" id="p-export"> تصدير التقارير</label>
+                <label class="cb-item"><input type="checkbox" id="p-users"> إدارة المستخدمين</label>
+                <label class="cb-item"><input type="checkbox" id="p-delete"> حذف البيانات</label>
+              </div>
+              <div style="font-size:11px;color:var(--mu);margin:10px 0 6px">الفروع المسموحة:</div>
+              <label class="cb-item" style="margin-bottom:6px"><input type="checkbox" id="p-allbr" onchange="toggleAllBranches(this)"> ✓ كل الفروع</label>
+              <div class="branch-grid" id="branch-cbs"></div>
+              <div style="margin-top:12px">
+                <button class="add-btn" onclick="addUser()">إضافة المستخدم</button>
+              </div>
+            </div>
+            <!-- Users List -->
+            <div class="cd">
+              <div class="ct">المستخدمون <span class="ct-b" id="users-count"></span></div>
+              <div id="users-list"><div style="text-align:center;color:var(--mu);padding:24px;font-size:12px">⏳ جاري التحميل...</div></div>
+            </div>
+          </div>
+          <!-- Login Log -->
+          <div class="cd">
+            <div class="ct">📋 سجل الدخول الأخير</div>
+            <div class="tw h300"><table class="tbl"><thead><tr><th>المستخدم</th><th>البريد</th><th>وقت الدخول</th></tr></thead><tbody id="login-log"></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ REWARDS ══ -->
+      <div class="sc" id="sc-rw">
+        <div class="cd">
+          <div class="ct">🏅 تقرير المكافآت الشهري <span class="ct-b" id="rw-period"></span></div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            <button onclick="exportRewards()" style="padding:7px 16px;background:var(--gn);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">📄 تصدير Excel</button>
+          </div>
+          <div class="tw h500"><table class="tbl"><thead><tr>
+            <th>الترتيب</th><th>الموظف</th><th>الفرع</th><th>المبيعات (ر.س)</th>
+            <th>الوزن (جم)</th><th>الفواتير</th><th>فرق المعدل</th><th>النقاط</th><th>المكافأة المقترحة</th>
+          </tr></thead><tbody id="rw-tbl"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══ COMPARE ══ -->
       <div class="sc" id="sc-cmp">
         <div class="cd">
           <div class="ct">📊 مقارنة الأيام</div>
@@ -268,8 +572,9 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
           </div>
           <div style="height:320px;position:relative"><canvas id="ch-cmp"></canvas></div>
         </div>
-        <div class="cd"><div class="ct">📋 جدول المقارنة</div>
-          <div class="tbl-w"><table class="tbl"><thead><tr><th>الفرع</th><th id="cmp-h1">يوم 1</th><th id="cmp-h2">يوم 2</th><th>الفرق</th><th>التغيير</th></tr></thead><tbody id="cmp-tbl"></tbody></table></div>
+        <div class="cd">
+          <div class="ct">📋 جدول المقارنة</div>
+          <div class="tw h400"><table class="tbl"><thead><tr><th>الفرع</th><th id="cmp-h1">يوم 1</th><th id="cmp-h2">يوم 2</th><th>الفرق</th><th>التغيير %</th></tr></thead><tbody id="cmp-tbl"></tbody></table></div>
         </div>
       </div>
 
@@ -278,111 +583,152 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
   </main>
  </div>
 </div>
+
 <script>
-const PW='Sales2026';
-const SB='https://rcyekrrzxgteoajafgys.supabase.co';
-const AK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeWVrcnJ6eGd0ZW9hamFmZ3lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MTY3MTMsImV4cCI6MjA4OTE5MjcxM30.D0ApHlWJFxnhq3cLAHdgFXpZZ8e3wh25IR0wzSAJczk';
+const SB_URL='https://rcyekrrzxgteoajafgys.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeWVrcnJ6eGd0ZW9hamFmZ3lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MTY3MTMsImV4cCI6MjA4OTE5MjcxM30.D0ApHlWJFxnhq3cLAHdgFXpZZ8e3wh25IR0wzSAJczk';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
 const BM={'1404':'البوادي','1461':'حائل 1','1462':'حائل 2','1463':'حائل 3','1464':'حائل 4','1465':'حائل 5','1601':'الرياض 1','1602':'الرياض 2','1603':'الرياض 3','1604':'الرياض 4','1605':'الرياض 5','1702':'مكة 2','3401':'حفر الباطن 1','3402':'حفر الباطن 2','3403':'حفر الباطن 3','3404':'حفر الباطن 4','3407':'حفر الباطن 7','4405':'المدينة 5','4406':'المدينة 6','4408':'المدينة 8','4409':'المدينة 9','5401':'خميس مشيط 1','5402':'خميس مشيط 2','5405':'خميس مشيط 5','7403':'أبو عريش2','7405':'صبيا','7410':'أبو عريش3'};
 const RM={'البوادي':'الغربية','مكة 2':'الغربية','الرياض 1':'الرياض','الرياض 2':'الرياض','الرياض 3':'الرياض','الرياض 4':'الرياض','الرياض 5':'الرياض','حائل 1':'حائل','حائل 2':'حائل','حائل 3':'حائل','حائل 4':'حائل','حائل 5':'حائل','حفر الباطن 1':'حفر الباطن','حفر الباطن 2':'حفر الباطن','حفر الباطن 3':'حفر الباطن','حفر الباطن 4':'حفر الباطن','حفر الباطن 7':'حفر الباطن','المدينة 5':'المدينة المنورة','المدينة 6':'المدينة المنورة','المدينة 8':'المدينة المنورة','المدينة 9':'المدينة المنورة','العلا':'المدينة المنورة','خميس مشيط 1':'عسير/جيزان','خميس مشيط 2':'عسير/جيزان','خميس مشيط 5':'عسير/جيزان','أبو عريش2':'عسير/جيزان','أبو عريش3':'عسير/جيزان','صبيا':'عسير/جيزان'};
 const RC={'الرياض':'#3b82f6','الغربية':'#ec4899','المدينة المنورة':'#8b5cf6','حائل':'#22c55e','حفر الباطن':'#06b6d4','عسير/جيزان':'#f59e0b'};
-const ED=[{"id":2511,"n":"عبدالمجيد عدنان علي سراج","b":"البوادي","nt":472.56,"ca":356351.56,"tg":33.9742,"pc":99.4},{"id":1095,"n":"عبدالعزيز عياش مطران المنهالي","b":"البوادي","nt":363.73,"ca":263264.73,"tg":33.9742,"pc":76.5},{"id":804,"n":"سالم عوض عمر المنهالي","b":"البوادي","nt":358.65,"ca":270274.44,"tg":33.9742,"pc":75.4},{"id":2512,"n":"عبدالله احمد عبدالله الزبيدي","b":"البوادي","nt":314.41,"ca":226418.26,"tg":33.9742,"pc":66.1},{"id":948,"n":"محمد صالح احمد الخلاقي","b":"البوادي","nt":301.26,"ca":231895.87,"tg":33.9742,"pc":63.3},{"id":3154,"n":"صالح محمد حسين عبده احمد","b":"مكة 2","nt":659.1,"ca":501918.48,"tg":36.6456,"pc":128.5},{"id":2889,"n":"فواز عيد بن ستير الطفيحي","b":"مكة 2","nt":552.63,"ca":420499.83,"tg":36.6456,"pc":107.7},{"id":2814,"n":"محمد عيضه علي الحضرمي","b":"مكة 2","nt":499.37,"ca":386726.94,"tg":36.6456,"pc":97.3},{"id":2039,"n":"حسين محمد عبدالحافظ الحميري","b":"مكة 2","nt":162.13,"ca":134481.52,"tg":36.6456,"pc":31.6},{"id":419,"n":"عوض محمد صالح اليزيدي","b":"الرياض 1","nt":860.9,"ca":628585.87,"tg":58.6036,"pc":104.9},{"id":3253,"n":"عسكر الهمامي","b":"الرياض 1","nt":726.41,"ca":548202.27,"tg":58.6036,"pc":88.5},{"id":3230,"n":"اسامة حسن سالم محمد","b":"الرياض 1","nt":678.27,"ca":492490.85,"tg":58.6036,"pc":82.7},{"id":2842,"n":"عبدالناصر محمد عبدالله المهري","b":"الرياض 1","nt":611.61,"ca":455923.79,"tg":58.6036,"pc":74.5},{"id":3261,"n":"حميد خالد عبدالله","b":"الرياض 1","nt":550.5,"ca":404160.82,"tg":58.6036,"pc":67.1},{"id":3224,"n":"معتز محمد سالم الخلاقي","b":"الرياض 1","nt":535.49,"ca":391424.35,"tg":58.6036,"pc":65.3},{"id":3262,"n":"نايف عبدالسلام علي الخلاقي","b":"الرياض 1","nt":538.77,"ca":391279.13,"tg":58.6036,"pc":65.7},{"id":3109,"n":"محمد الشيباني","b":"الرياض 2","nt":1204.63,"ca":879523.29,"tg":50.7177,"pc":169.7},{"id":440,"n":"محضار عبدالجبار","b":"الرياض 2","nt":994.48,"ca":720091.36,"tg":50.7177,"pc":140.1},{"id":2051,"n":"مالك اليزيدي","b":"الرياض 2","nt":888.51,"ca":652011.74,"tg":50.7177,"pc":125.1},{"id":3114,"n":"ابراهيم الخلاقي","b":"الرياض 2","nt":886.63,"ca":644575.64,"tg":50.7177,"pc":124.9},{"id":3129,"n":"اسامة صالح المنهالي","b":"الرياض 2","nt":807.07,"ca":600390.86,"tg":50.7177,"pc":113.7},{"id":3256,"n":"عايض الكربي","b":"الرياض 2","nt":776.33,"ca":567531.3,"tg":50.7177,"pc":109.3},{"id":2979,"n":"هديل حكمي","b":"الرياض 2","nt":318.84,"ca":230911.74,"tg":50.7177,"pc":44.9},{"id":3108,"n":"خالد صالح سالم المنهالي","b":"الرياض 2","nt":58.51,"ca":42269.57,"tg":50.7177,"pc":8.2},{"id":3150,"n":"حسين علي عبدالله الخلاقي","b":"الرياض 3","nt":791.23,"ca":589739.59,"tg":34.6515,"pc":163.1},{"id":3240,"n":"يوسف قاسم الخلاقي","b":"الرياض 3","nt":465.56,"ca":356200.01,"tg":34.6515,"pc":96.0},{"id":3222,"n":"همام محسن احمد عبدالله","b":"الرياض 3","nt":375.47,"ca":283288.25,"tg":34.6515,"pc":77.4},{"id":3208,"n":"عيسى صلاح عبد الخالق عبد الرب محمد","b":"الرياض 3","nt":375.27,"ca":280894.61,"tg":34.6515,"pc":77.4},{"id":3217,"n":"سالم مساعد سالم بانعيم","b":"الرياض 3","nt":309.29,"ca":231209.98,"tg":34.6515,"pc":63.8},{"id":2871,"n":"تغريد عبدالعزيز ابو طالب غريب","b":"الرياض 3","nt":285.82,"ca":211558.69,"tg":34.6515,"pc":58.9},{"id":2931,"n":"ريما سعد فارس العتيبي","b":"الرياض 3","nt":247.43,"ca":185899.57,"tg":34.6515,"pc":51.0},{"id":3143,"n":"نايف عبدالسلام عمر عبدالله","b":"الرياض 4","nt":728.9,"ca":534960.03,"tg":53.0839,"pc":98.1},{"id":3014,"n":"عباس صالح عيسى كلشات المهري","b":"الرياض 4","nt":624.65,"ca":458581.94,"tg":53.0839,"pc":84.1},{"id":3086,"n":"محمد احمد سالم عبدالله","b":"الرياض 4","nt":545.86,"ca":402119.13,"tg":53.0839,"pc":73.4},{"id":467,"n":"خالد حسين محمد القملي","b":"الرياض 4","nt":496.84,"ca":357800.86,"tg":53.0839,"pc":66.9},{"id":3254,"n":"سعيد المنهالي","b":"الرياض 5","nt":1255.59,"ca":919602.16,"tg":56.6667,"pc":158.3},{"id":3210,"n":"معاذ علي محمد صالح","b":"الرياض 5","nt":1255.13,"ca":889032.39,"tg":56.6667,"pc":158.2},{"id":2678,"n":"سعد محمد عامر المهري","b":"الرياض 5","nt":1024.14,"ca":741790.84,"tg":56.6667,"pc":129.1},{"id":3212,"n":"إسماعيل سعيد سالم محمد","b":"الرياض 5","nt":922.02,"ca":672452.73,"tg":56.6667,"pc":116.2},{"id":3252,"n":"حسن ال قحيش","b":"الرياض 5","nt":736.52,"ca":540903.09,"tg":56.6667,"pc":92.8},{"id":2011,"n":"محسن علي زين العامري","b":"الرياض 5","nt":725.97,"ca":530608.53,"tg":56.6667,"pc":91.5},{"id":3034,"n":"ابراهيم خالد عبدالله محمد","b":"حائل 1","nt":749.41,"ca":536488.25,"tg":37.3992,"pc":143.1},{"id":2342,"n":"عبدالله حميد سالم المهري","b":"حائل 1","nt":648.78,"ca":464235.87,"tg":37.3992,"pc":123.9},{"id":3140,"n":"عوض عبدالله محمد الراشدي","b":"حائل 1","nt":599.26,"ca":432552.17,"tg":37.3992,"pc":114.5},{"id":925,"n":"محمد عبده عوض سالم","b":"حائل 1","nt":559.42,"ca":411588.92,"tg":37.3992,"pc":106.8},{"id":2913,"n":"كاظم عبدالله محمد المهري","b":"حائل 2","nt":790.31,"ca":561730.02,"tg":44.7453,"pc":126.2},{"id":1416,"n":"فهد محمد سعيد المهري","b":"حائل 2","nt":770.01,"ca":552441.31,"tg":44.7453,"pc":122.9},{"id":2454,"n":"صالح عمر محمد المنهالي","b":"حائل 2","nt":581.55,"ca":419617.39,"tg":44.7453,"pc":92.8},{"id":3201,"n":"بخيت صالح محمد العوبثاني","b":"حائل 2","nt":399.94,"ca":288282.62,"tg":44.7453,"pc":63.8},{"id":2884,"n":"سعد احمد مسلم الجدحي المهري","b":"حائل 3","nt":652.34,"ca":468329.13,"tg":33.4399,"pc":139.3},{"id":3183,"n":"عبدالله سعيد سلوم المنهالي","b":"حائل 3","nt":404.06,"ca":289844.56,"tg":33.4399,"pc":86.3},{"id":3184,"n":"يوسف احمد ناصر محمد","b":"حائل 3","nt":300.38,"ca":217617.4,"tg":33.4399,"pc":64.2},{"id":3171,"n":"عادل احمد صالح احمد صالح","b":"حائل 3","nt":213.75,"ca":153271.74,"tg":33.4399,"pc":45.7},{"id":2518,"n":"عماد سالم سعد المهري","b":"حائل 4","nt":613.93,"ca":444067.39,"tg":52.6006,"pc":83.4},{"id":3257,"n":"احمد الراشدي","b":"حائل 4","nt":598.73,"ca":437052.17,"tg":52.6006,"pc":81.3},{"id":3151,"n":"عثمان وسام عثمان محمد","b":"حائل 4","nt":531.14,"ca":373890.44,"tg":52.6006,"pc":72.1},{"id":204,"n":"طالب حمد هادي العماري","b":"حائل 4","nt":495.12,"ca":357744.36,"tg":52.6006,"pc":67.2},{"id":3190,"n":"حمد سالم احمد الحمري","b":"حائل 5","nt":443.31,"ca":307853.05,"tg":29.8467,"pc":106.1},{"id":2697,"n":"صالح عبدالله محمد الراشدي","b":"حائل 5","nt":429.43,"ca":299922.6,"tg":29.8467,"pc":102.8},{"id":3200,"n":"سالم محمد سالم العوبثاني","b":"حائل 5","nt":339.94,"ca":245290.44,"tg":29.8467,"pc":81.4},{"id":3237,"n":"محمد علي العامري","b":"حائل 5","nt":193.68,"ca":139748.48,"tg":29.8467,"pc":46.4},{"id":1530,"n":"علي شاجع راشد هديسان","b":"حفر الباطن 1","nt":624.44,"ca":430571.99,"tg":43.2021,"pc":103.2},{"id":3096,"n":"فراس مرزوق صالح القحطاني","b":"حفر الباطن 1","nt":532.76,"ca":376136.94,"tg":43.2021,"pc":88.1},{"id":2845,"n":"سعود فيصل مياح الشمري","b":"حفر الباطن 1","nt":521.42,"ca":369182.81,"tg":43.2021,"pc":86.2},{"id":1623,"n":"زاهر عوض متوه المنهالي","b":"حفر الباطن 1","nt":185.47,"ca":131692.38,"tg":43.2021,"pc":30.7},{"id":2769,"n":"هجمان محمد سالم المنهالي","b":"حفر الباطن 2","nt":1431.03,"ca":1016726.53,"tg":77.0,"pc":132.7},{"id":3229,"n":"حسين حميد حسن المهري","b":"حفر الباطن 2","nt":742.35,"ca":543399.35,"tg":77.0,"pc":68.9},{"id":3163,"n":"حمود علي صالح ناصر البطاطي","b":"حفر الباطن 2","nt":736.66,"ca":530460.91,"tg":77.0,"pc":68.3},{"id":3134,"n":"محمد حمد بخيت العامري","b":"حفر الباطن 2","nt":727.23,"ca":510627.37,"tg":77.0,"pc":67.5},{"id":1875,"n":"عبدالرحمن علي عبدالرحمن المهري","b":"حفر الباطن 2","nt":238.83,"ca":167678.25,"tg":77.0,"pc":22.2},{"id":3182,"n":"يوسف نبهان تمران دخان","b":"حفر الباطن 3","nt":520.96,"ca":369585.87,"tg":35.9333,"pc":103.6},{"id":1732,"n":"سعد محمد عوض الجدحي المهري","b":"حفر الباطن 3","nt":386.78,"ca":271560.66,"tg":35.9333,"pc":76.9},{"id":594,"n":"سليم نذير احمد","b":"حفر الباطن 3","nt":351.19,"ca":242085.0,"tg":35.9333,"pc":69.8},{"id":291,"n":"سّعيد عبدالله عوض المنهالي","b":"حفر الباطن 3","nt":252.32,"ca":188796.53,"tg":35.9333,"pc":50.2},{"id":1169,"n":"سعيد سعد عوض المهري","b":"حفر الباطن 3","nt":47.82,"ca":34360.43,"tg":35.9333,"pc":9.5},{"id":3206,"n":"عمر مبارك مسيعود الصيعري","b":"حفر الباطن 4","nt":872.14,"ca":606772.17,"tg":58.8194,"pc":105.9},{"id":1867,"n":"راشد معيوض متوه المنهالي","b":"حفر الباطن 4","nt":713.05,"ca":501630.66,"tg":58.8194,"pc":86.6},{"id":3191,"n":"صالح سميان الجميلي","b":"حفر الباطن 4","nt":684.8,"ca":483678.93,"tg":58.8194,"pc":83.2},{"id":2559,"n":"سلطان عوض متوه المنهالي","b":"حفر الباطن 4","nt":459.88,"ca":326361.31,"tg":58.8194,"pc":55.8},{"id":1726,"n":"علي محمد احمد كلشات المهري","b":"حفر الباطن 4","nt":367.92,"ca":265174.35,"tg":58.8194,"pc":44.7},{"id":3259,"n":"مهلي القحطاني","b":"حفر الباطن 4","nt":357.79,"ca":253251.73,"tg":58.8194,"pc":43.4},{"id":2716,"n":"علي فواز صالح الكربي","b":"حفر الباطن 7","nt":672.14,"ca":492541.98,"tg":33.3667,"pc":143.9},{"id":2677,"n":"حسين صالح حسين كلشات المهري","b":"حفر الباطن 7","nt":526.84,"ca":371526.77,"tg":33.3667,"pc":112.8},{"id":2918,"n":"صالح حسين محمد المنهالي","b":"حفر الباطن 7","nt":454.76,"ca":328389.58,"tg":33.3667,"pc":97.4},{"id":3189,"n":"إبراهيم علي الوايلي","b":"حفر الباطن 7","nt":159.7,"ca":115354.57,"tg":33.3667,"pc":34.2},{"id":3104,"n":"محمد سليمان","b":"المدينة 5","nt":940.67,"ca":658679.0,"tg":44.6316,"pc":150.5},{"id":1888,"n":"عمر احمد حمدة المهري","b":"المدينة 5","nt":696.72,"ca":497842.26,"tg":44.6316,"pc":111.5},{"id":805,"n":"عمر يحيى عبدالله رضا خان","b":"المدينة 5","nt":660.25,"ca":464214.22,"tg":44.6316,"pc":105.7},{"id":9089,"n":"عبدالرحمن علي سيف العامري","b":"المدينة 5","nt":634.37,"ca":452882.44,"tg":44.6316,"pc":101.5},{"id":2339,"n":"تركي محمد حمدان الشريف","b":"المدينة 5","nt":585.74,"ca":417690.0,"tg":44.6316,"pc":93.7},{"id":1021,"n":"عيسى محسن علي المهري","b":"المدينة 5","nt":557.7,"ca":401323.22,"tg":44.6316,"pc":89.3},{"id":3205,"n":"سيد حيدر حسن سيد","b":"المدينة 5","nt":439.67,"ca":305025.0,"tg":44.6316,"pc":70.4},{"id":2546,"n":"كرامة مسلم محمد المنهالي","b":"المدينة 5","nt":297.96,"ca":207661.61,"tg":44.6316,"pc":47.7},{"id":3118,"n":"توفيق فضل غالب عثمان","b":"المدينة 5","nt":211.47,"ca":148053.41,"tg":44.6316,"pc":33.8},{"id":1442,"n":"صالح سعد يحيى المهري","b":"المدينة 5","nt":127.66,"ca":90903.65,"tg":44.6316,"pc":20.4},{"id":2897,"n":"حماد سالم محمد المهري","b":"المدينة 5","nt":119.53,"ca":85116.21,"tg":44.6316,"pc":19.1},{"id":2973,"n":"ميرزا عبدالحي ميرزا عبدالمنان","b":"المدينة 6","nt":1122.46,"ca":821578.92,"tg":57.9349,"pc":138.4},{"id":3117,"n":"علي الحالمي","b":"المدينة 6","nt":964.11,"ca":684690.2,"tg":57.9349,"pc":118.9},{"id":3207,"n":"نور المحمد بسما","b":"المدينة 6","nt":787.53,"ca":579580.61,"tg":57.9349,"pc":97.1},{"id":2790,"n":"حمزة مسلم علي المهري","b":"المدينة 6","nt":640.23,"ca":459198.04,"tg":57.9349,"pc":78.9},{"id":2693,"n":"حمزة وليد سالم المهري","b":"المدينة 6","nt":485.17,"ca":349275.0,"tg":57.9349,"pc":59.8},{"id":3013,"n":"خالد العامري","b":"المدينة 6","nt":408.9,"ca":302661.74,"tg":57.9349,"pc":50.4},{"id":2792,"n":"فيصل سعد سعد المهري","b":"المدينة 6","nt":393.85,"ca":281847.3,"tg":57.9349,"pc":48.6},{"id":2797,"n":"حمد محمد حسن المهري","b":"المدينة 6","nt":368.99,"ca":278768.34,"tg":57.9349,"pc":45.5},{"id":2848,"n":"عازم صالح سليمان كلشات المهري","b":"المدينة 6","nt":286.65,"ca":208998.04,"tg":57.9349,"pc":35.3},{"id":3142,"n":"محمد عبدالله سليم","b":"المدينة 6","nt":182.23,"ca":136159.73,"tg":57.9349,"pc":22.5},{"id":3015,"n":"عبدالله سعد محمد الراشدي","b":"المدينة 6","nt":170.69,"ca":124534.35,"tg":57.9349,"pc":21.0},{"id":2793,"n":"احمد يحى علي المصعبي","b":"المدينة 6","nt":69.14,"ca":45250.0,"tg":57.9349,"pc":8.5},{"id":3228,"n":"حسين حامد العوفي","b":"المدينة 8","nt":665.16,"ca":473206.51,"tg":28.2333,"pc":168.3},{"id":2407,"n":"عبدالله علي عبدالله المصعبي","b":"المدينة 8","nt":560.33,"ca":409189.78,"tg":28.2333,"pc":141.8},{"id":2327,"n":"عبدالله علي ناصر الحارثي","b":"المدينة 8","nt":527.04,"ca":376785.43,"tg":28.2333,"pc":133.3},{"id":2780,"n":"خالد عبدالرحمن عمر الحامدي","b":"المدينة 8","nt":499.26,"ca":366988.89,"tg":28.2333,"pc":126.3},{"id":2063,"n":"يوسف صالح صلاح السعدي","b":"المدينة 8","nt":60.77,"ca":45249.57,"tg":28.2333,"pc":15.4},{"id":2698,"n":"صالح سنكور محسن المهري","b":"المدينة 9","nt":377.59,"ca":278381.09,"tg":39.1417,"pc":68.9},{"id":3153,"n":"راشد محسن ثابت العامري","b":"المدينة 9","nt":195.76,"ca":144369.56,"tg":39.1417,"pc":35.7},{"id":2946,"n":"عبدالله محمد عبدالله الجليل","b":"المدينة 9","nt":104.39,"ca":78594.78,"tg":39.1417,"pc":19.0},{"id":3177,"n":"فهد غالب صياح العنزي","b":"العلا","nt":5.0,"ca":3050.0,"tg":6.1964,"pc":5.8},{"id":3250,"n":"اسرار البلوي","b":"العلا","nt":2.7,"ca":2061.74,"tg":6.1964,"pc":3.1},{"id":1941,"n":"حسين محسن عبدربه المشرقي","b":"خميس مشيط 1","nt":845.74,"ca":585645.93,"tg":37.4306,"pc":161.4},{"id":2493,"n":"احمد حافظ ناصر النعمي","b":"خميس مشيط 1","nt":679.93,"ca":475259.54,"tg":37.4306,"pc":129.8},{"id":1724,"n":"علي محسن صالح المروعي","b":"خميس مشيط 1","nt":666.53,"ca":465093.69,"tg":37.4306,"pc":127.2},{"id":2757,"n":"ريان فهد منور العوفي","b":"خميس مشيط 1","nt":633.08,"ca":450814.35,"tg":37.4306,"pc":120.8},{"id":3255,"n":"محمد القحطاني","b":"خميس مشيط 1","nt":128.57,"ca":93281.94,"tg":37.4306,"pc":24.5},{"id":3158,"n":"ردفان جمال علي عبدالله","b":"خميس مشيط 2","nt":948.83,"ca":666482.55,"tg":39.3682,"pc":172.2},{"id":2084,"n":"حسين محمد عبدالقوي عبدالرب","b":"خميس مشيط 2","nt":511.9,"ca":360295.66,"tg":39.3682,"pc":92.9},{"id":3238,"n":"يحي عبدالله الفيفي","b":"خميس مشيط 2","nt":473.87,"ca":333412.09,"tg":39.3682,"pc":86.0},{"id":400,"n":"حسين عبدالاله محمد عبيد","b":"خميس مشيط 2","nt":358.04,"ca":247776.75,"tg":39.3682,"pc":65.0},{"id":2882,"n":"صالح قاسم عبدالله حسين","b":"خميس مشيط 2","nt":353.7,"ca":250817.62,"tg":39.3682,"pc":64.2},{"id":2952,"n":"محمد هادي علي الغبيشي","b":"خميس مشيط 5","nt":741.17,"ca":524252.19,"tg":28.3403,"pc":186.8},{"id":1380,"n":"طائع كرامه سالم المنهالي","b":"خميس مشيط 5","nt":605.69,"ca":433480.32,"tg":28.3403,"pc":152.7},{"id":2112,"n":"زين حسين علي العامري","b":"خميس مشيط 5","nt":483.8,"ca":363058.94,"tg":28.3403,"pc":121.9},{"id":3226,"n":"عبدالله عمر المنهالي","b":"خميس مشيط 5","nt":470.15,"ca":355884.57,"tg":28.3403,"pc":118.5},{"id":2500,"n":"محمد عطية بخيت الردادي","b":"خميس مشيط 5","nt":329.2,"ca":251203.66,"tg":28.3403,"pc":83.0},{"id":892,"n":"عادل علي ناجي حيدره","b":"أبو عريش2","nt":259.57,"ca":185183.69,"tg":35.2917,"pc":52.5},{"id":2999,"n":"فايز عبدالله احمد شراحيلي","b":"أبو عريش2","nt":222.35,"ca":156364.56,"tg":35.2917,"pc":45.0},{"id":3185,"n":"قاسم طاهر صالح علي","b":"أبو عريش2","nt":98.2,"ca":69390.43,"tg":35.2917,"pc":19.9},{"id":2088,"n":"نواف ناصر احمد حسين","b":"أبو عريش2","nt":76.18,"ca":53787.4,"tg":35.2917,"pc":15.4},{"id":3176,"n":"خليفة محمد سالم شكال","b":"صبيا","nt":961.98,"ca":791292.17,"tg":56.0,"pc":122.7},{"id":3021,"n":"هشام احمد سعيد حسين","b":"صبيا","nt":736.19,"ca":586351.53,"tg":56.0,"pc":93.9},{"id":3175,"n":"عبدالناصر محمد موسى حسين","b":"صبيا","nt":489.15,"ca":382950.2,"tg":56.0,"pc":62.4},{"id":2732,"n":"يحي ابراهيم عباس عتودي","b":"صبيا","nt":479.51,"ca":365425.88,"tg":56.0,"pc":61.2},{"id":3033,"n":"نايف محمد طاهر زيلع","b":"أبو عريش3","nt":437.87,"ca":312412.0,"tg":40.6389,"pc":77.0},{"id":9015,"n":"حمود علي زين العامري","b":"أبو عريش3","nt":311.23,"ca":228138.78,"tg":40.6389,"pc":54.7},{"id":9050,"n":"محمد المقفعي","b":"أبو عريش3","nt":172.47,"ca":127529.15,"tg":40.6389,"pc":30.3}];
-let FILES={sales:null,purch:null,mothan:null,emp:null};
-let DATA={branches:[],mothan:[],emps:ED,dates:[]};
-const CH={};
-const dk=k=>{if(CH[k]){CH[k].destroy();delete CH[k];}};
+const ROLE_LABELS={'super_admin':'👑 Super Admin','region_manager':'🗺 مدير منطقة','branch_manager':'🏪 مدير فرع','data_entry':'📤 مدخل بيانات','viewer':'👁️ اطلاع'};
+
+// ── Embedded data (fallback) ──
+const EB={branches:[{"code":"1602","name":"الرياض 2","region":"الرياض","sar":4653977.24,"wn":6378.74,"wp":6432.78,"pcs":59,"ai":78880.97,"purch":2004159.5,"purch_wt":3842.3,"purch_avg":521.6041,"sale_avg":723.4784,"diff":201.8743,"net":2649817.74,"k18_sar":678257.26,"k21_sar":1182092.24,"k24_sar":143810.0},{"code":"4406","name":"المدينة 6","region":"المدينة المنورة","sar":4642914.98,"wn":6402.74,"wp":6472.6,"pcs":20,"ai":232145.75,"purch":2829233.21,"purch_wt":5222.5,"purch_avg":541.7392,"sale_avg":717.3184,"diff":175.5792,"net":1813681.77,"k18_sar":283004.49,"k21_sar":2367558.72,"k24_sar":178670.0},{"code":"1605","name":"الرياض 5","region":"الرياض","sar":4568339.3,"wn":6306.0,"wp":6423.59,"pcs":142,"ai":32171.4,"purch":1666849.0,"purch_wt":3105.37,"purch_avg":536.7634,"sale_avg":711.1816,"diff":174.4182,"net":2901490.3,"k18_sar":353170.0,"k21_sar":977480.0,"k24_sar":336199.0},{"code":"4405","name":"المدينة 5","region":"المدينة المنورة","sar":4028157.72,"wn":5696.98,"wp":5715.77,"pcs":541,"ai":7445.76,"purch":2384151.0,"purch_wt":4524.1,"purch_avg":526.989,"sale_avg":704.7445,"diff":177.7555,"net":1644006.72,"k18_sar":330804.0,"k21_sar":2044307.0,"k24_sar":9040.0},{"code":"1601","name":"الرياض 1","region":"الرياض","sar":3549923.58,"wn":4838.95,"wp":5105.99,"pcs":314,"ai":11305.49,"purch":1106245.26,"purch_wt":2098.59,"purch_avg":527.1374,"sale_avg":695.2469,"diff":168.1095,"net":2443678.32,"k18_sar":257484.16,"k21_sar":742141.1,"k24_sar":106620.0},{"code":"3402","name":"حفر الباطن 2","region":"حفر الباطن","sar":2876203.27,"wn":4026.02,"wp":4089.25,"pcs":183,"ai":15716.96,"purch":2131431.81,"purch_wt":3955.54,"purch_avg":538.8472,"sale_avg":703.3572,"diff":164.51,"net":744771.46,"k18_sar":66902.16,"k21_sar":2010129.65,"k24_sar":49975.0},{"code":"3404","name":"حفر الباطن 4","region":"حفر الباطن","sar":2536777.7,"wn":3602.87,"wp":3663.95,"pcs":145,"ai":17495.02,"purch":1845660.0,"purch_wt":3411.72,"purch_avg":540.9764,"sale_avg":692.3614,"diff":151.385,"net":691117.7,"k18_sar":26600.0,"k21_sar":1770705.0,"k24_sar":37755.0},{"code":"5401","name":"خميس مشيط 1","region":"عسير/جيزان","sar":2231498.28,"wn":3179.59,"wp":3199.73,"pcs":51,"ai":43754.87,"purch":1293425.0,"purch_wt":2425.01,"purch_avg":533.3689,"sale_avg":697.4021,"diff":164.0332,"net":938073.28,"k18_sar":77340.0,"k21_sar":1044225.0,"k24_sar":171860.0},{"code":"1603","name":"الرياض 3","region":"الرياض","sar":2226588.54,"wn":2966.49,"wp":3222.6,"pcs":225,"ai":9895.95,"purch":522110.2,"purch_wt":1035.92,"purch_avg":504.0063,"sale_avg":690.9292,"diff":186.9229,"net":1704478.34,"k18_sar":237060.0,"k21_sar":260420.2,"k24_sar":24630.0},{"code":"7405","name":"صبيا","region":"عسير/جيزان","sar":2217034.57,"wn":2778.78,"wp":2820.6,"pcs":116,"ai":19112.37,"purch":1779340.0,"purch_wt":3394.5,"purch_avg":524.1832,"sale_avg":786.0152,"diff":261.832,"net":437694.57,"k18_sar":245070.0,"k21_sar":1526935.0,"k24_sar":7335.0},{"code":"5405","name":"خميس مشيط 5","region":"عسير/جيزان","sar":2051780.98,"wn":2798.97,"wp":2821.37,"pcs":49,"ai":41873.08,"purch":1277504.0,"purch_wt":2482.6,"purch_avg":514.5831,"sale_avg":727.2286,"diff":212.6455,"net":774276.98,"k18_sar":278270.0,"k21_sar":996699.0,"k24_sar":2535.0},{"code":"5402","name":"خميس مشيط 2","region":"عسير/جيزان","sar":2012147.49,"wn":2871.43,"wp":2893.48,"pcs":41,"ai":49076.77,"purch":2036095.0,"purch_wt":3923.5,"purch_avg":518.9486,"sale_avg":695.4074,"diff":176.4588,"net":-23947.51,"k18_sar":197200.0,"k21_sar":1831430.0,"k24_sar":7465.0},{"code":"1462","name":"حائل 2","region":"حائل","sar":1997349.6,"wn":2794.28,"wp":2807.29,"pcs":58,"ai":34437.06,"purch":1641767.76,"purch_wt":3074.1,"purch_avg":534.0645,"sale_avg":711.4867,"diff":177.4222,"net":355581.84,"k18_sar":103210.0,"k21_sar":1511747.76,"k24_sar":26810.0},{"code":"1461","name":"حائل 1","region":"حائل","sar":1980892.6,"wn":2752.62,"wp":2762.8,"pcs":38,"ai":52128.75,"purch":1458665.0,"purch_wt":2736.55,"purch_avg":533.0306,"sale_avg":716.9873,"diff":183.9567,"net":522227.6,"k18_sar":99235.0,"k21_sar":1346280.0,"k24_sar":13150.0},{"code":"1604","name":"الرياض 4","region":"الرياض","sar":1870498.49,"wn":2563.09,"wp":2642.08,"pcs":80,"ai":23381.23,"purch":791260.0,"purch_wt":1535.37,"purch_avg":515.3546,"sale_avg":707.9644,"diff":192.6098,"net":1079238.49,"k18_sar":274860.0,"k21_sar":484300.0,"k24_sar":32100.0},{"code":"1464","name":"حائل 4","region":"حائل","sar":1790354.36,"wn":2485.17,"wp":2496.13,"pcs":61,"ai":29350.07,"purch":1383315.0,"purch_wt":2585.9,"purch_avg":534.9453,"sale_avg":717.2521,"diff":182.3068,"net":407039.36,"k18_sar":81180.0,"k21_sar":1284735.0,"k24_sar":17400.0},{"code":"4408","name":"المدينة 8","region":"المدينة المنورة","sar":1725133.22,"wn":2387.68,"wp":2496.71,"pcs":157,"ai":10988.11,"purch":924360.0,"purch_wt":1747.95,"purch_avg":528.8252,"sale_avg":690.9626,"diff":162.1374,"net":800773.22,"k18_sar":170470.0,"k21_sar":720450.0,"k24_sar":33440.0},{"code":"1702","name":"مكة 2","region":"الغربية","sar":1575981.77,"wn":2055.71,"wp":2085.98,"pcs":37,"ai":42594.1,"purch":726030.0,"purch_wt":1433.35,"purch_avg":506.5267,"sale_avg":755.5114,"diff":248.9847,"net":849951.77,"k18_sar":239430.0,"k21_sar":471250.0,"k24_sar":15350.0},{"code":"1404","name":"البوادي","region":"الغربية","sar":1575321.6,"wn":2148.2,"wp":2169.01,"pcs":42,"ai":37507.66,"purch":781920.0,"purch_wt":1470.83,"purch_avg":531.6182,"sale_avg":726.286,"diff":194.6678,"net":793401.6,"k18_sar":142330.0,"k21_sar":532750.0,"k24_sar":106840.0},{"code":"3401","name":"حفر الباطن 1","region":"حفر الباطن","sar":1397251.07,"wn":1991.91,"wp":2028.51,"pcs":152,"ai":9192.44,"purch":1039009.82,"purch_wt":1895.71,"purch_avg":548.0848,"sale_avg":688.8066,"diff":140.7218,"net":358241.25,"k18_sar":7120.0,"k21_sar":714110.82,"k24_sar":77251.0},{"code":"3407","name":"حفر الباطن 7","region":"حفر الباطن","sar":1362488.99,"wn":1889.95,"wp":1914.09,"pcs":75,"ai":18166.52,"purch":896625.0,"purch_wt":1649.4,"purch_avg":543.6068,"sale_avg":711.8208,"diff":168.214,"net":465863.99,"k18_sar":52290.0,"k21_sar":790185.0,"k24_sar":49050.0},{"code":"1463","name":"حائل 3","region":"حائل","sar":1264317.17,"wn":1763.07,"wp":1780.89,"pcs":43,"ai":29402.72,"purch":949605.0,"purch_wt":1771.17,"purch_avg":536.1456,"sale_avg":709.9356,"diff":173.79,"net":314712.17,"k18_sar":24790.0,"k21_sar":920475.0,"k24_sar":4340.0},{"code":"3403","name":"حفر الباطن 3","region":"حفر الباطن","sar":1140462.84,"wn":1606.23,"wp":1630.59,"pcs":87,"ai":13108.77,"purch":1035184.0,"purch_wt":1919.83,"purch_avg":539.2061,"sale_avg":699.4173,"diff":160.2112,"net":105278.84,"k18_sar":17370.0,"k21_sar":975485.0,"k24_sar":23969.0},{"code":"1465","name":"حائل 5","region":"حائل","sar":1004112.4,"wn":1423.45,"wp":1429.66,"pcs":3283,"ai":305.85,"purch":708525.0,"purch_wt":1330.3,"purch_avg":532.6054,"sale_avg":702.3435,"diff":169.7381,"net":295587.4,"k18_sar":54750.0,"k21_sar":638835.0,"k24_sar":9340.0},{"code":"7410","name":"أبو عريش3","region":"عسير/جيزان","sar":761159.93,"wn":1048.07,"wp":1061.51,"pcs":46,"ai":16546.96,"purch":299435.0,"purch_wt":586.53,"purch_avg":510.5195,"sale_avg":717.0539,"diff":206.5344,"net":461724.93,"k18_sar":51665.0,"k21_sar":244670.0,"k24_sar":3100.0},{"code":"7403","name":"أبو عريش2","region":"عسير/جيزان","sar":599327.16,"wn":847.85,"wp":852.53,"pcs":18,"ai":33295.95,"purch":324580.0,"purch_wt":609.2,"purch_avg":532.7971,"sale_avg":702.9983,"diff":170.2012,"net":274747.16,"k18_sar":6565.0,"k21_sar":318015.0,"k24_sar":0},{"code":"4409","name":"المدينة 9","region":"المدينة المنورة","sar":523719.33,"wn":708.89,"wp":722.74,"pcs":20,"ai":26185.97,"purch":182260.0,"purch_wt":371.1,"purch_avg":491.1345,"sale_avg":724.6303,"diff":233.4958,"net":341459.33,"k18_sar":84130.0,"k21_sar":82755.0,"k24_sar":15375.0}],employees:[{"id":1095,"n":"عبدالعزيز عياش مطران المنهالي","b":"البوادي","bc":"1404","r":"الغربية","sar":286907.12,"wn":396.59,"wp":404.81,"pcs":12,"ai":23908.93,"emkg":14.2464,"pavg":531.6182,"savg":708.7451,"diff":177.1269,"ok":true},{"id":2511,"n":"عبدالمجيد عدنان علي سراج","b":"البوادي","bc":"1404","r":"الغربية","sar":389012.65,"wn":517.24,"wp":521.66,"pcs":11,"ai":35364.79,"emkg":18.708,"pavg":531.6182,"savg":745.7207,"diff":214.1025,"ok":true},{"id":2512,"n":"عبدالله احمد عبدالله الزبيدي","b":"البوادي","bc":"1404","r":"الغربية","sar":388868.26,"wn":564.41,"wp":568.49,"pcs":5,"ai":77773.65,"emkg":37.5731,"pavg":531.6182,"savg":684.0371,"diff":152.4189,"ok":true},{"id":804,"n":"سالم عوض عمر المنهالي","b":"البوادي","bc":"1404","r":"الغربية","sar":274152.7,"wn":363.21,"wp":366.04,"pcs":7,"ai":39164.67,"emkg":9.1463,"pavg":531.6182,"savg":748.9692,"diff":217.351,"ok":true},{"id":948,"n":"محمد صالح احمد الخلاقي","b":"البوادي","bc":"1404","r":"الغربية","sar":236380.87,"wn":306.75,"wp":308.01,"pcs":7,"ai":33768.7,"emkg":17.1707,"pavg":531.6182,"savg":767.4454,"diff":235.8272,"ok":true},{"id":2342,"n":"عبدالله حميد سالم المهري","b":"حائل 1","bc":"1461","r":"حائل","sar":518203.26,"wn":727.71,"wp":729.25,"pcs":4,"ai":129550.82,"emkg":5.1119,"pavg":533.0306,"savg":710.5975,"diff":177.5669,"ok":true},{"id":3034,"n":"ابراهيم خالد عبدالله محمد","b":"حائل 1","bc":"1461","r":"حائل","sar":586088.25,"wn":821.63,"wp":826.17,"pcs":13,"ai":45083.71,"emkg":12.336,"pavg":533.0306,"savg":709.4039,"diff":176.3733,"ok":true},{"id":3140,"n":"عوض عبدالله محمد الراشدي","b":"حائل 1","bc":"1461","r":"حائل","sar":455152.17,"wn":630.26,"wp":630.54,"pcs":2,"ai":227576.08,"emkg":0.6745,"pavg":533.0306,"savg":721.845,"diff":188.8144,"ok":true},{"id":925,"n":"محمد عبده عوض سالم","b":"حائل 1","bc":"1461","r":"حائل","sar":421448.92,"wn":573.02,"wp":576.84,"pcs":19,"ai":22181.52,"emkg":17.5161,"pavg":533.0306,"savg":730.6167,"diff":197.5861,"ok":true},{"id":1416,"n":"فهد محمد سعيد المهري","b":"حائل 2","bc":"1462","r":"حائل","sar":587997.83,"wn":819.44,"wp":822.87,"pcs":9,"ai":65333.09,"emkg":4.6068,"pavg":534.0645,"savg":714.5695,"diff":180.505,"ok":true},{"id":2454,"n":"صالح عمر محمد المنهالي","b":"حائل 2","bc":"1462","r":"حائل","sar":492639.13,"wn":689.07,"wp":691.68,"pcs":19,"ai":25928.38,"emkg":3.8399,"pavg":534.0645,"savg":712.2356,"diff":178.1711,"ok":true},{"id":2913,"n":"كاظم عبدالله محمد المهري","b":"حائل 2","bc":"1462","r":"حائل","sar":595530.02,"wn":837.63,"wp":842.05,"pcs":21,"ai":28358.57,"emkg":12.763,"pavg":534.0645,"savg":707.2383,"diff":173.1738,"ok":true},{"id":3201,"n":"بخيت صالح محمد العوبثاني","b":"حائل 2","bc":"1462","r":"حائل","sar":321182.62,"wn":448.14,"wp":450.69,"pcs":9,"ai":35686.96,"emkg":6.7095,"pavg":534.0645,"savg":712.6464,"diff":178.5819,"ok":true},{"id":2884,"n":"سعد احمد مسلم الجدحي المهري","b":"حائل 3","bc":"1463","r":"حائل","sar":515770.43,"wn":719.7,"wp":727.94,"pcs":11,"ai":46888.22,"emkg":11.6625,"pavg":536.1456,"savg":708.5343,"diff":172.3887,"ok":true},{"id":3171,"n":"عادل احمد صالح احمد صالح","b":"حائل 3","bc":"1463","r":"حائل","sar":198732.61,"wn":278.94,"wp":279.87,"pcs":6,"ai":33122.1,"emkg":5.4032,"pavg":536.1456,"savg":710.089,"diff":173.9434,"ok":true},{"id":3183,"n":"عبدالله سعيد سلوم المنهالي","b":"حائل 3","bc":"1463","r":"حائل","sar":307314.12,"wn":428.65,"wp":435.08,"pcs":19,"ai":16174.43,"emkg":17.4467,"pavg":536.1456,"savg":706.3393,"diff":170.1937,"ok":true},{"id":3184,"n":"يوسف احمد ناصر محمد","b":"حائل 3","bc":"1463","r":"حائل","sar":242500.01,"wn":335.78,"wp":338.0,"pcs":7,"ai":34642.86,"emkg":10.8101,"pavg":536.1456,"savg":717.4557,"diff":181.3101,"ok":true},{"id":204,"n":"طالب حمد هادي العماري","b":"حائل 4","bc":"1464","r":"حائل","sar":430231.32,"wn":595.82,"wp":598.68,"pcs":14,"ai":30730.81,"emkg":9.4655,"pavg":534.9453,"savg":718.6332,"diff":183.6879,"ok":true},{"id":2518,"n":"عماد سالم سعد المهري","b":"حائل 4","bc":"1464","r":"حائل","sar":490613.04,"wn":678.76,"wp":682.03,"pcs":19,"ai":25821.74,"emkg":4.4695,"pavg":534.9453,"savg":719.3423,"diff":184.397,"ok":true},{"id":3151,"n":"عثمان وسام عثمان محمد","b":"حائل 4","bc":"1464","r":"حائل","sar":407329.57,"wn":577.36,"wp":579.46,"pcs":11,"ai":37029.96,"emkg":3.9652,"pavg":534.9453,"savg":702.9468,"diff":168.0015,"ok":true},{"id":3257,"n":"احمد الراشدي","b":"حائل 4","bc":"1464","r":"حائل","sar":462180.43,"wn":633.23,"wp":635.96,"pcs":17,"ai":27187.08,"emkg":8.1213,"pavg":534.9453,"savg":726.7445,"diff":191.7992,"ok":true},{"id":2697,"n":"صالح عبدالله محمد الراشدي","b":"حائل 5","bc":"1465","r":"حائل","sar":299922.6,"wn":429.43,"wp":429.7,"pcs":1754,"ai":170.99,"emkg":1.7454,"pavg":532.6054,"savg":697.9814,"diff":165.376,"ok":true},{"id":3190,"n":"حمد سالم احمد الحمري","b":"حائل 5","bc":"1465","r":"حائل","sar":307853.05,"wn":443.31,"wp":445.57,"pcs":1504,"ai":204.69,"emkg":16.3199,"pavg":532.6054,"savg":690.9196,"diff":158.3142,"ok":true},{"id":3200,"n":"سالم محمد سالم العوبثاني","b":"حائل 5","bc":"1465","r":"حائل","sar":255910.01,"wn":356.08,"wp":357.49,"pcs":16,"ai":15994.38,"emkg":11.6285,"pavg":532.6054,"savg":715.8522,"diff":183.2468,"ok":true},{"id":3237,"n":"محمد علي العامري","b":"حائل 5","bc":"1465","r":"حائل","sar":140426.74,"wn":194.63,"wp":196.9,"pcs":9,"ai":15602.97,"emkg":13.7688,"pavg":532.6054,"savg":713.1881,"diff":180.5827,"ok":true},{"id":2842,"n":"عبدالناصر محمد عبدالله المهري","b":"الرياض 1","bc":"1601","r":"الرياض","sar":480893.36,"wn":644.06,"wp":690.16,"pcs":62,"ai":7756.34,"emkg":52.8563,"pavg":527.1374,"savg":696.7853,"diff":169.6479,"ok":true},{"id":3198,"n":"حمود هادي مسفر ال صلاح","b":"الرياض 1","bc":"1601","r":"الرياض","sar":33869.57,"wn":45.26,"wp":45.06,"pcs":1,"ai":33869.57,"emkg":5.9625,"pavg":527.1374,"savg":751.6549,"diff":224.5175,"ok":true},{"id":3224,"n":"معتز محمد سالم الخلاقي","b":"الرياض 1","bc":"1601","r":"الرياض","sar":414556.95,"wn":567.91,"wp":616.87,"pcs":50,"ai":8291.14,"emkg":47.7694,"pavg":527.1374,"savg":672.0329,"diff":144.8955,"ok":true},{"id":3230,"n":"اسامة حسن سالم محمد","b":"الرياض 1","bc":"1601","r":"الرياض","sar":518586.49,"wn":715.3,"wp":745.74,"pcs":37,"ai":14015.85,"emkg":27.9665,"pavg":527.1374,"savg":695.3985,"diff":168.2611,"ok":true},{"id":3253,"n":"عسكر الهمامي","b":"الرياض 1","bc":"1601","r":"الرياض","sar":612215.31,"wn":814.36,"wp":829.96,"pcs":21,"ai":29153.11,"emkg":14.7642,"pavg":527.1374,"savg":737.6444,"diff":210.507,"ok":true},{"id":3259,"n":"مهلي القحطاني","b":"الرياض 1","bc":"1601","r":"الرياض","sar":28434.77,"wn":37.98,"wp":43.4,"pcs":6,"ai":4739.13,"emkg":94.4588,"pavg":527.1374,"savg":655.179,"diff":128.0416,"ok":true},{"id":3261,"n":"حميد خالد عبدالله","b":"الرياض 1","bc":"1601","r":"الرياض","sar":451454.3,"wn":618.44,"wp":661.14,"pcs":45,"ai":10032.32,"emkg":48.2518,"pavg":527.1374,"savg":682.8422,"diff":155.7048,"ok":true},{"id":3262,"n":"نايف عبدالسلام علي الخلاقي","b":"الرياض 1","bc":"1601","r":"الرياض","sar":400144.36,"wn":555.02,"wp":592.75,"pcs":51,"ai":7845.97,"emkg":45.2389,"pavg":527.1374,"savg":675.0643,"diff":147.9269,"ok":true},{"id":419,"n":"عوض محمد صالح اليزيدي","b":"الرياض 1","bc":"1601","r":"الرياض","sar":677507.61,"wn":931.14,"wp":971.03,"pcs":41,"ai":16524.58,"emkg":26.6656,"pavg":527.1374,"savg":697.7206,"diff":170.5832,"ok":true},{"id":2051,"n":"مالك اليزيدي","b":"الرياض 2","bc":"1602","r":"الرياض","sar":698426.96,"wn":953.03,"wp":954.56,"pcs":4,"ai":174606.74,"emkg":1.8491,"pavg":521.6041,"savg":731.6742,"diff":210.0701,"ok":true},{"id":2979,"n":"هديل حكمي","b":"الرياض 2","bc":"1602","r":"الرياض","sar":273411.74,"wn":376.8,"wp":377.64,"pcs":2,"ai":136705.87,"emkg":2.1926,"pavg":521.6041,"savg":724.001,"diff":202.3969,"ok":true},{"id":3108,"n":"خالد صالح سالم المنهالي","b":"الرياض 2","bc":"1602","r":"الرياض","sar":42269.57,"wn":58.51,"wp":69.51,"pcs":7,"ai":6038.51,"emkg":85.2401,"pavg":521.6041,"savg":608.1078,"diff":86.5037,"ok":true},{"id":3109,"n":"محمد الشيباني","b":"الرياض 2","bc":"1602","r":"الرياض","sar":893173.29,"wn":1223.64,"wp":1229.08,"pcs":5,"ai":178634.66,"emkg":5.635,"pavg":521.6041,"savg":726.7007,"diff":205.0966,"ok":true},{"id":3114,"n":"ابراهيم الخلاقي","b":"الرياض 2","bc":"1602","r":"الرياض","sar":672099.55,"wn":924.19,"wp":940.4,"pcs":17,"ai":39535.27,"emkg":15.9902,"pavg":521.6041,"savg":714.6954,"diff":193.0913,"ok":true},{"id":3129,"n":"اسامة صالح المنهالي","b":"الرياض 2","bc":"1602","r":"الرياض","sar":706173.47,"wn":957.5,"wp":972.39,"pcs":15,"ai":47078.23,"emkg":15.7712,"pavg":521.6041,"savg":726.2245,"diff":204.6204,"ok":true},{"id":3256,"n":"عايض الكربي","b":"الرياض 2","bc":"1602","r":"الرياض","sar":604631.3,"wn":830.15,"wp":832.45,"pcs":6,"ai":100771.88,"emkg":3.428,"pavg":521.6041,"savg":726.3275,"diff":204.7234,"ok":true},{"id":440,"n":"محضار عبدالجبار","b":"الرياض 2","bc":"1602","r":"الرياض","sar":763791.36,"wn":1054.92,"wp":1056.75,"pcs":3,"ai":254597.12,"emkg":2.2338,"pavg":521.6041,"savg":722.7739,"diff":201.1698,"ok":true},{"id":2871,"n":"تغريد عبدالعزيز ابو طالب غريب","b":"الرياض 3","bc":"1603","r":"الرياض","sar":213058.69,"wn":287.74,"wp":292.46,"pcs":9,"ai":23673.19,"emkg":9.9869,"pavg":504.0063,"savg":728.5054,"diff":224.4991,"ok":true},{"id":2931,"n":"ريما سعد فارس العتيبي","b":"الرياض 3","bc":"1603","r":"الرياض","sar":187249.57,"wn":249.24,"wp":257.32,"pcs":13,"ai":14403.81,"emkg":19.4067,"pavg":504.0063,"savg":727.6915,"diff":223.6852,"ok":true},{"id":3150,"n":"حسين علي عبدالله الخلاقي","b":"الرياض 3","bc":"1603","r":"الرياض","sar":589739.59,"wn":791.23,"wp":842.73,"pcs":33,"ai":17870.9,"emkg":45.2284,"pavg":504.0063,"savg":699.7966,"diff":195.7903,"ok":true},{"id":3208,"n":"عيسى صلاح عبد الخالق عبد الرب محمد","b":"الرياض 3","bc":"1603","r":"الرياض","sar":303538.09,"wn":404.34,"wp":435.77,"pcs":28,"ai":10840.65,"emkg":56.2449,"pavg":504.0063,"savg":696.5557,"diff":192.5494,"ok":true},{"id":3217,"n":"سالم مساعد سالم بانعيم","b":"الرياض 3","bc":"1603","r":"الرياض","sar":235992.59,"wn":315.47,"wp":352.15,"pcs":40,"ai":5899.81,"emkg":73.4047,"pavg":504.0063,"savg":670.1479,"diff":166.1416,"ok":true},{"id":3222,"n":"همام محسن احمد عبدالله","b":"الرياض 3","bc":"1603","r":"الرياض","sar":293288.25,"wn":389.36,"wp":439.25,"pcs":39,"ai":7520.21,"emkg":75.2975,"pavg":504.0063,"savg":667.7023,"diff":163.696,"ok":true},{"id":3240,"n":"يوسف قاسم الخلاقي","b":"الرياض 3","bc":"1603","r":"الرياض","sar":403721.76,"wn":529.11,"wp":602.92,"pcs":63,"ai":6408.28,"emkg":83.2662,"pavg":504.0063,"savg":669.6108,"diff":165.6045,"ok":true},{"id":3014,"n":"عباس صالح عيسى كلشات المهري","b":"الرياض 4","bc":"1604","r":"الرياض","sar":494555.85,"wn":676.46,"wp":690.16,"pcs":18,"ai":27475.32,"emkg":12.3517,"pavg":515.3546,"savg":716.5814,"diff":201.2268,"ok":true},{"id":3086,"n":"محمد احمد سالم عبدالله","b":"الرياض 4","bc":"1604","r":"الرياض","sar":421166.96,"wn":572.61,"wp":581.32,"pcs":8,"ai":52645.87,"emkg":7.81,"pavg":515.3546,"savg":724.5011,"diff":209.1465,"ok":true},{"id":3143,"n":"نايف عبدالسلام عمر عبدالله","b":"الرياض 4","bc":"1604","r":"الرياض","sar":553453.08,"wn":754.99,"wp":793.42,"pcs":38,"ai":14564.55,"emkg":24.5063,"pavg":515.3546,"savg":697.5537,"diff":182.1991,"ok":true},{"id":467,"n":"خالد حسين محمد القملي","b":"الرياض 4","bc":"1604","r":"الرياض","sar":401322.6,"wn":559.03,"wp":577.18,"pcs":16,"ai":25082.66,"emkg":15.4622,"pavg":515.3546,"savg":695.3162,"diff":179.9616,"ok":true},{"id":2011,"n":"محسن علي زين العامري","b":"الرياض 5","bc":"1605","r":"الرياض","sar":542999.83,"wn":742.29,"wp":769.22,"pcs":23,"ai":23608.69,"emkg":25.8058,"pavg":536.7634,"savg":705.9097,"diff":169.1463,"ok":true},{"id":2678,"n":"سعد محمد عامر المهري","b":"الرياض 5","bc":"1605","r":"الرياض","sar":773180.84,"wn":1068.39,"wp":1077.14,"pcs":10,"ai":77318.08,"emkg":6.2886,"pavg":536.7634,"savg":717.809,"diff":181.0456,"ok":true},{"id":3210,"n":"معاذ علي محمد صالح","b":"الرياض 5","bc":"1605","r":"الرياض","sar":942432.39,"wn":1330.97,"wp":1339.82,"pcs":11,"ai":85675.67,"emkg":6.0575,"pavg":536.7634,"savg":703.4022,"diff":166.6388,"ok":true},{"id":3212,"n":"إسماعيل سعيد سالم محمد","b":"الرياض 5","bc":"1605","r":"الرياض","sar":698552.73,"wn":959.84,"wp":988.54,"pcs":33,"ai":21168.26,"emkg":20.1858,"pavg":536.7634,"savg":706.6509,"diff":169.8875,"ok":true},{"id":3252,"n":"حسن ال قحيش","b":"الرياض 5","bc":"1605","r":"الرياض","sar":582107.44,"wn":793.02,"wp":828.41,"pcs":50,"ai":11642.15,"emkg":31.2788,"pavg":536.7634,"savg":702.6804,"diff":165.917,"ok":true},{"id":3254,"n":"سعيد المنهالي","b":"الرياض 5","bc":"1605","r":"الرياض","sar":1029066.07,"wn":1411.49,"wp":1420.46,"pcs":15,"ai":68604.4,"emkg":4.3339,"pavg":536.7634,"savg":724.4597,"diff":187.6963,"ok":true},{"id":2039,"n":"حسين محمد عبدالحافظ الحميري","b":"مكة 2","bc":"1702","r":"الغربية","sar":146231.52,"wn":176.33,"wp":182.64,"pcs":6,"ai":24371.92,"emkg":15.2055,"pavg":506.5267,"savg":800.6544,"diff":294.1277,"ok":true},{"id":2814,"n":"محمد عيضه علي الحضرمي","b":"مكة 2","bc":"1702","r":"الغربية","sar":414976.94,"wn":534.49,"wp":548.38,"pcs":19,"ai":21840.89,"emkg":14.1769,"pavg":506.5267,"savg":756.7324,"diff":250.2057,"ok":true},{"id":2889,"n":"فواز عيد بن ستير الطفيحي","b":"مكة 2","bc":"1702","r":"الغربية","sar":422934.83,"wn":555.55,"wp":562.96,"pcs":6,"ai":70489.14,"emkg":5.9605,"pavg":506.5267,"savg":751.2698,"diff":244.7431,"ok":true},{"id":3154,"n":"صالح محمد حسين عبده احمد","b":"مكة 2","bc":"1702","r":"الغربية","sar":591838.48,"wn":789.34,"wp":792.0,"pcs":6,"ai":98639.75,"emkg":3.1802,"pavg":506.5267,"savg":747.2708,"diff":240.7441,"ok":true},{"id":1530,"n":"علي شاجع راشد هديسان","b":"حفر الباطن 1","bc":"3401","r":"حفر الباطن","sar":456845.9,"wn":663.25,"wp":674.71,"pcs":49,"ai":9323.39,"emkg":20.1403,"pavg":548.0848,"savg":677.0996,"diff":129.0148,"ok":true},{"id":1623,"n":"زاهر عوض متوه المنهالي","b":"حفر الباطن 1","bc":"3401","r":"حفر الباطن","sar":151307.16,"wn":212.63,"wp":219.93,"pcs":22,"ai":6877.6,"emkg":15.9548,"pavg":548.0848,"savg":687.9787,"diff":139.8939,"ok":true},{"id":2845,"n":"سعود فيصل مياح الشمري","b":"حفر الباطن 1","bc":"3401","r":"حفر الباطن","sar":393554.55,"wn":556.03,"wp":563.16,"pcs":42,"ai":9370.35,"emkg":11.4871,"pavg":548.0848,"savg":698.8326,"diff":150.7478,"ok":true},{"id":3096,"n":"فراس مرزوق صالح القحطاني","b":"حفر الباطن 1","bc":"3401","r":"حفر الباطن","sar":395543.46,"wn":560.0,"wp":570.71,"pcs":39,"ai":10142.14,"emkg":11.1968,"pavg":548.0848,"savg":693.0726,"diff":144.9878,"ok":true},{"id":1875,"n":"عبدالرحمن علي عبدالرحمن المهري","b":"حفر الباطن 2","bc":"3402","r":"حفر الباطن","sar":189689.11,"wn":270.88,"wp":297.64,"pcs":40,"ai":4742.23,"emkg":59.6228,"pavg":538.8472,"savg":637.3105,"diff":98.4633,"ok":true},{"id":2769,"n":"هجمان محمد سالم المنهالي","b":"حفر الباطن 2","bc":"3402","r":"حفر الباطن","sar":1047426.53,"wn":1474.56,"wp":1479.39,"pcs":17,"ai":61613.33,"emkg":9.5,"pavg":538.8472,"savg":708.0124,"diff":169.1652,"ok":true},{"id":3134,"n":"محمد حمد بخيت العامري","b":"حفر الباطن 2","bc":"3402","r":"حفر الباطن","sar":540627.37,"wn":769.02,"wp":780.45,"pcs":54,"ai":10011.62,"emkg":17.0433,"pavg":538.8472,"savg":692.7124,"diff":153.8652,"ok":true},{"id":3163,"n":"حمود علي صالح ناصر البطاطي","b":"حفر الباطن 2","bc":"3402","r":"حفر الباطن","sar":540460.91,"wn":748.93,"wp":759.66,"pcs":42,"ai":12868.12,"emkg":17.2341,"pavg":538.8472,"savg":711.4511,"diff":172.6039,"ok":true},{"id":3229,"n":"حسين حميد حسن المهري","b":"حفر الباطن 2","bc":"3402","r":"حفر الباطن","sar":557999.35,"wn":762.63,"wp":772.11,"pcs":30,"ai":18599.98,"emkg":12.362,"pavg":538.8472,"savg":722.6941,"diff":183.8469,"ok":true},{"id":1169,"n":"سعيد سعد عوض المهري","b":"حفر الباطن 3","bc":"3403","r":"حفر الباطن","sar":38630.0,"wn":54.05,"wp":56.08,"pcs":14,"ai":2759.29,"emkg":32.3641,"pavg":539.2061,"savg":688.8374,"diff":149.6313,"ok":true},{"id":1732,"n":"سعد محمد عوض الجدحي المهري","b":"حفر الباطن 3","bc":"3403","r":"حفر الباطن","sar":271560.66,"wn":386.78,"wp":391.31,"pcs":16,"ai":16972.54,"emkg":10.4206,"pavg":539.2061,"savg":693.9783,"diff":154.7722,"ok":true},{"id":291,"n":"سّعيد عبدالله عوض المنهالي","b":"حفر الباطن 3","bc":"3403","r":"حفر الباطن","sar":192723.49,"wn":257.4,"wp":269.35,"pcs":41,"ai":4700.57,"emkg":40.6895,"pavg":539.2061,"savg":715.5132,"diff":176.3071,"ok":true},{"id":3182,"n":"يوسف نبهان تمران دخان","b":"حفر الباطن 3","bc":"3403","r":"حفر الباطن","sar":389153.69,"wn":547.97,"wp":553.82,"pcs":16,"ai":24322.11,"emkg":9.7058,"pavg":539.2061,"savg":702.6718,"diff":163.4657,"ok":true},{"id":594,"n":"سليم نذير احمد","b":"حفر الباطن 3","bc":"3403","r":"حفر الباطن","sar":248395.0,"wn":360.03,"wp":360.03,"pcs":0,"ai":0,"emkg":0,"pavg":539.2061,"savg":689.9286,"diff":150.7225,"ok":true},{"id":1726,"n":"علي محمد احمد كلشات المهري","b":"حفر الباطن 4","bc":"3404","r":"حفر الباطن","sar":265174.35,"wn":367.92,"wp":370.98,"pcs":13,"ai":20398.03,"emkg":5.9579,"pavg":540.9764,"savg":714.7942,"diff":173.8178,"ok":true},{"id":1867,"n":"راشد معيوض متوه المنهالي","b":"حفر الباطن 4","bc":"3404","r":"حفر الباطن","sar":543285.44,"wn":775.35,"wp":789.39,"pcs":28,"ai":19403.05,"emkg":16.2502,"pavg":540.9764,"savg":688.2345,"diff":147.2581,"ok":true},{"id":2559,"n":"سلطان عوض متوه المنهالي","b":"حفر الباطن 4","bc":"3404","r":"حفر الباطن","sar":346096.09,"wn":488.47,"wp":494.94,"pcs":12,"ai":28841.34,"emkg":6.2822,"pavg":540.9764,"savg":699.2688,"diff":158.2924,"ok":true},{"id":3191,"n":"صالح سميان الجميلي","b":"حفر الباطن 4","bc":"3404","r":"حفر الباطن","sar":484774.58,"wn":686.2,"wp":700.79,"pcs":34,"ai":14258.08,"emkg":13.5038,"pavg":540.9764,"savg":691.7544,"diff":150.778,"ok":true},{"id":3206,"n":"عمر مبارك مسيعود الصيعري","b":"حفر الباطن 4","bc":"3404","r":"حفر الباطن","sar":627707.82,"wn":903.64,"wp":917.54,"pcs":30,"ai":20923.59,"emkg":15.4381,"pavg":540.9764,"savg":684.1204,"diff":143.144,"ok":true},{"id":3259,"n":"مهلي القحطاني","b":"حفر الباطن 4","bc":"3404","r":"حفر الباطن","sar":269739.42,"wn":381.29,"wp":390.31,"pcs":28,"ai":9633.55,"emkg":13.8152,"pavg":540.9764,"savg":691.0902,"diff":150.1138,"ok":true},{"id":2677,"n":"حسين صالح حسين كلشات المهري","b":"حفر الباطن 7","bc":"3407","r":"حفر الباطن","sar":391615.9,"wn":555.71,"wp":566.45,"pcs":25,"ai":15664.64,"emkg":19.7723,"pavg":543.6068,"savg":691.3512,"diff":147.7444,"ok":true},{"id":2716,"n":"علي فواز صالح الكربي","b":"حفر الباطن 7","bc":"3407","r":"حفر الباطن","sar":513791.98,"wn":701.74,"wp":709.69,"pcs":23,"ai":22338.78,"emkg":18.5751,"pavg":543.6068,"savg":723.9668,"diff":180.36,"ok":true},{"id":2918,"n":"صالح حسين محمد المنهالي","b":"حفر الباطن 7","bc":"3407","r":"حفر الباطن","sar":330580.89,"wn":457.66,"wp":461.64,"pcs":19,"ai":17398.99,"emkg":10.8988,"pavg":543.6068,"savg":716.1011,"diff":172.4943,"ok":true},{"id":3189,"n":"إبراهيم علي الوايلي","b":"حفر الباطن 7","bc":"3407","r":"حفر الباطن","sar":126500.22,"wn":174.84,"wp":176.31,"pcs":8,"ai":15812.53,"emkg":7.8276,"pavg":543.6068,"savg":717.4875,"diff":173.8807,"ok":true},{"id":1021,"n":"عيسى محسن علي المهري","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":471767.22,"wn":662.87,"wp":663.02,"pcs":73,"ai":6462.56,"emkg":91.6239,"pavg":526.989,"savg":711.543,"diff":184.554,"ok":true},{"id":1442,"n":"صالح سعد يحيى المهري","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":93512.35,"wn":131.42,"wp":133.8,"pcs":20,"ai":4675.62,"emkg":89.3008,"pavg":526.989,"savg":698.8965,"diff":171.9075,"ok":true},{"id":1888,"n":"عمر احمد حمدة المهري","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":548067.26,"wn":763.07,"wp":766.06,"pcs":68,"ai":8059.81,"emkg":96.8011,"pavg":526.989,"savg":715.4365,"diff":188.4475,"ok":true},{"id":2339,"n":"تركي محمد حمدان الشريف","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":457480.0,"wn":639.9,"wp":639.9,"pcs":39,"ai":11730.26,"emkg":88.0762,"pavg":526.989,"savg":714.9242,"diff":187.9352,"ok":true},{"id":2546,"n":"كرامة مسلم محمد المنهالي","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":214861.61,"wn":308.2,"wp":309.17,"pcs":33,"ai":6510.96,"emkg":78.177,"pavg":526.989,"savg":694.9627,"diff":167.9737,"ok":true},{"id":2897,"n":"حماد سالم محمد المهري","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":89466.21,"wn":125.39,"wp":126.71,"pcs":26,"ai":3441.01,"emkg":87.616,"pavg":526.989,"savg":706.0706,"diff":179.0816,"ok":true},{"id":3104,"n":"محمد سليمان","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":675808.0,"wn":963.67,"wp":963.67,"pcs":87,"ai":7767.91,"emkg":80.418,"pavg":526.989,"savg":701.2857,"diff":174.2967,"ok":true},{"id":3118,"n":"توفيق فضل غالب عثمان","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":179123.41,"wn":258.02,"wp":265.16,"pcs":37,"ai":4841.17,"emkg":72.8362,"pavg":526.989,"savg":675.5295,"diff":148.5405,"ok":true},{"id":3205,"n":"سيد حيدر حسن سيد","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":312305.0,"wn":449.64,"wp":450.18,"pcs":45,"ai":6940.11,"emkg":68.0069,"pavg":526.989,"savg":693.7336,"diff":166.7446,"ok":true},{"id":805,"n":"عمر يحيى عبدالله رضا خان","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":496789.22,"wn":707.76,"wp":710.15,"pcs":50,"ai":9935.78,"emkg":79.8814,"pavg":526.989,"savg":699.5553,"diff":172.5663,"ok":true},{"id":9089,"n":"عبدالرحمن علي سيف العامري","b":"المدينة 5","bc":"4405","r":"المدينة المنورة","sar":488977.44,"wn":687.04,"wp":687.95,"pcs":63,"ai":7761.55,"emkg":86.6366,"pavg":526.989,"savg":710.7747,"diff":183.7857,"ok":true},{"id":2693,"n":"حمزة وليد سالم المهري","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":403629.57,"wn":561.01,"wp":567.85,"pcs":0,"ai":0,"emkg":12.123,"pavg":541.7392,"savg":710.8032,"diff":169.064,"ok":true},{"id":2790,"n":"حمزة مسلم علي المهري","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":459198.04,"wn":640.23,"wp":648.39,"pcs":1,"ai":459198.04,"emkg":30.8711,"pavg":541.7392,"savg":708.2127,"diff":166.4735,"ok":true},{"id":2792,"n":"فيصل سعد سعد المهري","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":323008.3,"wn":452.48,"wp":456.85,"pcs":5,"ai":64601.66,"emkg":9.5586,"pavg":541.7392,"savg":707.0336,"diff":165.2944,"ok":true},{"id":2793,"n":"احمد يحى علي المصعبي","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":64650.0,"wn":100.24,"wp":100.24,"pcs":0,"ai":0,"emkg":11.1481,"pavg":541.7392,"savg":644.9521,"diff":103.2129,"ok":true},{"id":2797,"n":"حمد محمد حسن المهري","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":283637.91,"wn":375.9,"wp":384.27,"pcs":9,"ai":31515.32,"emkg":23.5755,"pavg":541.7392,"savg":738.1214,"diff":196.3822,"ok":true},{"id":2848,"n":"عازم صالح سليمان كلشات المهري","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":226298.04,"wn":311.33,"wp":313.2,"pcs":1,"ai":226298.04,"emkg":7.2096,"pavg":541.7392,"savg":722.5352,"diff":180.796,"ok":true},{"id":2973,"n":"ميرزا عبدالحي ميرزا عبدالمنان","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":856618.27,"wn":1173.11,"wp":1178.65,"pcs":0,"ai":0,"emkg":3.9986,"pavg":541.7392,"savg":726.7792,"diff":185.04,"ok":true},{"id":3013,"n":"خالد العامري","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":360859.74,"wn":491.55,"wp":494.44,"pcs":0,"ai":0,"emkg":6.3108,"pavg":541.7392,"savg":729.8352,"diff":188.096,"ok":true},{"id":3015,"n":"عبدالله سعد محمد الراشدي","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":146604.35,"wn":199.69,"wp":199.93,"pcs":3,"ai":48868.12,"emkg":6.06,"pavg":541.7392,"savg":733.2784,"diff":191.5392,"ok":true},{"id":3117,"n":"علي الحالمي","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":781207.59,"wn":1097.2,"wp":1120.22,"pcs":0,"ai":0,"emkg":13.6005,"pavg":541.7392,"savg":697.3698,"diff":155.6306,"ok":true},{"id":3142,"n":"محمد عبدالله سليم","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":137474.73,"wn":184.07,"wp":184.56,"pcs":1,"ai":137474.73,"emkg":3.1461,"pavg":541.7392,"savg":744.8783,"diff":203.1391,"ok":true},{"id":3207,"n":"نور المحمد بسما","b":"المدينة 6","bc":"4406","r":"المدينة المنورة","sar":599728.44,"wn":815.93,"wp":824.0,"pcs":0,"ai":0,"emkg":11.5289,"pavg":541.7392,"savg":727.8258,"diff":186.0866,"ok":true},{"id":2063,"n":"يوسف صالح صلاح السعدي","b":"المدينة 8","bc":"4408","r":"المدينة المنورة","sar":48640.87,"wn":65.69,"wp":69.79,"pcs":11,"ai":4421.9,"emkg":42.3142,"pavg":528.8252,"savg":696.9605,"diff":168.1353,"ok":true},{"id":2327,"n":"عبدالله علي ناصر الحارثي","b":"المدينة 8","bc":"4408","r":"المدينة المنورة","sar":399007.17,"wn":557.44,"wp":568.01,"pcs":21,"ai":19000.34,"emkg":22.7975,"pavg":528.8252,"savg":702.465,"diff":173.6398,"ok":true},{"id":2407,"n":"عبدالله علي عبدالله المصعبي","b":"المدينة 8","bc":"4408","r":"المدينة المنورة","sar":409972.39,"wn":561.19,"wp":580.36,"pcs":28,"ai":14641.87,"emkg":20.3067,"pavg":528.8252,"savg":706.4105,"diff":177.5853,"ok":true},{"id":2780,"n":"خالد عبدالرحمن عمر الحامدي","b":"المدينة 8","bc":"4408","r":"المدينة المنورة","sar":385175.85,"wn":526.44,"wp":556.61,"pcs":37,"ai":10410.16,"emkg":32.1845,"pavg":528.8252,"savg":692.0031,"diff":163.1779,"ok":true},{"id":3228,"n":"حسين حامد العوفي","b":"المدينة 8","bc":"4408","r":"المدينة المنورة","sar":482336.94,"wn":676.92,"wp":721.94,"pcs":60,"ai":8038.95,"emkg":43.0546,"pavg":528.8252,"savg":668.1122,"diff":139.287,"ok":true},{"id":2698,"n":"صالح سنكور محسن المهري","b":"المدينة 9","bc":"4409","r":"المدينة المنورة","sar":278381.09,"wn":377.59,"wp":380.34,"pcs":5,"ai":55676.22,"emkg":12.502,"pavg":491.1345,"savg":731.9269,"diff":240.7924,"ok":true},{"id":2946,"n":"عبدالله محمد عبدالله الجليل","b":"المدينة 9","bc":"4409","r":"المدينة المنورة","sar":100316.51,"wn":134.76,"wp":141.4,"pcs":9,"ai":11146.28,"emkg":29.1451,"pavg":491.1345,"savg":709.452,"diff":218.3175,"ok":true},{"id":3153,"n":"راشد محسن ثابت العامري","b":"المدينة 9","bc":"4409","r":"المدينة المنورة","sar":145021.73,"wn":196.54,"wp":201.0,"pcs":6,"ai":24170.29,"emkg":29.2426,"pavg":491.1345,"savg":721.5011,"diff":230.3666,"ok":true},{"id":3177,"n":"فهد غالب صياح العنزي","b":"4420","bc":"4420","r":"—","sar":3050.0,"wn":5.0,"wp":5.0,"pcs":1,"ai":3050.0,"emkg":60.0,"pavg":0,"savg":610.0,"diff":610.0,"ok":true},{"id":3250,"n":"اسرار البلوي","b":"4420","bc":"4420","r":"—","sar":2061.74,"wn":2.7,"wp":3.08,"pcs":2,"ai":1030.87,"emkg":103.224,"pavg":0,"savg":669.3961,"diff":669.3961,"ok":true},{"id":1724,"n":"علي محسن صالح المروعي","b":"خميس مشيط 1","bc":"5401","r":"عسير/جيزان","sar":504743.69,"wn":724.22,"wp":725.57,"pcs":3,"ai":168247.9,"emkg":2.9895,"pavg":533.3689,"savg":695.6513,"diff":162.2824,"ok":true},{"id":1941,"n":"حسين محسن عبدربه المشرقي","b":"خميس مشيط 1","bc":"5401","r":"عسير/جيزان","sar":611280.93,"wn":881.24,"wp":884.49,"pcs":6,"ai":101880.16,"emkg":11.9155,"pavg":533.3689,"savg":691.1112,"diff":157.7423,"ok":true},{"id":2493,"n":"احمد حافظ ناصر النعمي","b":"خميس مشيط 1","bc":"5401","r":"عسير/جيزان","sar":477857.37,"wn":683.56,"wp":692.59,"pcs":26,"ai":18379.13,"emkg":24.6754,"pavg":533.3689,"savg":689.9571,"diff":156.5882,"ok":true},{"id":2757,"n":"ريان فهد منور العوفي","b":"خميس مشيط 1","bc":"5401","r":"عسير/جيزان","sar":540664.35,"wn":756.98,"wp":760.31,"pcs":10,"ai":54066.43,"emkg":7.0996,"pavg":533.3689,"savg":711.1104,"diff":177.7415,"ok":true},{"id":3255,"n":"محمد القحطاني","b":"خميس مشيط 1","bc":"5401","r":"عسير/جيزان","sar":96951.94,"wn":133.59,"wp":136.77,"pcs":6,"ai":16158.66,"emkg":24.073,"pavg":533.3689,"savg":708.8685,"diff":175.4996,"ok":true},{"id":2084,"n":"حسين محمد عبدالقوي عبدالرب","b":"خميس مشيط 2","bc":"5402","r":"عسير/جيزان","sar":378925.66,"wn":539.88,"wp":542.36,"pcs":12,"ai":31577.14,"emkg":5.4933,"pavg":518.9486,"savg":698.6608,"diff":179.7122,"ok":true},{"id":2882,"n":"صالح قاسم عبدالله حسين","b":"خميس مشيط 2","bc":"5402","r":"عسير/جيزان","sar":252165.44,"wn":355.36,"wp":358.55,"pcs":10,"ai":25216.54,"emkg":12.7847,"pavg":518.9486,"savg":703.2923,"diff":184.3437,"ok":true},{"id":3158,"n":"ردفان جمال علي عبدالله","b":"خميس مشيط 2","bc":"5402","r":"عسير/جيزان","sar":715467.55,"wn":1021.39,"wp":1033.89,"pcs":14,"ai":51104.83,"emkg":9.4954,"pavg":518.9486,"savg":692.0152,"diff":173.0666,"ok":true},{"id":3238,"n":"يحي عبدالله الفيفي","b":"خميس مشيط 2","bc":"5402","r":"عسير/جيزان","sar":376592.09,"wn":538.64,"wp":539.34,"pcs":3,"ai":125530.7,"emkg":2.5189,"pavg":518.9486,"savg":698.2462,"diff":179.2976,"ok":true},{"id":400,"n":"حسين عبدالاله محمد عبيد","b":"خميس مشيط 2","bc":"5402","r":"عسير/جيزان","sar":288996.75,"wn":416.16,"wp":419.34,"pcs":2,"ai":144498.38,"emkg":1.5119,"pavg":518.9486,"savg":689.1705,"diff":170.2219,"ok":true},{"id":1380,"n":"طائع كرامه سالم المنهالي","b":"خميس مشيط 5","bc":"5405","r":"عسير/جيزان","sar":476671.62,"wn":666.89,"wp":672.27,"pcs":7,"ai":68095.95,"emkg":8.1911,"pavg":514.5831,"savg":709.0479,"diff":194.4648,"ok":true},{"id":2112,"n":"زين حسين علي العامري","b":"خميس مشيط 5","bc":"5405","r":"عسير/جيزان","sar":381468.94,"wn":509.06,"wp":511.24,"pcs":10,"ai":38146.89,"emkg":4.4038,"pavg":514.5831,"savg":746.1641,"diff":231.581,"ok":true},{"id":2500,"n":"محمد عطية بخيت الردادي","b":"خميس مشيط 5","bc":"5405","r":"عسير/جيزان","sar":266503.66,"wn":348.48,"wp":357.16,"pcs":14,"ai":19035.98,"emkg":19.3552,"pavg":514.5831,"savg":746.1744,"diff":231.5913,"ok":true},{"id":2952,"n":"محمد هادي علي الغبيشي","b":"خميس مشيط 5","bc":"5405","r":"عسير/جيزان","sar":540152.19,"wn":761.88,"wp":763.22,"pcs":5,"ai":108030.44,"emkg":11.8419,"pavg":514.5831,"savg":707.728,"diff":193.1449,"ok":true},{"id":3226,"n":"عبدالله عمر المنهالي","b":"خميس مشيط 5","bc":"5405","r":"عسير/جيزان","sar":386984.57,"wn":512.66,"wp":517.48,"pcs":13,"ai":29768.04,"emkg":6.1481,"pavg":514.5831,"savg":747.8252,"diff":233.2421,"ok":true},{"id":2088,"n":"نواف ناصر احمد حسين","b":"أبو عريش2","bc":"7403","r":"عسير/جيزان","sar":83461.31,"wn":118.26,"wp":119.03,"pcs":4,"ai":20865.33,"emkg":4.6737,"pavg":532.7971,"savg":701.1788,"diff":168.3817,"ok":true},{"id":2999,"n":"فايز عبدالله احمد شراحيلي","b":"أبو عريش2","bc":"7403","r":"عسير/جيزان","sar":211416.73,"wn":300.94,"wp":302.42,"pcs":6,"ai":35236.12,"emkg":3.8229,"pavg":532.7971,"savg":699.0832,"diff":166.2861,"ok":true},{"id":3185,"n":"قاسم طاهر صالح علي","b":"أبو عريش2","bc":"7403","r":"عسير/جيزان","sar":73540.43,"wn":103.9,"wp":105.62,"pcs":5,"ai":14708.09,"emkg":11.7686,"pavg":532.7971,"savg":696.2737,"diff":163.4766,"ok":true},{"id":892,"n":"عادل علي ناجي حيدره","b":"أبو عريش2","bc":"7403","r":"عسير/جيزان","sar":230908.69,"wn":324.75,"wp":325.46,"pcs":3,"ai":76969.56,"emkg":1.933,"pavg":532.7971,"savg":709.4841,"diff":176.687,"ok":true},{"id":2732,"n":"يحي ابراهيم عباس عتودي","b":"صبيا","bc":"7405","r":"عسير/جيزان","sar":369588.49,"wn":484.93,"wp":496.61,"pcs":26,"ai":14214.94,"emkg":17.9903,"pavg":524.1832,"savg":744.2228,"diff":220.0396,"ok":true},{"id":3021,"n":"هشام احمد سعيد حسين","b":"صبيا","bc":"7405","r":"عسير/جيزان","sar":606101.53,"wn":761.12,"wp":768.71,"pcs":23,"ai":26352.24,"emkg":10.4493,"pavg":524.1832,"savg":788.4658,"diff":264.2826,"ok":true},{"id":3175,"n":"عبدالناصر محمد موسى حسين","b":"صبيا","bc":"7405","r":"عسير/جيزان","sar":398873.25,"wn":510.73,"wp":522.28,"pcs":40,"ai":9971.83,"emkg":23.5867,"pavg":524.1832,"savg":763.7153,"diff":239.5321,"ok":true},{"id":3176,"n":"خليفة محمد سالم شكال","b":"صبيا","bc":"7405","r":"عسير/جيزان","sar":842471.3,"wn":1022.0,"wp":1033.0,"pcs":27,"ai":31202.64,"emkg":14.777,"pavg":524.1832,"savg":815.5579,"diff":291.3747,"ok":true},{"id":3033,"n":"نايف محمد طاهر زيلع","b":"أبو عريش3","bc":"7410","r":"عسير/جيزان","sar":345886.78,"wn":484.34,"wp":487.94,"pcs":18,"ai":19215.93,"emkg":13.6699,"pavg":510.5195,"savg":708.8715,"diff":198.352,"ok":true},{"id":9015,"n":"حمود علي زين العامري","b":"أبو عريش3","bc":"7410","r":"عسير/جيزان","sar":257194.0,"wn":348.69,"wp":356.64,"pcs":17,"ai":15129.06,"emkg":18.9562,"pavg":510.5195,"savg":721.1586,"diff":210.6391,"ok":true},{"id":9050,"n":"محمد المقفعي","b":"أبو عريش3","bc":"7410","r":"عسير/جيزان","sar":158079.15,"wn":215.04,"wp":216.93,"pcs":11,"ai":14370.83,"emkg":9.4463,"pavg":510.5195,"savg":728.7104,"diff":218.1909,"ok":true},{"id":0,"n":"المجموع الكلي","b":"أبو عريش3","bc":"7410","r":"عسير/جيزان","sar":58168825.92,"wn":80321.43,"wp":81750.31,"pcs":6086,"ai":9557.81,"emkg":3447.8869,"pavg":510.5195,"savg":711.5426,"diff":201.0231,"ok":true}]};
+
+let USER=null,ROLE=null,PERMS={},ALLOWED_BR=[],ALLOWED_RG=[];
+let DATA={branches:[],employees:[],mothan:[],dates:[]};
+const CH={};const dk=k=>{if(CH[k]){CH[k].destroy();delete CH[k];}};
 Chart.defaults.color='#64748b';Chart.defaults.borderColor='rgba(30,51,84,.5)';
 
-async function sbQ(table,params=''){
-  const r=await fetch(`${SB}/rest/v1/${table}?${params}`,{headers:{'apikey':AK,'Authorization':'Bearer '+AK}});
-  if(!r.ok)throw new Error(await r.text());
-  return r.json();
-}
-async function sbUp(table,data){
-  const r=await fetch(`${SB}/rest/v1/${table}`,{method:'POST',
-    headers:{'apikey':AK,'Authorization':'Bearer '+AK,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-    body:JSON.stringify(data)});
-  if(!r.ok)throw new Error(await r.text());
-}
-async function sbDel(table,params){
-  await fetch(`${SB}/rest/v1/${table}?${params}`,{method:'DELETE',headers:{'apikey':AK,'Authorization':'Bearer '+AK}});
-}
+// ── Supabase helpers ──
+async function sbQ(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbUp(t,d){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());}
+async function sbDel(t,p){await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});}
 
-function login(){
-  if(document.getElementById('pw').value===PW){
-    sessionStorage.setItem('a','1');
-    document.getElementById('ls').style.display='none';
-    document.getElementById('app').style.display='block';
-    document.getElementById('sb-date').textContent=new Date().toLocaleDateString('ar-SA');
-    document.getElementById('report-date').value=new Date().toISOString().split('T')[0];
-    init();
-  }else{
-    document.getElementById('er').textContent='كلمة المرور غير صحيحة';
-    setTimeout(()=>document.getElementById('er').textContent='',3000);
-    document.getElementById('pw').value='';
-  }
+// ── Auth ──
+async function doLogin(){
+  const email=document.getElementById('l-email').value.trim();
+  const pw=document.getElementById('l-pw').value;
+  const btn=document.getElementById('l-btn');
+  const err=document.getElementById('l-err');
+  if(!email||!pw){err.textContent='أدخل البريد وكلمة المرور';return;}
+  btn.disabled=true;btn.textContent='⏳ جاري الدخول...';err.textContent='';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+  if(error){err.textContent='بريد أو كلمة مرور غير صحيحة';btn.disabled=false;btn.textContent='🚀 دخول';return;}
+  USER=data.user;
+  await loadUserRole();
+  await logLogin();
+  showApp();
 }
-function logout(){sessionStorage.removeItem('a');location.reload();}
-if(sessionStorage.getItem('a')){
+async function loadUserRole(){
+  try{
+    const rows=await sbQ('user_roles',`user_id=eq.${USER.id}`);
+    if(rows.length){
+      const r=rows[0];
+      ROLE=r.role;PERMS={view:r.can_view,upload:r.can_upload,verify:r.can_verify,
+        targets:r.can_set_targets,notes:r.can_add_notes,export:r.can_export,
+        users:r.can_manage_users,delete:r.can_delete};
+      ALLOWED_BR=r.allowed_branches||[];ALLOWED_RG=r.allowed_regions||[];
+    }else{ROLE='viewer';PERMS={view:true};}
+  }catch{ROLE='viewer';PERMS={view:true};}
+}
+async function logLogin(){
+  try{await sbUp('login_log',[{user_id:USER.id,email:USER.email}]);}catch{}
+}
+function showApp(){
   document.getElementById('ls').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('sb-date').textContent=new Date().toLocaleDateString('ar-SA');
-  document.getElementById('report-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('sb-uname').textContent=USER.email.split('@')[0];
+  document.getElementById('sb-role').textContent=ROLE_LABELS[ROLE]||ROLE;
+  if(PERMS.users||ROLE==='super_admin')document.getElementById('sb-admin').style.display='';
+  initBranchCbs();
+  initRegionFilters();
   init();
 }
-document.getElementById('pw')?.focus();
+async function doLogout(){await sb.auth.signOut();location.reload();}
 
+// Check existing session
+sb.auth.getSession().then(async({data:{session}})=>{
+  if(session){USER=session.user;await loadUserRole();showApp();}
+});
+document.getElementById('l-pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+// ── Init ──
 async function init(){
   try{
     const rows=await sbQ('branch_sales','select=report_date&order=report_date.desc');
     DATA.dates=[...new Set(rows.map(r=>r.report_date))].sort().reverse();
-    if(DATA.dates.length>0){
-      setBadge('🟢 متصل · '+DATA.dates.length+' يوم محفوظ','bdg-ok');
-      document.getElementById('dates-count').textContent=DATA.dates.length+' يوم';
-      document.getElementById('date-bar').style.display='flex';
+    if(DATA.dates.length){
+      setBadge('🟢 '+DATA.dates.length+' يوم محفوظ','b-ok');
+      document.getElementById('dfbar').style.display='flex';
       updateCmpDates();
       await loadRange(DATA.dates[0],DATA.dates[0]);
     }else{
-      setBadge('📂 لا توجد بيانات — ارفع ملفات','bdg-warn');
+      setBadge('📂 لا بيانات — ارفع ملفات','b-warn');
+      loadEmbedded();
     }
-  }catch(e){setBadge('⚠️ خطأ في الاتصال: '+e.message,'bdg-warn');}
-  renderEmployees();
+  }catch(e){setBadge('⚡ بيانات محلية','b-warn');loadEmbedded();}
   loadHistory();
+  renderRewards();
   document.getElementById('lu').textContent='آخر تحديث: '+new Date().toLocaleString('ar-SA');
+  const m=new Date().toISOString().slice(0,7);
+  document.getElementById('tg-month-sel').value=m;
+  loadTargets();
+  if(PERMS.users||ROLE==='super_admin')loadUsers();
+  loadLoginLog();
 }
 
-async function loadRange(from,to){
-  const [sales,purch,mothan]=await Promise.all([
-    sbQ('branch_sales',`report_date=gte.${from}&report_date=lte.${to}`),
-    sbQ('branch_purchases',`report_date=gte.${from}&report_date=lte.${to}`),
-    sbQ('mothan_transactions',`report_date=gte.${from}&report_date=lte.${to}`)
-  ]);
-  const bmap={};
-  sales.forEach(r=>{
-    if(!bmap[r.branch_code])bmap[r.branch_code]={code:r.branch_code,name:r.branch_name,region:r.region,s_sar:0,s_wt:0,s_pc:0,p_sar:0,p_wt:0,mothan:0,karat:{'18':{sar:0,wt:0,pc:0},'21':{sar:0,wt:0,pc:0},'24':{sar:0,wt:0,pc:0}},p_karat:{'18':{sar:0,wt:0},'21':{sar:0,wt:0},'24':{sar:0,wt:0}}};
-    const b=bmap[r.branch_code];
-    b.s_sar+=+r.total_sar||0;b.s_wt+=+r.total_weight_g||0;b.s_pc+=+r.total_pieces||0;
-    ['18','21','24'].forEach(k=>{b.karat[k].sar+=+r[`k${k}_sar`]||0;b.karat[k].wt+=+r[`k${k}_weight_g`]||0;b.karat[k].pc+=+r[`k${k}_pieces`]||0;});
-  });
-  purch.forEach(r=>{
-    if(!bmap[r.branch_code])bmap[r.branch_code]={code:r.branch_code,name:r.branch_name,region:r.region,s_sar:0,s_wt:0,s_pc:0,p_sar:0,p_wt:0,mothan:0,karat:{},p_karat:{'18':{sar:0,wt:0},'21':{sar:0,wt:0},'24':{sar:0,wt:0}}};
-    const b=bmap[r.branch_code];
-    b.p_sar+=+r.total_sar||0;b.p_wt+=+r.total_weight_g||0;
-    ['18','21','24'].forEach(k=>{b.p_karat[k].sar+=+r[`k${k}_sar`]||0;b.p_karat[k].wt+=+r[`k${k}_weight_g`]||0;});
-  });
-  mothan.forEach(r=>{if(bmap[r.branch_code])bmap[r.branch_code].mothan+=+r.amount_sar||0;});
-  DATA.branches=Object.values(bmap).map(b=>{b.net=b.s_sar-b.p_sar;return b;}).sort((a,b)=>b.s_sar-a.s_sar);
-  DATA.mothan=mothan;
+function loadEmbedded(){
+  DATA.branches=EB.branches;DATA.employees=EB.employees;
+  document.getElementById('period-label').textContent='01/03 — 15/03/2026';
   renderAll();
 }
 
+async function loadRange(from,to){
+  try{
+    const [sales,purch,mothan,emps]=await Promise.all([
+      sbQ('branch_sales',`report_date=gte.${from}&report_date=lte.${to}`),
+      sbQ('branch_purchases',`report_date=gte.${from}&report_date=lte.${to}`),
+      sbQ('mothan_transactions',`report_date=gte.${from}&report_date=lte.${to}`),
+      sbQ('employee_sales',`report_date=gte.${from}&report_date=lte.${to}`)
+    ]);
+    // Aggregate branches
+    const bmap={};
+    sales.forEach(r=>{
+      if(!bmap[r.branch_code])bmap[r.branch_code]={code:r.branch_code,name:r.branch_name,region:r.region,sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,purch_avg:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
+      const b=bmap[r.branch_code];
+      b.sar+=+r.total_sar||0;b.wn+=+r.total_weight_g||0;b.pcs+=+r.total_pieces||0;
+    });
+    purch.forEach(r=>{
+      if(!bmap[r.branch_code])bmap[r.branch_code]={code:r.branch_code,name:r.branch_name,region:r.region,sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,purch_avg:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
+      const b=bmap[r.branch_code];
+      b.purch+=+r.total_sar||0;b.purch_wt+=+r.total_weight_g||0;b.purch_avg=+r.purchase_avg_mkg||0;
+      b.k18_sar+=+r.k18_sar||0;b.k21_sar+=+r.k21_sar||0;b.k24_sar+=+r.k24_sar||0;
+      b.k18_wt+=+r.k18_weight_g||0;b.k21_wt+=+r.k21_weight_g||0;b.k24_wt+=+r.k24_weight_g||0;
+    });
+    mothan.forEach(r=>{if(bmap[r.branch_code])bmap[r.branch_code].mothan=(bmap[r.branch_code].mothan||0)+(+r.amount_sar||0);});
+    DATA.branches=Object.values(bmap).map(b=>{
+      const savg=b.wn>0?b.sar/b.wn:0;
+      return {...b,savg:Math.round(savg*100)/100,diff:Math.round((savg-b.purch_avg)*100)/100,
+        net:b.sar-b.purch,ai:b.pcs>0?Math.round(b.sar/b.pcs):0};
+    }).sort((a,b_)=>b_.sar-a.sar);
+    DATA.mothan=mothan;
+    if(emps.length)DATA.employees=emps.map(e=>{return{id:e.emp_id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:+e.total_sar||0,wn:+e.weight_net_g||0,wp:+e.weight_pure_g||0,pcs:+e.pieces||0,ai:+e.avg_invoice_sar||0,emkg:+e.emp_avg_mkg||0,pavg:+e.branch_purchase_avg||0,savg:+e.emp_avg_mkg||0,diff:+e.diff_avg||0,ok:e.achieved_target};});
+    document.getElementById('period-label').textContent=from+(from!==to?' — '+to:'');
+    renderAll();
+  }catch(e){console.warn('loadRange error:',e);loadEmbedded();}
+}
+
 async function setDF(mode,btn){
-  document.querySelectorAll('.date-btn').forEach(b=>b.classList.remove('on'));
-  btn?.classList.add('on');
+  document.querySelectorAll('.dfb').forEach(b=>b.classList.remove('on'));btn?.classList.add('on');
   if(!DATA.dates.length)return;
   const d=DATA.dates;
   if(mode==='latest')await loadRange(d[0],d[0]);
-  else if(mode==='yesterday')await loadRange(d[1]||d[0],d[1]||d[0]);
   else if(mode==='week')await loadRange(d[Math.min(6,d.length-1)],d[0]);
+  else if(mode==='month'){const m=d[0].slice(0,7);const inM=d.filter(x=>x.startsWith(m));await loadRange(inM[inM.length-1]||d[0],d[0]);}
   else await loadRange(d[d.length-1],d[0]);
 }
 async function applyCustom(){
@@ -390,7 +736,293 @@ async function applyCustom(){
   if(f&&t)await loadRange(f,t);
 }
 
-function hdrop(e,t){e.preventDefault();document.getElementById('card-'+t).classList.remove('drag');const f=e.dataTransfer.files[0];if(f)rf(f,t);}
+// ── Helpers ──
+const sar=n=>Math.round(+n||0).toLocaleString('ar-SA')+' ر.س';
+const sarC=n=>Math.round(+n||0).toLocaleString('ar-SA');
+const wt=n=>((+n)||0).toFixed(2);
+const num=n=>(+n||0).toLocaleString('ar-SA');
+const pc=p=>p>=0?'pg':'pr';
+const pcc=p=>p>=200?'pg':p>=100?'pg':p>=50?'py':'pr';
+const sl=ms=>new Promise(r=>setTimeout(r,ms));
+const setBadge=(t,c)=>{const b=document.getElementById('db-badge');b.textContent=t;b.className='badge '+c;};
+function filterByAccess(items,keyFn){
+  if(ROLE==='super_admin'||!ALLOWED_BR.length)return items;
+  return items.filter(i=>ALLOWED_BR.includes(keyFn(i)));
+}
+function initRegionFilters(){
+  const regions=[...new Set(Object.values(RM))];
+  ['br-region','em-rg'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    sel.innerHTML='<option value="">كل المناطق</option>';
+    regions.forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;sel.appendChild(o);});
+  });
+}
+
+// ── Render All ──
+function renderAll(){
+  renderOv();renderAlerts();renderBranches();renderRegions();
+  renderEmployees();renderKarat();renderMothan();renderRewards();
+}
+
+// ── Overview ──
+function renderOv(){
+  const bs=filterByAccess(DATA.branches,b=>b.code);
+  if(!bs.length){document.getElementById('kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--mu);padding:40px">📂 لا توجد بيانات</div>';return;}
+  const tS=bs.reduce((s,b)=>s+b.sar,0),tP=bs.reduce((s,b)=>s+b.purch,0);
+  const tW=bs.reduce((s,b)=>s+b.wn,0),tPc=bs.reduce((s,b)=>s+b.pcs,0);
+  const tM=DATA.mothan.reduce((s,r)=>s+(+r.amount_sar||0),0);
+  const net=tS-tP,avgInv=tPc>0?tS/tPc:0;
+  const avgDiff=bs.length?bs.reduce((s,b)=>s+b.diff,0)/bs.length:0;
+  document.getElementById('kpis').innerHTML=`
+    <div class="kc" style="--kcolor:#3b82f6"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv">${sar(tS)}</div><div class="ks">${wt(tW)} جم · ${num(tPc)} فاتورة</div></div>
+    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🛒</span><div class="kl">إجمالي المشتريات</div><div class="kv">${sar(tP)}</div><div class="ks">${wt(bs.reduce((s,b)=>s+b.purch_wt,0))} جم</div></div>
+    <div class="kc" style="--kcolor:${net>0?'#22c55e':'#ef4444'}"><span class="ki">${net>0?'📈':'📉'}</span><div class="kl">الصافي</div><div class="kv" style="font-size:17px">${sar(net)}</div><div class="ks">${net>0?'▲ ربح':'▼ خسارة'}</div></div>
+    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🧾</span><div class="kl">متوسط الفاتورة</div><div class="kv" style="font-size:17px">${sar(avgInv)}</div><div class="ks">${num(tPc)} فاتورة</div></div>
+    <div class="kc" style="--kcolor:#22c55e"><span class="ki">🏆</span><div class="kl">أعلى فرع مبيعاً</div><div class="kv" style="font-size:13px">${bs[0]?.name||'—'}</div><div class="ks">${sar(bs[0]?.sar||0)}</div></div>
+    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv" style="font-size:17px">${avgDiff.toFixed(1)} ر.س/جم</div><div class="ks">لجميع الفروع</div></div>
+    <div class="kc" style="--kcolor:#06b6d4"><span class="ki">🏦</span><div class="kl">موطن الذهب</div><div class="kv" style="font-size:17px">${sar(tM)}</div><div class="ks">${DATA.mothan.length} معاملة</div></div>
+    <div class="kc" style="--kcolor:#ef4444"><span class="ki">⚠️</span><div class="kl">فروع صافي سالب</div><div class="kv">${bs.filter(b=>b.net<0).length}</div><div class="ks">من ${bs.length} فرع</div></div>`;
+
+  dk('ch-ov');
+  const t8=bs.slice(0,8);
+  CH['ch-ov']=new Chart(document.getElementById('ch-ov'),{type:'bar',data:{labels:t8.map(b=>b.name),datasets:[
+    {label:'المبيعات',data:t8.map(b=>b.sar),backgroundColor:'rgba(59,130,246,.8)',borderRadius:5,borderSkipped:false},
+    {label:'المشتريات',data:t8.map(b=>b.purch),backgroundColor:'rgba(245,158,11,.7)',borderRadius:5,borderSkipped:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
+    scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
+
+  const rg={};bs.forEach(b=>{rg[b.region]=(rg[b.region]||0)+b.sar;});
+  dk('ch-pie');
+  CH['ch-pie']=new Chart(document.getElementById('ch-pie'),{type:'doughnut',
+    data:{labels:Object.keys(rg),datasets:[{data:Object.values(rg),backgroundColor:Object.keys(rg).map(r=>RC[r]||'#6b7280'),borderWidth:2,borderColor:'#060d1a',hoverOffset:8}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:10},padding:10,boxWidth:10}}}}});
+
+  document.getElementById('top5').innerHTML=bs.slice(0,5).map((b,i)=>`<tr><td>${['🥇','🥈','🥉','4️⃣','5️⃣'][i]}</td><td style="font-weight:700">${b.name}</td><td style="color:#60a5fa;font-weight:600">${sar(b.sar)}</td><td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:600">${sar(b.net)}</td><td><span class="pl ${pcc(b.diff)}">${b.diff.toFixed(1)}</span></td></tr>`).join('');
+  document.getElementById('bot5').innerHTML=[...bs].sort((a,b_)=>a.sar-b_.sar).slice(0,5).map((b,i)=>`<tr><td style="color:var(--rd)">${i+1}</td><td style="font-weight:700">${b.name}</td><td style="color:#f87171;font-weight:600">${sar(b.sar)}</td><td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:600">${sar(b.net)}</td></tr>`).join('');
+}
+
+// ── Alerts ──
+function renderAlerts(){
+  const bs=filterByAccess(DATA.branches,b=>b.code);if(!bs.length)return;
+  const avg=bs.reduce((s,b)=>s+b.sar,0)/bs.length;
+  const als=[];
+  bs.forEach(b=>{
+    if(b.net<0)als.push({t:'d',icon:'🔴',name:b.name,msg:`الصافي سالب — المشتريات تتجاوز المبيعات بـ ${sar(Math.abs(b.net))}`});
+    else if(b.sar<avg*0.4)als.push({t:'w',icon:'⚠️',name:b.name,msg:`مبيعات منخفضة جداً: ${sar(b.sar)} (${(b.sar/avg*100).toFixed(0)}% من المتوسط)`});
+    else if(b.sar>avg*1.8)als.push({t:'g',icon:'🌟',name:b.name,msg:`أداء استثنائي: ${sar(b.sar)} (${(b.sar/avg*100).toFixed(0)}% من المتوسط)`});
+  });
+  DATA.employees.filter(e=>e.diff<0).forEach(e=>{
+    als.push({t:'w',icon:'📉',name:e.n,msg:`فرق معدل سالب: ${e.diff.toFixed(1)} ر.س/جم — ${e.b}`});
+  });
+  document.getElementById('al-count').textContent=als.length+' تنبيه';
+  document.getElementById('al-list').innerHTML=als.length
+    ?als.map(a=>`<div class="al al-${a.t}"><span class="al-ico">${a.icon}</span><div><div class="al-name">${a.name}</div><div class="al-detail">${a.msg}</div></div></div>`).join('')
+    :'<div style="text-align:center;color:var(--mu);padding:40px;font-size:13px">✅ لا توجد تنبيهات</div>';
+}
+
+// ── Branches ──
+function renderBranches(){
+  let bs=filterByAccess(DATA.branches,b=>b.code);
+  const rg=document.getElementById('br-region').value;
+  const so=document.getElementById('br-sort').value;
+  if(rg)bs=bs.filter(b=>b.region===rg);
+  if(so==='diff')bs.sort((a,b)=>b.diff-a.diff);
+  else if(so==='net')bs.sort((a,b)=>b.net-a.net);
+  else if(so==='pcs')bs.sort((a,b)=>b.pcs-a.pcs);
+  else bs.sort((a,b)=>b.sar-a.sar);
+  const tS=bs.reduce((s,b)=>s+b.sar,0),tP=bs.reduce((s,b)=>s+b.purch,0);
+  const tPc=bs.reduce((s,b)=>s+b.pcs,0),avgDiff=bs.length?bs.reduce((s,b)=>s+b.diff,0)/bs.length:0;
+  document.getElementById('br-kpis').innerHTML=`
+    <div class="kc" style="--kcolor:#3b82f6"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv" style="font-size:17px">${sar(tS)}</div></div>
+    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🛒</span><div class="kl">إجمالي المشتريات</div><div class="kv" style="font-size:17px">${sar(tP)}</div></div>
+    <div class="kc" style="--kcolor:#22c55e"><span class="ki">📊</span><div class="kl">الصافي الكلي</div><div class="kv" style="font-size:17px">${sar(tS-tP)}</div></div>
+    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv" style="font-size:17px">${avgDiff.toFixed(1)} ر.س/جم</div></div>`;
+  document.getElementById('br-count').textContent=bs.length+' فرع';
+  document.getElementById('br-tbl').innerHTML=bs.map((b,i)=>`
+    <tr><td style="color:var(--mu)">${i+1}</td><td style="font-weight:700">${b.name}</td>
+    <td style="color:${RC[b.region]||'#6b7280'};font-size:11px">${b.region}</td>
+    <td style="color:#60a5fa;font-weight:600">${sar(b.sar)}</td>
+    <td>${wt(b.wn)}</td><td>${num(b.pcs)}</td>
+    <td style="color:#fbbf24">${sar(b.ai)}</td>
+    <td style="color:#f59e0b">${sar(b.purch)}</td>
+    <td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:700">${sar(b.net)}</td>
+    <td style="color:#67e8f9">${b.savg?.toFixed(2)||'—'}</td>
+    <td style="color:#fbbf24">${b.purch_avg?.toFixed(2)||'—'}</td>
+    <td><span class="pl ${pcc(b.diff)}">${b.diff?.toFixed(1)||'0'}</span></td>
+    <td>${b.net>0?'<span class="pl pg">✅ ربح</span>':'<span class="pl pr">❌ خسارة</span>'}</td></tr>`).join('');
+  dk('ch-br');
+  CH['ch-br']=new Chart(document.getElementById('ch-br'),{type:'bar',data:{labels:bs.map(b=>b.name),datasets:[
+    {label:'المبيعات',data:bs.map(b=>b.sar),backgroundColor:bs.map(b=>RC[b.region]||'#3b82f6'),borderRadius:4},
+    {label:'المشتريات',data:bs.map(b=>b.purch),backgroundColor:'rgba(245,158,11,.5)',borderRadius:4}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
+    scales:{x:{ticks:{color:'#64748b',font:{size:8},maxRotation:45},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
+}
+
+// ── Regions ──
+function renderRegions(){
+  const rg={};filterByAccess(DATA.branches,b=>b.code).forEach(b=>{
+    if(!rg[b.region])rg[b.region]={s:0,p:0,cnt:0,diffs:[]};
+    rg[b.region].s+=b.sar;rg[b.region].p+=b.purch;rg[b.region].cnt++;rg[b.region].diffs.push(b.diff);
+  });
+  const sorted=Object.entries(rg).sort((a,b)=>b[1].s-a[1].s);
+  document.getElementById('rg-kpis').innerHTML=sorted.map(([r,v])=>`
+    <div class="kc" style="--kcolor:${RC[r]||'#6b7280'}"><span class="ki">🗺</span><div class="kl">${r}</div><div class="kv" style="font-size:15px">${sar(v.s)}</div><div class="ks">${v.cnt} فروع · صافي ${sar(v.s-v.p)}</div></div>`).join('');
+  dk('ch-rg');
+  CH['ch-rg']=new Chart(document.getElementById('ch-rg'),{type:'bar',data:{labels:sorted.map(([r])=>r),datasets:[
+    {label:'المبيعات',data:sorted.map(([,v])=>v.s),backgroundColor:sorted.map(([r])=>RC[r]||'#6b7280'),borderRadius:6},
+    {label:'المشتريات',data:sorted.map(([,v])=>v.p),backgroundColor:'rgba(245,158,11,.6)',borderRadius:6}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
+    scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
+  document.getElementById('rg-tbl').innerHTML=sorted.map(([r,v])=>{const n=v.s-v.p;return`<tr><td style="font-weight:700;color:${RC[r]||'#6b7280'}">${r}</td><td>${v.cnt}</td><td style="color:#60a5fa;font-weight:600">${sar(v.s)}</td><td style="color:#f59e0b">${sar(v.p)}</td><td style="color:${n<0?'#f87171':'#4ade80'};font-weight:600">${sar(n)}</td><td>${n>0?'<span class="pl pg">▲</span>':'<span class="pl pr">▼</span>'}</td></tr>`;}).join('');
+  dk('ch-rg-diff');
+  const avgDiffs=sorted.map(([r,v])=>{return v.diffs.length?v.diffs.reduce((s,d)=>s+d,0)/v.diffs.length:0;});
+  CH['ch-rg-diff']=new Chart(document.getElementById('ch-rg-diff'),{type:'bar',data:{labels:sorted.map(([r])=>r),datasets:[{label:'متوسط فرق المعدل (ر.س/جم)',data:avgDiffs,backgroundColor:avgDiffs.map(d=>d>100?'#22c55e':d>50?'#f59e0b':'#ef4444'),borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+' ر.س/جم'}}},
+      scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+' ر.س'}}}}});
+}
+
+// ── Employees ──
+function renderEmployees(){
+  const emps=filterByAccess(DATA.employees,e=>e.bc||e.b);
+  if(!emps.length)return;
+  const tN=emps.reduce((s,e)=>s+(e.sar||0),0);
+  const best=[...emps].sort((a,b)=>b.sar-a.sar)[0];
+  const bestD=[...emps].sort((a,b)=>b.diff-a.diff)[0];
+  const worst=[...emps].sort((a,b)=>a.sar-b.sar)[0];
+  const avgInv=emps.reduce((s,e)=>s+(e.ai||0),0)/emps.length;
+  document.getElementById('em-kpis').innerHTML=`
+    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">👥</span><div class="kl">إجمالي مبيعات الموظفين</div><div class="kv" style="font-size:15px">${sar(tN)}</div><div class="ks">${emps.length} موظف</div></div>
+    <div class="kc" style="--kcolor:#22c55e"><span class="ki">🏆</span><div class="kl">أعلى موظف مبيعاً</div><div class="kv" style="font-size:12px">${best?.n?.split(' ').slice(0,2).join(' ')||'—'}</div><div class="ks">${sar(best?.sar||0)} · ${best?.b||''}</div></div>
+    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">⚡</span><div class="kl">أعلى فرق معدل</div><div class="kv" style="font-size:12px">${bestD?.n?.split(' ').slice(0,2).join(' ')||'—'}</div><div class="ks">${(bestD?.diff||0).toFixed(1)} ر.س/جم · ${bestD?.b||''}</div></div>
+    <div class="kc" style="--kcolor:#06b6d4"><span class="ki">🧾</span><div class="kl">متوسط الفاتورة</div><div class="kv" style="font-size:15px">${sar(avgInv)}</div></div>`;
+
+  const t10n=[...emps].sort((a,b)=>b.sar-a.sar).slice(0,10);
+  const t10d=[...emps].sort((a,b)=>b.diff-a.diff).slice(0,10);
+  dk('ch-em1');dk('ch-em2');
+  CH['ch-em1']=new Chart(document.getElementById('ch-em1'),{type:'bar',data:{labels:t10n.map(e=>e.n.split(' ').slice(0,2).join(' ')),datasets:[{data:t10n.map(e=>e.sar),backgroundColor:t10n.map((_,i)=>i===0?'#f59e0b':i===1?'#94a3b8':i===2?'#cd7c32':'rgba(99,102,241,.7)'),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>sarC(c.raw)+' ر.س'}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'}},y:{ticks:{color:'#94a3b8',font:{size:9}}}}}});
+  CH['ch-em2']=new Chart(document.getElementById('ch-em2'),{type:'bar',data:{labels:t10d.map(e=>e.n.split(' ').slice(0,2).join(' ')),datasets:[{data:t10d.map(e=>e.diff),backgroundColor:t10d.map(e=>e.diff>150?'#22c55e':e.diff>80?'#3b82f6':e.diff>0?'#f59e0b':'#ef4444'),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+' ر.س/جم'}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+' ر.س'}},y:{ticks:{color:'#94a3b8',font:{size:9}}}}}});
+
+  const t3=[...emps].sort((a,b)=>b.sar-a.sar).slice(0,3);
+  document.getElementById('awards').innerHTML=[
+    {icon:'🥇',t:'الأول مبيعاً',n:t3[0]?.n||'—',d:sar(t3[0]?.sar||0)+' · '+t3[0]?.b,c:'#f59e0b'},
+    {icon:'🥈',t:'الثاني',n:t3[1]?.n||'—',d:sar(t3[1]?.sar||0)+' · '+t3[1]?.b,c:'#94a3b8'},
+    {icon:'🥉',t:'الثالث',n:t3[2]?.n||'—',d:sar(t3[2]?.sar||0)+' · '+t3[2]?.b,c:'#cd7c32'},
+    {icon:'⚡',t:'أعلى فرق معدل',n:bestD?.n||'—',d:(bestD?.diff||0).toFixed(1)+' ر.س/جم · '+bestD?.b,c:'#22c55e'},
+    {icon:'🧾',t:'أكثر فواتير',n:[...emps].sort((a,b)=>b.pcs-a.pcs)[0]?.n||'—',d:num([...emps].sort((a,b)=>b.pcs-a.pcs)[0]?.pcs||0)+' فاتورة',c:'#8b5cf6'},
+    {icon:'⚖️',t:'أعلى وزناً',n:[...emps].sort((a,b)=>b.wn-a.wn)[0]?.n||'—',d:wt([...emps].sort((a,b)=>b.wn-a.wn)[0]?.wn||0)+' جم',c:'#06b6d4'},
+  ].map(a=>`<div style="background:var(--s2);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--bd)"><div style="font-size:28px;margin-bottom:8px">${a.icon}</div><div style="font-size:10px;color:var(--mu);margin-bottom:4px">${a.t}</div><div style="font-size:11px;font-weight:700;color:${a.c};margin-bottom:3px">${a.n}</div><div style="font-size:10px;color:var(--mu)">${a.d}</div></div>`).join('');
+
+  const brSel=document.getElementById('em-br');
+  brSel.innerHTML='<option value="">جميع الفروع</option>';
+  [...new Set(emps.map(e=>e.b))].sort().forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;brSel.appendChild(o);});
+  filterEmps();
+}
+function filterEmps(){
+  const q=document.getElementById('em-srch').value.trim();
+  const bf=document.getElementById('em-br').value;
+  const rg=document.getElementById('em-rg').value;
+  const so=document.getElementById('em-sort').value;
+  let data=filterByAccess([...DATA.employees],e=>e.bc||e.b);
+  if(q)data=data.filter(e=>e.n?.includes(q)||String(e.id||'').includes(q));
+  if(bf)data=data.filter(e=>e.b===bf);
+  if(rg)data=data.filter(e=>e.r===rg);
+  if(so==='diff')data.sort((a,b)=>b.diff-a.diff);
+  else if(so==='wn')data.sort((a,b)=>b.wn-a.wn);
+  else if(so==='pcs')data.sort((a,b)=>b.pcs-a.pcs);
+  else if(so==='nm')data.sort((a,b)=>(a.n||'').localeCompare(b.n||'','ar'));
+  else data.sort((a,b)=>b.sar-a.sar);
+  document.getElementById('em-count').textContent=data.length+' موظف';
+  document.getElementById('em-tbl').innerHTML=data.map((e,i)=>{
+    const diffC=e.diff>150?'#22c55e':e.diff>80?'#3b82f6':e.diff>0?'#f59e0b':'#f87171';
+    const tag=e.diff>150?'<span class="pl pg">🌟 ممتاز</span>':e.diff>80?'<span class="pl pg">✅ جيد</span>':e.diff>0?'<span class="pl py">⚠️ متوسط</span>':'<span class="pl pr">🔴 دون الهدف</span>';
+    return`<tr>
+      <td style="text-align:center">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+      <td style="font-weight:700">${e.n||''}</td><td style="color:var(--mu)">${e.id||''}</td>
+      <td style="font-size:11px;font-weight:600;color:${RC[e.r]||'#6b7280'}">${e.b||''}</td>
+      <td style="font-size:10px;color:var(--mu)">${e.r||''}</td>
+      <td style="font-weight:600;color:#60a5fa">${sar(e.sar||0)}</td>
+      <td>${wt(e.wn||0)}</td><td>${num(e.pcs||0)}</td>
+      <td style="color:#fbbf24">${sar(e.ai||0)}</td>
+      <td style="color:#67e8f9">${(e.savg||0).toFixed(2)}</td>
+      <td style="color:#f59e0b">${(e.pavg||0).toFixed(2)}</td>
+      <td style="font-weight:700;color:${diffC}">${(e.diff||0).toFixed(1)}</td>
+      <td>${tag}</td></tr>`;
+  }).join('');
+}
+
+// ── Karat ──
+function renderKarat(){
+  const bs=filterByAccess(DATA.branches,b=>b.code);
+  const k18=bs.reduce((s,b)=>s+(b.k18_sar||0),0),k21=bs.reduce((s,b)=>s+(b.k21_sar||0),0),k24=bs.reduce((s,b)=>s+(b.k24_sar||0),0),tot=k18+k21+k24;
+  document.getElementById('kt-kpis').innerHTML=`
+    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🔶</span><div class="kl">مشتريات عيار 18</div><div class="kv" style="font-size:16px">${sar(k18)}</div><div class="ks">${tot>0?(k18/tot*100).toFixed(1):'0'}%</div></div>
+    <div class="kc" style="--kcolor:#3b82f6"><span class="ki">🔷</span><div class="kl">مشتريات عيار 21</div><div class="kv" style="font-size:16px">${sar(k21)}</div><div class="ks">${tot>0?(k21/tot*100).toFixed(1):'0'}%</div></div>
+    <div class="kc" style="--kcolor:#22c55e"><span class="ki">🟩</span><div class="kl">مشتريات عيار 24</div><div class="kv" style="font-size:16px">${sar(k24)}</div><div class="ks">${tot>0?(k24/tot*100).toFixed(1):'0'}%</div></div>
+    <div class="kc" style="--kcolor:#60a5fa"><span class="ki">💎</span><div class="kl">إجمالي المشتريات</div><div class="kv" style="font-size:16px">${sar(tot)}</div></div>`;
+  dk('ch-kt-pie');
+  CH['ch-kt-pie']=new Chart(document.getElementById('ch-kt-pie'),{type:'doughnut',data:{labels:['عيار 18','عيار 21','عيار 24'],datasets:[{data:[k18,k21,k24],backgroundColor:['#f59e0b','#3b82f6','#22c55e'],borderWidth:3,borderColor:'#060d1a',hoverOffset:10}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:11},padding:14,boxWidth:12}}}}});
+  const t10=bs.slice(0,10);dk('ch-kt-bar');
+  CH['ch-kt-bar']=new Chart(document.getElementById('ch-kt-bar'),{type:'bar',data:{labels:t10.map(b=>b.name),datasets:[
+    {label:'18',data:t10.map(b=>b.k18_sar||0),backgroundColor:'rgba(245,158,11,.8)',borderRadius:3},
+    {label:'21',data:t10.map(b=>b.k21_sar||0),backgroundColor:'rgba(59,130,246,.8)',borderRadius:3},
+    {label:'24',data:t10.map(b=>b.k24_sar||0),backgroundColor:'rgba(34,197,94,.8)',borderRadius:3}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},scales:{x:{stacked:true,ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{stacked:true,ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
+  document.getElementById('kt-tbl').innerHTML=bs.map(b=>`<tr><td style="font-weight:700">${b.name}</td><td style="color:${RC[b.region]||'#6b7280'};font-size:11px">${b.region}</td><td>${sar(b.k18_sar||0)}</td><td>${wt(b.k18_wt||0)}</td><td>${sar(b.k21_sar||0)}</td><td>${wt(b.k21_wt||0)}</td><td>${sar(b.k24_sar||0)}</td><td>${wt(b.k24_wt||0)}</td><td style="font-weight:700;color:#fbbf24">${sar(b.purch||0)}</td><td style="color:#67e8f9">${b.purch_avg?.toFixed(2)||'—'}</td></tr>`).join('');
+}
+
+// ── Mothan ──
+function renderMothan(){
+  const rows=DATA.mothan,tot=rows.reduce((s,r)=>s+(+r.amount_sar||0),0);
+  document.getElementById('mo-kpis').innerHTML=`
+    <div class="kc" style="--kcolor:#06b6d4"><span class="ki">🏦</span><div class="kl">إجمالي المعاملات</div><div class="kv" style="font-size:16px">${sar(tot)}</div><div class="ks">${rows.length} عملية</div></div>
+    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">🏪</span><div class="kl">عدد الفروع</div><div class="kv">${new Set(rows.map(r=>r.branch_code||r.branch_name)).size}</div></div>
+    <div class="kc" style="--kcolor:#fbbf24"><span class="ki">⬆️</span><div class="kl">أعلى معاملة</div><div class="kv" style="font-size:16px">${sar(Math.max(...rows.map(r=>+r.amount_sar||0),0))}</div></div>
+    <div class="kc" style="--kcolor:#67e8f9"><span class="ki">📊</span><div class="kl">متوسط المعاملة</div><div class="kv" style="font-size:16px">${sar(rows.length?tot/rows.length:0)}</div></div>`;
+  document.getElementById('mo-tbl').innerHTML=rows.map(r=>`<tr><td>${r.transaction_date||r.report_date||''}</td><td style="color:var(--mu);font-size:10px">${r.doc_ref||''}</td><td style="font-weight:700">${r.branch_name||''}</td><td style="font-size:11px;color:var(--mu)">${String(r.description||'').substring(0,40)}</td><td style="font-weight:700;color:#67e8f9">${sar(+r.amount_sar||0)}</td><td style="color:var(--mu);font-size:11px">${sar(+r.balance||0)}</td></tr>`).join('');
+}
+
+// ── Targets ──
+async function loadTargets(){
+  const month=document.getElementById('tg-month-sel').value;
+  document.getElementById('tg-month').textContent=month;
+  let existing={};
+  try{const rows=await sbQ('branch_targets',`target_month=gte.${month}-01&target_month=lte.${month}-31`);rows.forEach(r=>existing[r.branch_code]=r);}catch{}
+  document.getElementById('tg-rows').innerHTML=Object.entries(BM).map(([code,name])=>{
+    const ex=existing[code]||{};
+    return`<div class="target-row">
+      <span style="font-size:12px;font-weight:600">${name}</span>
+      <input class="ti" type="number" id="tg-s-${code}" placeholder="0" value="${ex.daily_sales_sar||''}">
+      <input class="ti" type="number" id="tg-w-${code}" placeholder="0" value="${ex.daily_weight_g||''}">
+      <input class="ti" type="number" id="tg-d-${code}" placeholder="0" value="${ex.target_diff_avg||''}">
+    </div>`;
+  }).join('');
+  // Employee targets
+  const emps=DATA.employees;
+  let empEx={};
+  try{const rows=await sbQ('employee_targets',`target_month=gte.${month}-01&target_month=lte.${month}-31`);rows.forEach(r=>empEx[r.emp_id]=r);}catch{}
+  document.getElementById('emp-tg-rows').innerHTML=emps.slice(0,30).map(e=>{
+    const ex=empEx[e.id||e.emp_id]||{};
+    return`<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;align-items:center;padding:8px 12px;background:var(--s2);border-radius:8px;margin-bottom:6px">
+      <span style="font-size:11px;font-weight:600">${e.n} <span style="color:var(--mu);font-weight:400">· ${e.b}</span></span>
+      <input class="ti" type="number" id="etg-w-${e.id||e.emp_id}" placeholder="وزن جم" value="${ex.target_weight_g||''}">
+      <input class="ti" type="number" id="etg-d-${e.id||e.emp_id}" placeholder="فرق المعدل" value="${ex.target_diff_avg||''}">
+      <input class="ti" type="number" id="etg-p-${e.id||e.emp_id}" placeholder="فواتير" value="${ex.target_pieces||''}">
+    </div>`;
+  }).join('');
+}
+async function saveAllTargets(){
+  const month=document.getElementById('tg-month-sel').value;
+  const rows=Object.entries(BM).map(([code,name])=>{return{branch_code:code,branch_name:name,target_month:month+'-01',
+    daily_sales_sar:+document.getElementById(`tg-s-${code}`)?.value||0,
+    daily_weight_g:+document.getElementById(`tg-w-${code}`)?.value||0,
+    target_diff_avg:+document.getElementById(`tg-d-${code}`)?.value||0
+  };}).filter(r=>r.daily_sales_sar||r.daily_weight_g||r.target_diff_avg);
+  try{await sbUp('branch_targets',rows);alert('✅ تم حفظ الأهداف');}catch(e){alert('❌ خطأ: '+e.message);}
+}
+
+// ── File Upload & Processing ──
+const FILES={};
+function hdrop(e,t){e.preventDefault();document.getElementById('uc-'+t).classList.remove('drag');const f=e.dataTransfer.files[0];if(f)rf(f,t);}
 function hfile(inp,t){if(inp.files[0])rf(inp.files[0],t);}
 function rf(file,t){
   const r=new FileReader();
@@ -398,30 +1030,74 @@ function rf(file,t){
     try{
       const wb=XLSX.read(e.target.result,{type:'array'});
       FILES[t]={wb,name:file.name};
-      document.getElementById('card-'+t).classList.add('loaded');
-      const s=document.getElementById('st-'+t);s.textContent='✅ '+file.name;s.className='up-st uok';
-      document.getElementById('proc-btn').disabled=!FILES.sales;
-    }catch{const s=document.getElementById('st-'+t);s.textContent='❌ خطأ';s.className='up-st uer';}
+      document.getElementById('uc-'+t).classList.add('loaded');
+      const s=document.getElementById('st-'+t);s.textContent='✅ '+file.name;s.className='ust sok';
+      document.getElementById('proc-btn').disabled=!(FILES.sales||FILES.purch||FILES.mothan);
+    }catch{const s=document.getElementById('st-'+t);s.textContent='❌ خطأ في القراءة';s.className='ust ser';}
   };
   r.readAsArrayBuffer(file);
 }
 
-function parseRep(wb){
+function parseEmpSales(wb){
   const sheet=wb.Sheets[wb.SheetNames[0]];
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
-  const res={};const km={'0.75':'18','0.875':'21','0.916':'22','1':'24'};let cur=null;
+  let df='',dt='';
+  for(const row of rows.slice(0,6)){const txt=String(row[11]||'');const m=txt.match(/From (\S+) To (\S+)/);if(m){df=m[1];dt=m[2];}}
+  const bpurchMap={};// will be filled from purchases file
+  const km={'0.75':'18','0.875':'21','0.916':'22','1':'24'};
+  let cur=null;const emps=[];const bSubs={};
   for(const row of rows){
     const c12=String(row[12]||'').trim();
-    const m=c12.match(/^(\d{4})\s*-/);
-    if(m){cur=m[1];if(!res[cur])res[cur]={karat:{},sub:{}};continue;}
+    const m=c12.match(/^(\d{4})\s*-/);if(m){cur=m[1];continue;}
     if(!cur)continue;
-    if(c12.includes('Sub Total'))res[cur].sub={sar:Math.abs(+row[3]||0),wt:Math.abs(+row[6]||0),pc:Math.abs(parseInt(row[11])||0)};
-    const k=km[String(row[7]||'').trim()];
-    if(k)res[cur].karat[k]={sar:Math.abs(+row[3]||0),wt:Math.abs(+row[6]||0),pc:Math.abs(parseInt(row[11])||0)};
+    if(c12.includes('Sub Total')){
+      bSubs[cur]={sar:Math.abs(+row[3]||0),wn:Math.abs(+row[6]||0),wp:Math.abs(+row[8]||0),pcs:Math.abs(parseInt(row[11])||0)};continue;
+    }
+    if(c12&&!['nan','','وصف','Avg. Mkg'].includes(c12)){
+      try{
+        const avgMkg=Math.abs(+String(row[0])||0);
+        const total=Math.abs(+String(row[3])||0);
+        const wn=Math.abs(+String(row[6])||0);
+        const wp=Math.abs(+String(row[8])||0);
+        const pcs=Math.abs(parseInt(String(row[11]))||0);
+        const empId=parseInt(String(row[13]))||0;
+        emps.push({emp_id:empId,emp_name:c12,branch_code:cur,branch_name:BM[cur]||cur,region:RM[BM[cur]]||'—',
+          total_sar:Math.round(total*100)/100,weight_net_g:Math.round(wn*1000)/1000,
+          weight_pure_g:Math.round(wp*1000)/1000,pieces:pcs,
+          avg_invoice_sar:pcs>0?Math.round(total/pcs*100)/100:0,
+          emp_avg_mkg:Math.round(avgMkg*10000)/10000,
+          _wp:wp,_cur:cur});
+      }catch{}
+    }
   }
-  return res;
+  return {emps,bSubs,df,dt};
 }
-function parseMo(wb){
+
+function parsePurchases(wb){
+  const sheet=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
+  const bpurch={};let cur=null;
+  for(const row of rows){
+    const c12=String(row[12]||'').trim();
+    const m=c12.match(/^(\d{4})\s*-/);if(m){cur=m[1];continue;}
+    if(!cur)continue;
+    if(String(row[11]).trim()==='0'||c12.includes('Sub Total')){
+      const sar=Math.abs(+row[3]||0),wp=Math.abs(+row[8]||0);
+      bpurch[cur]={total_sar:sar,weight_pure:wp,avg:wp>0?Math.round(sar/wp*10000)/10000:0,
+        k18_sar:0,k18_wt:0,k21_sar:0,k21_wt:0,k24_sar:0,k24_wt:0};
+      cur=null;continue;
+    }
+    const km={'0.75':'18','0.875':'21','1':'24'};
+    const k=km[String(row[7]||'').trim()];
+    if(k&&cur&&bpurch[cur]){
+      bpurch[cur]['k'+k+'_sar']=Math.abs(+row[3]||0);
+      bpurch[cur]['k'+k+'_wt']=Math.abs(+row[6]||0);
+    }
+  }
+  return bpurch;
+}
+
+function parseMothanFile(wb){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
   return rows.filter(r=>String(r[0]).match(/\d{2}\/\d{2}\/\d{4}/)&&BM[String(r[2])]).map(r=>{
     const d=String(r[0]).split('/').reverse().join('-');
@@ -429,88 +1105,56 @@ function parseMo(wb){
       description:String(r[3]||''),amount_sar:Math.abs(+String(r[5]||'').replace(/,/g,'')||0),balance:Math.abs(+String(r[6]||'').replace(/,/g,'')||0)};
   });
 }
-function parseEmpFile(wb){
-  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[wb.SheetNames.length-1]],{header:1,defval:''});
-  const SK=new Set(['الرقم','الإجمالي','اجمالي المنطقة']);
-  const BN={'المدينة8':'المدينة 8','المدينة9':'المدينة 9','خميس مشيط 5 - موجان بارك':'خميس مشيط 5','أبو عريش 2':'أبو عريش2','أبو عريش 3':'أبو عريش3'};
-  const isN=v=>{try{return!isNaN(parseFloat(v))&&isFinite(v)}catch{return false}};
-  const out=[];let cur=null;
-  for(const row of rows){
-    const c0=String(row[0]||''),c1=String(row[1]||'').trim(),c2=String(row[2]||'').trim(),c3=String(row[3]||''),c5=String(row[5]||'');
-    if(!SK.has(c1)&&c1&&!isN(c1)&&!c2){cur=BN[c1]||c1;continue;}
-    if(c0.trim()==='1'&&isN(c1)&&c2&&c2.length>3&&cur){
-      const nt=parseFloat(c3)||0,tg=parseFloat(c5)||0;
-      out.push({emp_id:parseInt(c1),emp_name:c2,branch_name:cur,net_sales:nt,daily_target:tg,achievement_pct:tg>0?nt/(tg*14)*100:0});
-    }
-  }
-  return out;
-}
 
 async function processAndSave(){
-  const rdate=document.getElementById('report-date').value;
-  if(!rdate){alert('اختر تاريخ التقرير أولاً');return;}
   const btn=document.getElementById('proc-btn');btn.disabled=true;
-  const sp=(pct,msg)=>{document.getElementById('prog-w').style.display='block';document.getElementById('prog-b').style.width=pct+'%';document.getElementById('prog-m').textContent=msg;};
+  const sp=(p,m)=>{document.getElementById('pw').style.display='block';document.getElementById('pb2').style.width=p+'%';document.getElementById('pm').textContent=m;};
   try{
     sp(10,'⏳ قراءة الملفات...');await sl(60);
-    const sB=FILES.sales?parseRep(FILES.sales.wb):{};
-    const pB=FILES.purch?parseRep(FILES.purch.wb):{};
-    const mR=FILES.mothan?parseMo(FILES.mothan.wb):[];
+    let empData=null,purchData=null,mothanRows=[];
+    if(FILES.sales)empData=parseEmpSales(FILES.sales.wb);
+    if(FILES.purch)purchData=parsePurchases(FILES.purch.wb);
+    if(FILES.mothan)mothanRows=parseMothanFile(FILES.mothan.wb);
 
-    sp(30,'💾 حفظ المبيعات...');await sl(60);
-    if(FILES.sales){
-      const rows=Object.entries(sB).map(([code,d])=>{
-        const name=BM[code]||code;
-        return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',
-          total_sar:d.sub?.sar||0,total_weight_g:d.sub?.wt||0,total_pieces:d.sub?.pc||0,
-          k18_sar:d.karat['18']?.sar||0,k18_weight_g:d.karat['18']?.wt||0,k18_pieces:d.karat['18']?.pc||0,
-          k21_sar:d.karat['21']?.sar||0,k21_weight_g:d.karat['21']?.wt||0,k21_pieces:d.karat['21']?.pc||0,
-          k24_sar:d.karat['24']?.sar||0,k24_weight_g:d.karat['24']?.wt||0,k24_pieces:d.karat['24']?.pc||0};
+    // Get report date from file
+    const rdate=empData?.df||purchData?.df||new Date().toISOString().split('T')[0];
+    sp(25,'💾 حفظ بيانات المشتريات...');await sl(60);
+
+    if(purchData&&Object.keys(purchData).length){
+      const pRows=Object.entries(purchData).map(([code,d])=>{const name=BM[code]||code;return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',total_sar:d.total_sar,total_weight_g:d.weight_pure,purchase_avg_mkg:d.avg,k18_sar:d.k18_sar,k18_weight_g:d.k18_wt,k21_sar:d.k21_sar,k21_weight_g:d.k21_wt,k24_sar:d.k24_sar,k24_weight_g:d.k24_wt};});
+      await sbUp('branch_purchases',pRows);
+      await sbUp('upload_log',[{report_date:rdate,file_type:'purchases',file_name:FILES.purch?.name,date_from:rdate,records_count:pRows.length}]);
+    }
+
+    sp(50,'💾 حفظ بيانات الموظفين...');await sl(60);
+    if(empData&&empData.emps.length){
+      // Enrich with purchase avg
+      const finalEmps=empData.emps.map(e=>{
+        const pa=purchData?.[e._cur]?.avg||0;
+        const sa=e._wp>0?Math.round(e.total_sar/e._wp*10000)/10000:0;
+        return{...e,branch_purchase_avg:pa,emp_avg_mkg:sa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa,report_date:rdate};
       });
-      await sbUp('branch_sales',rows);
-      await sbUp('upload_log',[{report_date:rdate,file_type:'sales',file_name:FILES.sales.name,records_count:rows.length}]);
-    }
-
-    sp(50,'💾 حفظ المشتريات...');await sl(60);
-    if(FILES.purch){
-      const rows=Object.entries(pB).map(([code,d])=>{
-        const name=BM[code]||code;
-        return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',
-          total_sar:d.sub?.sar||0,total_weight_g:d.sub?.wt||0,
-          k18_sar:d.karat['18']?.sar||0,k18_weight_g:d.karat['18']?.wt||0,
-          k21_sar:d.karat['21']?.sar||0,k21_weight_g:d.karat['21']?.wt||0,
-          k24_sar:d.karat['24']?.sar||0,k24_weight_g:d.karat['24']?.wt||0};
-      });
-      await sbUp('branch_purchases',rows);
-      await sbUp('upload_log',[{report_date:rdate,file_type:'purchases',file_name:FILES.purch.name,records_count:rows.length}]);
-    }
-
-    sp(70,'💾 حفظ موطن الذهب...');await sl(60);
-    if(FILES.mothan&&mR.length){
-      await sbDel('mothan_transactions','report_date=eq.'+rdate);
-      await sbUp('mothan_transactions',mR.map(r=>{return{...r,report_date:rdate};}) );
-      await sbUp('upload_log',[{report_date:rdate,file_type:'mothan',file_name:FILES.mothan.name,records_count:mR.length}]);
-    }
-
-    sp(85,'💾 حفظ الموظفين...');await sl(60);
-    if(FILES.emp){
-      const eR=parseEmpFile(FILES.emp.wb);
-      if(eR.length){
-        await sbUp('employee_sales',eR.map(r=>{return{...r,report_date:rdate};}) );
-        DATA.emps=eR.map(e=>{return{id:e.emp_id,n:e.emp_name,b:e.branch_name,nt:e.net_sales,tg:e.daily_target,pc:e.achievement_pct};});
-        await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:FILES.emp.name,records_count:eR.length}]);
+      // Also save branch sales from subtotals
+      if(empData.bSubs){
+        const bsRows=Object.entries(empData.bSubs).map(([code,d])=>{const name=BM[code]||code;return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',total_sar:d.sar,total_weight_g:d.wn,total_pieces:d.pcs,avg_invoice_sar:d.pcs>0?Math.round(d.sar/d.pcs):0};});
+        await sbUp('branch_sales',bsRows);
       }
+      await sbUp('employee_sales',finalEmps.map(e=>{delete e._wp;delete e._cur;return e;}));
+      await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:FILES.sales?.name,date_from:empData.df,date_to:empData.dt,records_count:finalEmps.length}]);
     }
 
-    sp(100,'✅ تم الحفظ!');await sl(500);
-    document.getElementById('prog-w').style.display='none';
-    if(!DATA.dates.includes(rdate))DATA.dates.unshift(rdate);
-    document.getElementById('date-bar').style.display='flex';
-    setBadge('🟢 متصل · '+DATA.dates.length+' يوم محفوظ','bdg-ok');
-    updateCmpDates();
-    await loadRange(rdate,rdate);
+    sp(75,'💾 حفظ موطن الذهب...');await sl(60);
+    if(mothanRows.length){
+      await sbDel('mothan_transactions','report_date=eq.'+rdate);
+      await sbUp('mothan_transactions',mothanRows.map(r=>{return{...r,report_date:rdate};}) );
+      await sbUp('upload_log',[{report_date:rdate,file_type:'mothan',file_name:FILES.mothan?.name,records_count:mothanRows.length}]);
+    }
+
+    sp(100,'✅ تم الحفظ بنجاح!');await sl(500);
+    document.getElementById('pw').style.display='none';
+    await init();
     loadHistory();
-    sw('ov',document.querySelectorAll('.sb-btn')[1]);
+    sw('ov',document.querySelectorAll('.sbb')[1]);
   }catch(err){sp(100,'❌ خطأ: '+err.message);console.error(err);}
   btn.disabled=false;
 }
@@ -519,174 +1163,56 @@ async function loadHistory(){
   try{
     const rows=await sbQ('upload_log','order=uploaded_at.desc&limit=20');
     const icons={sales:'📊',purchases:'🛒',mothan:'🏦',employees:'👥'};
-    const labels={sales:'مبيعات',purchases:'مشتريات',mothan:'موطن الذهب',employees:'موظفون'};
+    const labels={sales:'مبيعات الموظفين',purchases:'المشتريات',mothan:'موطن الذهب',employees:'موظفون'};
     document.getElementById('hist-count').textContent=rows.length+' سجل';
     document.getElementById('hist-list').innerHTML=rows.length
-      ?rows.map(r=>`<div class="hist-item"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">${icons[r.file_type]||'📄'}</span><div><div style="font-weight:600">${labels[r.file_type]||r.file_type} — ${r.report_date}</div><div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('ar-SA')}</div></div></div><span class="pl pg">✅ محفوظ</span></div>`).join('')
-      :'<div style="text-align:center;color:var(--mu);padding:30px;font-size:12px">لم يتم رفع أي بيانات بعد</div>';
+      ?rows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border-radius:8px;margin-bottom:6px;font-size:12px;border:1px solid var(--bd)"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">${icons[r.file_type]||'📄'}</span><div><div style="font-weight:600">${labels[r.file_type]||r.file_type} — ${r.date_from||r.report_date}</div><div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('ar-SA')}</div></div></div><span class="pl pg">✅ محفوظ</span></div>`).join('')
+      :'<div style="text-align:center;color:var(--mu);padding:24px;font-size:12px">لم يتم رفع أي بيانات بعد</div>';
   }catch{document.getElementById('hist-list').innerHTML='<div style="text-align:center;color:var(--mu);padding:20px;font-size:12px">تعذّر تحميل السجل</div>';}
 }
 
-const sar=n=>Math.round(+n||0).toLocaleString('ar-SA')+' ر.س';
-const wt=n=>((+n)||0).toFixed(2);
-const num=n=>(+n||0).toLocaleString('ar-SA');
-const pcs=p=>p>=100?'pg':p>=60?'py':'pr';
-const sl=ms=>new Promise(r=>setTimeout(r,ms));
-const setBadge=(t,c)=>{const b=document.getElementById('db-badge');b.textContent=t;b.className='badge '+c;};
+// ── Rewards ──
+function renderRewards(){
+  const emps=filterByAccess(DATA.employees,e=>e.bc||e.b);if(!emps.length)return;
+  // Score: sar(40%) + diff(40%) + pcs(20%)
+  const maxSar=Math.max(...emps.map(e=>e.sar||0),1);
+  const maxDiff=Math.max(...emps.map(e=>e.diff||0),1);
+  const maxPcs=Math.max(...emps.map(e=>e.pcs||0),1);
+  const scored=emps.map(e=>{const pts=Math.round(((e.sar||0)/maxSar)*40+((Math.max(e.diff||0,0))/maxDiff)*40+((e.pcs||0)/maxPcs)*20);return{...e,pts};}).sort((a,b)=>b.pts-a.pts);
+  document.getElementById('rw-period').textContent=document.getElementById('period-label').textContent||'';
+  document.getElementById('rw-tbl').innerHTML=scored.map((e,i)=>{
+    const reward=i===0?'🥇 5,000 ر.س':i===1?'🥈 3,000 ر.س':i===2?'🥉 2,000 ر.س':e.pts>60?'⭐ 500 ر.س':'—';
+    return`<tr>
+      <td style="text-align:center;font-size:16px">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+      <td style="font-weight:700">${e.n||''}</td><td style="color:var(--mu);font-size:11px">${e.b||''}</td>
+      <td style="color:#60a5fa;font-weight:600">${sar(e.sar||0)}</td>
+      <td>${(e.wn||0).toFixed(2)} جم</td><td>${num(e.pcs||0)}</td>
+      <td style="color:${(e.diff||0)>0?'#4ade80':'#f87171'};font-weight:600">${(e.diff||0).toFixed(1)}</td>
+      <td><span class="pl ${e.pts>70?'pg':e.pts>40?'py':'pr'}">${e.pts} نقطة</span></td>
+      <td style="font-weight:700">${reward}</td></tr>`;
+  }).join('');
+}
+
+function exportRewards(){
+  const emps=filterByAccess(DATA.employees,e=>e.bc||e.b);if(!emps.length)return;
+  const maxSar=Math.max(...emps.map(e=>e.sar||0),1);
+  const maxDiff=Math.max(...emps.map(e=>e.diff||0),1);
+  const maxPcs=Math.max(...emps.map(e=>e.pcs||0),1);
+  const data=[['الترتيب','الموظف','الفرع','المبيعات','الوزن','الفواتير','فرق المعدل','النقاط','المكافأة']];
+  emps.map(e=>{return{...e,pts:Math.round(((e.sar||0)/maxSar)*40+(Math.max(e.diff||0,0)/maxDiff)*40+((e.pcs||0)/maxPcs)*20)};}).sort((a,b)=>b.pts-a.pts).forEach((e,i)=>{
+    const reward=i===0?5000:i===1?3000:i===2?2000:e.pts>60?500:0;
+    data.push([i+1,e.n,e.b,e.sar,e.wn,e.pcs,(e.diff||0).toFixed(1),e.pts,reward]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'المكافآت');
+  XLSX.writeFile(wb,'rewards_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ── Comparison ──
 function updateCmpDates(){
   const el=document.getElementById('cmp-dates');if(!el)return;
-  el.innerHTML=DATA.dates.slice(0,10).map(d=>`<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;padding:5px 10px;border-radius:8px;background:var(--s2);border:1px solid var(--bd)"><input type="checkbox" value="${d}" style="accent-color:var(--ac)"> ${d}</label>`).join('');
+  el.innerHTML=DATA.dates.slice(0,10).map(d=>`<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;padding:4px 10px;border-radius:8px;background:var(--s2);border:1px solid var(--bd)"><input type="checkbox" value="${d}" style="accent-color:var(--ac)"> ${d}</label>`).join('');
 }
-
-function renderAll(){renderOv();renderAl();renderBr();renderRg();renderKt();renderPu();renderMo();}
-
-function renderOv(){
-  const bs=DATA.branches;
-  if(!bs.length){document.getElementById('kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--mu);padding:40px">📂 لا توجد بيانات — ارفع ملفات أولاً</div>';return;}
-  const tS=bs.reduce((s,b)=>s+b.s_sar,0),tP=bs.reduce((s,b)=>s+b.p_sar,0);
-  const tW=bs.reduce((s,b)=>s+b.s_wt,0),tPc=bs.reduce((s,b)=>s+b.s_pc,0);
-  const tM=DATA.mothan.reduce((s,r)=>s+(+r.amount_sar||0),0),net=tS-tP;
-  document.getElementById('kpis').innerHTML=`
-    <div class="kpi" style="--kc:#3b82f6"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv">${sar(tS)}</div><div class="ks">${wt(tW)} جم · ${num(tPc)} قطعة</div></div>
-    <div class="kpi" style="--kc:#f59e0b"><span class="ki">🛒</span><div class="kl">إجمالي المشتريات</div><div class="kv">${sar(tP)}</div><div class="ks">${wt(bs.reduce((s,b)=>s+b.p_wt,0))} جم</div></div>
-    <div class="kpi" style="--kc:${net>0?'#22c55e':'#ef4444'}"><span class="ki">${net>0?'📈':'📉'}</span><div class="kl">الصافي</div><div class="kv" style="font-size:18px">${sar(net)}</div><div class="ks">${net>0?'▲ ربح':'▼ خسارة'}</div></div>
-    <div class="kpi" style="--kc:#f59e0b"><span class="ki">⚖️</span><div class="kl">متوسط القطعة</div><div class="kv" style="font-size:17px">${sar(tPc>0?tS/tPc:0)}</div><div class="ks">${num(tPc)} قطعة</div></div>
-    <div class="kpi" style="--kc:#22c55e"><span class="ki">🏆</span><div class="kl">أعلى فرع</div><div class="kv" style="font-size:14px">${bs[0]?.name||'—'}</div><div class="ks">${sar(bs[0]?.s_sar||0)}</div></div>
-    <div class="kpi" style="--kc:#06b6d4"><span class="ki">🏦</span><div class="kl">موطن الذهب</div><div class="kv" style="font-size:17px">${sar(tM)}</div><div class="ks">${DATA.mothan.length} معاملة</div></div>
-    <div class="kpi" style="--kc:#ef4444"><span class="ki">⚠️</span><div class="kl">فروع صافي سالب</div><div class="kv">${bs.filter(b=>b.net<0).length}</div><div class="ks">من ${bs.length} فرع</div></div>
-    <div class="kpi" style="--kc:#8b5cf6"><span class="ki">👥</span><div class="kl">الموظفون</div><div class="kv">${DATA.emps.length}</div><div class="ks">في ${[...new Set(DATA.emps.map(e=>e.b))].length} فرع</div></div>`;
-  dk('ch-ov');
-  const t8=bs.slice(0,8);
-  CH['ch-ov']=new Chart(document.getElementById('ch-ov'),{type:'bar',data:{labels:t8.map(b=>b.name),datasets:[
-    {label:'المبيعات',data:t8.map(b=>b.s_sar),backgroundColor:'rgba(59,130,246,.8)',borderRadius:5},
-    {label:'المشتريات',data:t8.map(b=>b.p_sar),backgroundColor:'rgba(245,158,11,.7)',borderRadius:5}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
-    scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'}}}}});
-  const rg={};bs.forEach(b=>{rg[b.region]=(rg[b.region]||0)+b.s_sar;});
-  dk('ch-pie');
-  CH['ch-pie']=new Chart(document.getElementById('ch-pie'),{type:'doughnut',data:{labels:Object.keys(rg),datasets:[{data:Object.values(rg),backgroundColor:Object.keys(rg).map(r=>RC[r]||'#6b7280'),borderWidth:2,borderColor:'#060d1a',hoverOffset:8}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:10},padding:10,boxWidth:10}}}}});
-  document.getElementById('top5').innerHTML=bs.slice(0,5).map((b,i)=>`<tr><td>${['🥇','🥈','🥉','4️⃣','5️⃣'][i]}</td><td style="font-weight:700">${b.name}</td><td style="color:#60a5fa;font-weight:600">${sar(b.s_sar)}</td><td>${wt(b.s_wt)}</td><td>${num(b.s_pc)}</td></tr>`).join('');
-  document.getElementById('bot5').innerHTML=[...bs].sort((a,b_)=>a.s_sar-b_.s_sar).slice(0,5).map((b,i)=>`<tr><td style="color:var(--rd)">${i+1}</td><td style="font-weight:700">${b.name}</td><td style="color:#f87171;font-weight:600">${sar(b.s_sar)}</td><td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:600">${sar(b.net)}</td></tr>`).join('');
-}
-
-function renderAl(){
-  const bs=DATA.branches;if(!bs.length)return;
-  const avg=bs.reduce((s,b)=>s+b.s_sar,0)/bs.length,al=[];
-  bs.forEach(b=>{
-    if(b.net<0)al.push({t:'danger',icon:'🔴',name:b.name,msg:`الصافي سالب — المشتريات تتجاوز المبيعات بـ ${sar(Math.abs(b.net))}`});
-    else if(b.s_sar<avg*0.35)al.push({t:'warn',icon:'⚠️',name:b.name,msg:`مبيعات منخفضة: ${sar(b.s_sar)} (${(b.s_sar/avg*100).toFixed(0)}% من المتوسط)`});
-    else if(b.s_sar>avg*1.9)al.push({t:'ok',icon:'🌟',name:b.name,msg:`أداء استثنائي: ${sar(b.s_sar)} (${(b.s_sar/avg*100).toFixed(0)}% من المتوسط)`});
-  });
-  document.getElementById('al-count').textContent=al.length+' تنبيه';
-  document.getElementById('al-list').innerHTML=al.length
-    ?al.map(a=>`<div class="al-card al-${a.t}"><span style="font-size:24px">${a.icon}</span><div><div style="font-weight:700;margin-bottom:3px">${a.name}</div><div style="color:var(--mu);font-size:11px">${a.msg}</div></div></div>`).join('')
-    :'<div style="text-align:center;color:var(--mu);padding:40px">✅ لا توجد تنبيهات</div>';
-}
-
-function renderBr(){
-  const bs=DATA.branches;document.getElementById('br-count').textContent=bs.length+' فرع';
-  document.getElementById('br-tbl').innerHTML=bs.map((b,i)=>`<tr><td style="color:var(--mu)">${i+1}</td><td style="font-weight:700">${b.name}</td><td style="color:var(--mu);font-size:11px">${b.region}</td><td style="color:#60a5fa;font-weight:600">${sar(b.s_sar)}</td><td>${wt(b.s_wt)}</td><td>${num(b.s_pc)}</td><td style="color:#fbbf24">${sar(b.p_sar)}</td><td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:700">${sar(b.net)}</td><td style="color:#67e8f9">${b.mothan>0?sar(b.mothan):'—'}</td></tr>`).join('');
-  dk('ch-br');
-  CH['ch-br']=new Chart(document.getElementById('ch-br'),{type:'bar',data:{labels:bs.map(b=>b.name),datasets:[
-    {label:'المبيعات',data:bs.map(b=>b.s_sar),backgroundColor:bs.map(b=>RC[b.region]||'#3b82f6'),borderRadius:4},
-    {label:'المشتريات',data:bs.map(b=>b.p_sar),backgroundColor:'rgba(245,158,11,.5)',borderRadius:4}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
-    scales:{x:{ticks:{color:'#64748b',font:{size:8},maxRotation:45},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'}}}}});
-}
-
-function renderRg(){
-  const rg={};DATA.branches.forEach(b=>{if(!rg[b.region])rg[b.region]={s:0,p:0,cnt:0};rg[b.region].s+=b.s_sar;rg[b.region].p+=b.p_sar;rg[b.region].cnt++;});
-  const so=Object.entries(rg).sort((a,b_)=>b_[1].s-a[1].s);
-  document.getElementById('rg-kpis').innerHTML=so.map(([r,v])=>`<div class="kpi" style="--kc:${RC[r]||'#6b7280'}"><span class="ki">🗺</span><div class="kl">${r}</div><div class="kv" style="font-size:16px">${sar(v.s)}</div><div class="ks">${v.cnt} فروع · صافي ${sar(v.s-v.p)}</div></div>`).join('');
-  dk('ch-rg');
-  CH['ch-rg']=new Chart(document.getElementById('ch-rg'),{type:'bar',data:{labels:so.map(([r])=>r),datasets:[
-    {label:'المبيعات',data:so.map(([,v])=>v.s),backgroundColor:so.map(([r])=>RC[r]||'#6b7280'),borderRadius:6},
-    {label:'المشتريات',data:so.map(([,v])=>v.p),backgroundColor:'rgba(245,158,11,.6)',borderRadius:6}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'}}}}});
-  document.getElementById('rg-tbl').innerHTML=so.map(([r,v])=>{const n=v.s-v.p;return`<tr><td style="font-weight:700;color:${RC[r]||'#6b7280'}">${r}</td><td>${v.cnt}</td><td>${sar(v.s)}</td><td style="color:${n>0?'#4ade80':'#f87171'};font-weight:600">${sar(n)}</td></tr>`;}).join('');
-}
-
-function renderKt(){
-  const bs=DATA.branches;
-  const k18=bs.reduce((s,b)=>s+(b.karat?.['18']?.sar||0),0),k21=bs.reduce((s,b)=>s+(b.karat?.['21']?.sar||0),0),k24=bs.reduce((s,b)=>s+(b.karat?.['24']?.sar||0),0),tot=k18+k21+k24;
-  document.getElementById('kt-kpis').innerHTML=`
-    <div class="kpi" style="--kc:#f59e0b"><span class="ki">🔶</span><div class="kl">عيار 18</div><div class="kv" style="font-size:17px">${sar(k18)}</div><div class="ks">${tot>0?(k18/tot*100).toFixed(1):'0'}%</div></div>
-    <div class="kpi" style="--kc:#3b82f6"><span class="ki">🔷</span><div class="kl">عيار 21</div><div class="kv" style="font-size:17px">${sar(k21)}</div><div class="ks">${tot>0?(k21/tot*100).toFixed(1):'0'}%</div></div>
-    <div class="kpi" style="--kc:#22c55e"><span class="ki">🟩</span><div class="kl">عيار 24</div><div class="kv" style="font-size:17px">${sar(k24)}</div><div class="ks">${tot>0?(k24/tot*100).toFixed(1):'0'}%</div></div>
-    <div class="kpi" style="--kc:#60a5fa"><span class="ki">💎</span><div class="kl">الإجمالي</div><div class="kv" style="font-size:17px">${sar(tot)}</div></div>`;
-  dk('ch-kt-pie');
-  CH['ch-kt-pie']=new Chart(document.getElementById('ch-kt-pie'),{type:'doughnut',data:{labels:['عيار 18','عيار 21','عيار 24'],datasets:[{data:[k18,k21,k24],backgroundColor:['#f59e0b','#3b82f6','#22c55e'],borderWidth:3,borderColor:'#060d1a',hoverOffset:10}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:11},padding:14,boxWidth:12}}}}});
-  const t10=bs.slice(0,10);dk('ch-kt-bar');
-  CH['ch-kt-bar']=new Chart(document.getElementById('ch-kt-bar'),{type:'bar',data:{labels:t10.map(b=>b.name),datasets:[
-    {label:'18',data:t10.map(b=>b.karat?.['18']?.sar||0),backgroundColor:'rgba(245,158,11,.8)',borderRadius:3},
-    {label:'21',data:t10.map(b=>b.karat?.['21']?.sar||0),backgroundColor:'rgba(59,130,246,.8)',borderRadius:3},
-    {label:'24',data:t10.map(b=>b.karat?.['24']?.sar||0),backgroundColor:'rgba(34,197,94,.8)',borderRadius:3}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
-    scales:{x:{stacked:true,ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{stacked:true,ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'}}}}});
-  document.getElementById('kt-tbl').innerHTML=bs.map(b=>`<tr><td style="font-weight:700">${b.name}</td><td style="color:var(--mu);font-size:11px">${b.region}</td><td>${sar(b.karat?.['18']?.sar||0)}</td><td>${wt(b.karat?.['18']?.wt||0)}</td><td>${sar(b.karat?.['21']?.sar||0)}</td><td>${wt(b.karat?.['21']?.wt||0)}</td><td>${sar(b.karat?.['24']?.sar||0)}</td><td>${wt(b.karat?.['24']?.wt||0)}</td><td style="font-weight:700;color:#60a5fa">${sar(b.s_sar)}</td></tr>`).join('');
-}
-
-function renderPu(){
-  const bs=DATA.branches.filter(b=>b.p_sar>0),tP=bs.reduce((s,b)=>s+b.p_sar,0);
-  document.getElementById('pu-kpis').innerHTML=`
-    <div class="kpi" style="--kc:#f59e0b"><span class="ki">🛒</span><div class="kl">إجمالي المشتريات</div><div class="kv" style="font-size:17px">${sar(tP)}</div><div class="ks">${wt(bs.reduce((s,b)=>s+b.p_wt,0))} جم</div></div>
-    <div class="kpi" style="--kc:#3b82f6"><span class="ki">🏪</span><div class="kl">فروع مشترية</div><div class="kv">${bs.length}</div></div>
-    <div class="kpi" style="--kc:#f59e0b"><span class="ki">🔶</span><div class="kl">مشتريات عيار 18</div><div class="kv" style="font-size:17px">${sar(bs.reduce((s,b)=>s+(b.p_karat?.['18']?.sar||0),0))}</div></div>
-    <div class="kpi" style="--kc:#3b82f6"><span class="ki">🔷</span><div class="kl">مشتريات عيار 21</div><div class="kv" style="font-size:17px">${sar(bs.reduce((s,b)=>s+(b.p_karat?.['21']?.sar||0),0))}</div></div>`;
-  document.getElementById('pu-tbl').innerHTML=bs.map(b=>`<tr><td style="font-weight:700">${b.name}</td><td style="color:var(--mu);font-size:11px">${b.region}</td><td>${sar(b.p_karat?.['18']?.sar||0)}</td><td>${wt(b.p_karat?.['18']?.wt||0)}</td><td>${sar(b.p_karat?.['21']?.sar||0)}</td><td>${wt(b.p_karat?.['21']?.wt||0)}</td><td>${sar(b.p_karat?.['24']?.sar||0)}</td><td>${wt(b.p_karat?.['24']?.wt||0)}</td><td style="font-weight:700;color:#fbbf24">${sar(b.p_sar)}</td><td>${wt(b.p_wt)}</td></tr>`).join('');
-}
-
-function renderMo(){
-  const rows=DATA.mothan,tot=rows.reduce((s,r)=>s+(+r.amount_sar||0),0);
-  document.getElementById('mo-kpis').innerHTML=`
-    <div class="kpi" style="--kc:#06b6d4"><span class="ki">🏦</span><div class="kl">إجمالي المعاملات</div><div class="kv" style="font-size:17px">${sar(tot)}</div><div class="ks">${rows.length} عملية</div></div>
-    <div class="kpi" style="--kc:#8b5cf6"><span class="ki">🏪</span><div class="kl">عدد الفروع</div><div class="kv">${new Set(rows.map(r=>r.branch_code)).size}</div></div>
-    <div class="kpi" style="--kc:#fbbf24"><span class="ki">⬆️</span><div class="kl">أعلى معاملة</div><div class="kv" style="font-size:17px">${sar(Math.max(...rows.map(r=>+r.amount_sar||0),0))}</div></div>
-    <div class="kpi" style="--kc:#67e8f9"><span class="ki">📊</span><div class="kl">متوسط المعاملة</div><div class="kv" style="font-size:17px">${sar(rows.length?tot/rows.length:0)}</div></div>`;
-  document.getElementById('mo-tbl').innerHTML=rows.map(r=>`<tr><td>${r.transaction_date||r.report_date}</td><td style="color:var(--mu);font-size:10px">${r.doc_ref||''}</td><td style="font-weight:700">${r.branch_name||''}</td><td style="font-size:11px;color:var(--mu)">${String(r.description||'').substring(0,35)}</td><td style="font-weight:700;color:#67e8f9">${sar(+r.amount_sar||0)}</td><td style="color:var(--mu);font-size:11px">${sar(+r.balance||0)}</td></tr>`).join('');
-}
-
-function renderEmployees(){
-  const emps=DATA.emps;if(!emps.length)return;
-  const tN=emps.reduce((s,e)=>s+(e.nt||0),0);
-  const best=[...emps].sort((a,b)=>b.nt-a.nt)[0],bestP=[...emps].sort((a,b)=>b.pc-a.pc)[0],worst=[...emps].sort((a,b)=>a.nt-b.nt)[0];
-  document.getElementById('em-kpis').innerHTML=`
-    <div class="kpi" style="--kc:#8b5cf6"><span class="ki">👥</span><div class="kl">إجمالي مبيعات الموظفين</div><div class="kv" style="font-size:17px">${(tN/1000).toFixed(1)} م ر.س</div></div>
-    <div class="kpi" style="--kc:#22c55e"><span class="ki">🏆</span><div class="kl">أعلى موظف مبيعاً</div><div class="kv" style="font-size:12px">${best?.n?.split(' ').slice(0,2).join(' ')||'—'}</div><div class="ks">${(best?.nt||0).toFixed(1)} ألف · ${best?.b||''}</div></div>
-    <div class="kpi" style="--kc:#f59e0b"><span class="ki">🎯</span><div class="kl">أعلى تحقيق</div><div class="kv" style="font-size:12px">${bestP?.n?.split(' ').slice(0,2).join(' ')||'—'}</div><div class="ks">${(bestP?.pc||0).toFixed(1)}%</div></div>
-    <div class="kpi" style="--kc:#ef4444"><span class="ki">📉</span><div class="kl">أضعف موظف</div><div class="kv" style="font-size:12px">${worst?.n?.split(' ').slice(0,2).join(' ')||'—'}</div><div class="ks">${(worst?.nt||0).toFixed(1)} ألف</div></div>`;
-  const t10n=[...emps].sort((a,b)=>b.nt-a.nt).slice(0,10),t10p=[...emps].sort((a,b)=>b.pc-a.pc).slice(0,10);
-  dk('ch-em1');dk('ch-em2');
-  CH['ch-em1']=new Chart(document.getElementById('ch-em1'),{type:'bar',data:{labels:t10n.map(e=>e.n.split(' ').slice(0,2).join(' ')),datasets:[{data:t10n.map(e=>e.nt),backgroundColor:t10n.map((_,i)=>i===0?'#f59e0b':i===1?'#94a3b8':i===2?'#cd7c32':'rgba(99,102,241,.7)'),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#64748b',font:{size:9}}},y:{ticks:{color:'#94a3b8',font:{size:9}}}}}});
-  CH['ch-em2']=new Chart(document.getElementById('ch-em2'),{type:'bar',data:{labels:t10p.map(e=>e.n.split(' ').slice(0,2).join(' ')),datasets:[{data:t10p.map(e=>e.pc),backgroundColor:t10p.map(e=>e.pc>=130?'#22c55e':e.pc>=100?'#3b82f6':'#f59e0b'),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw.toFixed(1)}%`}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+'%'}},y:{ticks:{color:'#94a3b8',font:{size:9}}}}}});
-  const t3=[...emps].sort((a,b)=>b.nt-a.nt).slice(0,3);
-  document.getElementById('awards').innerHTML=[
-    {icon:'🥇',t:'الأول',n:t3[0]?.n||'—',d:(t3[0]?.nt||0).toFixed(1)+' ألف · '+t3[0]?.b,c:'#f59e0b'},
-    {icon:'🥈',t:'الثاني',n:t3[1]?.n||'—',d:(t3[1]?.nt||0).toFixed(1)+' ألف · '+t3[1]?.b,c:'#94a3b8'},
-    {icon:'🥉',t:'الثالث',n:t3[2]?.n||'—',d:(t3[2]?.nt||0).toFixed(1)+' ألف · '+t3[2]?.b,c:'#cd7c32'},
-    {icon:'🎯',t:'بطل التحقيق',n:bestP?.n||'—',d:(bestP?.pc||0).toFixed(1)+'% · '+bestP?.b,c:'#22c55e'},
-    {icon:'⭐',t:'متوسط الفريق',n:(tN/emps.length).toFixed(1)+' ألف',d:emps.length+' موظف',c:'#8b5cf6'},
-    {icon:'🏢',t:'أفضل فرع',n:(()=>{const m={};emps.forEach(e=>{m[e.b]=(m[e.b]||0)+e.nt});return Object.entries(m).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—'})(),d:'أعلى إجمالي',c:'#06b6d4'},
-  ].map(a=>`<div style="background:var(--s2);border-radius:14px;padding:16px;text-align:center;border:1px solid var(--bd)"><div style="font-size:32px;margin-bottom:8px">${a.icon}</div><div style="font-size:10px;color:var(--mu);margin-bottom:6px">${a.t}</div><div style="font-size:12px;font-weight:700;color:${a.c};margin-bottom:4px">${a.n}</div><div style="font-size:10px;color:var(--mu)">${a.d}</div></div>`).join('');
-  const sel=document.getElementById('em-br');sel.innerHTML='<option value="">جميع الفروع</option>';
-  [...new Set(emps.map(e=>e.b))].sort().forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;sel.appendChild(o);});
-  filterEmps();
-}
-
-function filterEmps(){
-  const q=document.getElementById('em-srch').value.trim(),bf=document.getElementById('em-br').value,sf=document.getElementById('em-sort').value;
-  let data=[...DATA.emps];
-  if(q)data=data.filter(e=>e.n?.includes(q)||String(e.id||e.emp_id||'').includes(q));
-  if(bf)data=data.filter(e=>e.b===bf);
-  if(sf==='nt')data.sort((a,b)=>b.nt-a.nt);
-  else if(sf==='pc')data.sort((a,b)=>b.pc-a.pc);
-  else data.sort((a,b)=>(a.n||'').localeCompare(b.n||'','ar'));
-  document.getElementById('em-count').textContent=data.length+' موظف';
-  document.getElementById('em-tbl').innerHTML=data.map((e,i)=>{const p=e.pc||0;return`<tr><td style="text-align:center">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td><td style="font-weight:700">${e.n||''}</td><td style="color:var(--mu)">${e.id||e.emp_id||''}</td><td style="font-size:11px;color:var(--mu)">${e.b||''}</td><td style="font-weight:600;color:#60a5fa">${(e.nt||0).toFixed(2)}</td><td style="color:var(--mu)">${(e.tg||0).toFixed(2)}</td><td><span class="pl ${pcs(p)}">${p.toFixed(1)}%</span></td><td>${p>=130?'<span class="pl pg">🌟 ممتاز</span>':p>=100?'<span class="pl pg">✅ جيد</span>':p>=70?'<span class="pl py">⚠️ متوسط</span>':'<span class="pl pr">🔴 ضعيف</span>'}</td></tr>`;}).join('');
-}
-
 async function renderCmp(){
   const checked=[...document.querySelectorAll('#cmp-dates input:checked')].map(i=>i.value);
   if(checked.length<2){alert('اختر يومين على الأقل');return;}
@@ -699,18 +1225,77 @@ async function renderCmp(){
   CH['ch-cmp']=new Chart(document.getElementById('ch-cmp'),{type:'bar',data:{labels:brs,datasets:[
     {label:d1,data:brs.map(b=>m1[b]||0),backgroundColor:'rgba(59,130,246,.8)',borderRadius:4},
     {label:d2,data:brs.map(b=>m2[b]||0),backgroundColor:'rgba(34,197,94,.7)',borderRadius:4}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
-    scales:{x:{ticks:{color:'#64748b',font:{size:9},maxRotation:45},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},maxRotation:45},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
   document.getElementById('cmp-tbl').innerHTML=brs.map(b=>{const v1=m1[b]||0,v2=m2[b]||0,d=v2-v1,p=v1>0?((d/v1)*100).toFixed(1):0;return`<tr><td style="font-weight:700">${b}</td><td>${sar(v1)}</td><td>${sar(v2)}</td><td style="color:${d>0?'#4ade80':'#f87171'};font-weight:600">${d>0?'+':''}${sar(d)}</td><td><span class="pl ${d>0?'pg':'pr'}">${d>0?'▲':'▼'} ${Math.abs(p)}%</span></td></tr>`;}).join('');
 }
 
+// ── Admin ──
+function initBranchCbs(){
+  const grid=document.getElementById('branch-cbs');if(!grid)return;
+  grid.innerHTML=Object.entries(BM).map(([code,name])=>`<label class="br-cb"><input type="checkbox" class="br-check" value="${code}" style="accent-color:var(--ac)"> ${name}</label>`).join('');
+}
+function toggleAllBranches(cb){document.querySelectorAll('.br-check').forEach(c=>c.checked=cb.checked);}
+async function addUser(){
+  const name=document.getElementById('nu-name').value.trim();
+  const email=document.getElementById('nu-email').value.trim();
+  const pw=document.getElementById('nu-pw').value;
+  const role=document.getElementById('nu-role').value;
+  const ok=id=>document.getElementById('ad-ok');const er=id=>document.getElementById('ad-er');
+  if(!email||!pw){document.getElementById('ad-er').textContent='أدخل البريد وكلمة المرور';document.getElementById('ad-er').style.display='block';return;}
+  const brs=[...document.querySelectorAll('.br-check:checked')].map(c=>c.value);
+  const perms={can_view:document.getElementById('p-view').checked,can_upload:document.getElementById('p-upload').checked,can_verify:document.getElementById('p-verify').checked,can_set_targets:document.getElementById('p-targets').checked,can_add_notes:document.getElementById('p-notes').checked,can_export:document.getElementById('p-export').checked,can_manage_users:document.getElementById('p-users').checked,can_delete:document.getElementById('p-delete').checked};
+  const {data,error}=await sb.auth.signUp({email,password:pw,options:{data:{name}}});
+  if(error){document.getElementById('ad-er').textContent='خطأ: '+error.message;document.getElementById('ad-er').style.display='block';return;}
+  const uid=data?.user?.id;
+  if(uid){await sbUp('user_roles',[{user_id:uid,email,name,role,allowed_branches:brs,...perms}]);document.getElementById('ad-ok').textContent='✅ تم إضافة '+email;document.getElementById('ad-ok').style.display='block';setTimeout(()=>document.getElementById('ad-ok').style.display='none',4000);loadUsers();}
+}
+async function loadUsers(){
+  try{
+    const rows=await sbQ('user_roles','order=created_at.desc');
+    document.getElementById('users-count').textContent=rows.length+' مستخدم';
+    document.getElementById('users-list').innerHTML=rows.map(u=>`
+      <div class="user-card">
+        <div class="uc-top">
+          <div><div class="uc-name">${u.name||u.email}</div><div class="uc-email">${u.email} · ${ROLE_LABELS[u.role]||u.role}</div></div>
+          <div class="uc-actions">
+            <button class="ua" onclick="toggleUser('${u.user_id}','${u.is_active}')">${u.is_active?'تعطيل':'تفعيل'}</button>
+            <button class="ua del" onclick="deleteUser('${u.user_id}','${u.email}')">حذف</button>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--mu)">الفروع: ${u.allowed_branches?.length?u.allowed_branches.join('، '):'كل الفروع'}</div>
+        <div class="cb-grid" style="margin-top:8px">
+          ${[['can_view','عرض'],['can_upload','رفع'],['can_verify','تحقق'],['can_set_targets','أهداف'],['can_export','تصدير'],['can_manage_users','إدارة'],['can_delete','حذف']].map(([k,l])=>`<span style="font-size:10px;padding:2px 7px;border-radius:12px;background:${u[k]?'rgba(34,197,94,.1)':'rgba(100,116,139,.1)'};color:${u[k]?'#4ade80':'#64748b'}">${u[k]?'✓':'-'} ${l}</span>`).join('')}
+        </div>
+      </div>`).join('');
+  }catch{document.getElementById('users-list').innerHTML='<div style="text-align:center;color:var(--mu);padding:20px;font-size:12px">تعذّر التحميل</div>';}
+}
+async function toggleUser(uid,active){
+  await sbUp('user_roles',[{user_id:uid,is_active:active==='true'?false:true}]);loadUsers();
+}
+async function deleteUser(uid,email){
+  if(!confirm('حذف '+email+'؟'))return;
+  await sbDel('user_roles','user_id=eq.'+uid);loadUsers();
+}
+async function loadLoginLog(){
+  try{
+    const rows=await sbQ('login_log','order=logged_in_at.desc&limit=20');
+    document.getElementById('login-log').innerHTML=rows.map(r=>`<tr><td style="font-weight:600">${r.email?.split('@')[0]||'—'}</td><td style="color:var(--mu);font-size:11px">${r.email||''}</td><td style="font-size:11px">${new Date(r.logged_in_at).toLocaleString('ar-SA')}</td></tr>`).join('');
+  }catch{}
+}
+
+// ── Tabs ──
 function sw(id,btn){
   document.querySelectorAll('.sc').forEach(s=>s.classList.remove('on'));
-  document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.sbb').forEach(b=>b.classList.remove('on'));
   document.getElementById('sc-'+id)?.classList.add('on');
   btn?.classList.add('on');
+  if(id==='ad'){
+    const ok=PERMS.users||ROLE==='super_admin';
+    document.getElementById('ad-denied').style.display=ok?'none':'block';
+    document.getElementById('ad-content').style.display=ok?'block':'none';
+  }
 }
+<!-- DEPLOY_TS:1773711255 -->
 </script>
-<!-- DEPLOY_TS:1773703379 -->
 </body>
 </html>
