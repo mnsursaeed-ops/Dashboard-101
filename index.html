@@ -1439,8 +1439,12 @@ async function loadHistory(){
     const icons={sales:'📊',purchases:'🛒',mothan:'🏦',employees:'👥'};
     const labels={sales:'مبيعات الموظفين',purchases:'المشتريات',mothan:'موطن الذهب',employees:'موظفون'};
     document.getElementById('hist-count').textContent=rows.length+' سجل';
+    const canDel=ROLE==='super_admin'||PERMS.delete;
     document.getElementById('hist-list').innerHTML=rows.length
-      ?rows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border-radius:8px;margin-bottom:6px;font-size:12px;border:1px solid var(--bd)"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">${icons[r.file_type]||'📄'}</span><div><div style="font-weight:600">${labels[r.file_type]||r.file_type} — ${r.date_from||r.report_date}</div><div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('ar-SA')}</div></div></div><span class="pl pg">✅ محفوظ</span></div>`).join('')
+      ?rows.map(r=>{
+        const delBtn=canDel?`<button onclick="deleteRecord('${r.report_date}','${r.file_type}')" style="padding:3px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:6px;font-size:10px;cursor:pointer;font-family:inherit;margin-right:6px">🗑️ حذف</button>`:'';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border-radius:8px;margin-bottom:6px;font-size:12px;border:1px solid var(--bd)"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">${icons[r.file_type]||'📄'}</span><div><div style="font-weight:600">${labels[r.file_type]||r.file_type} — ${r.date_from||r.report_date}</div><div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('ar-SA')}</div></div></div><div style="display:flex;align-items:center">${delBtn}<span class="pl pg">✅ محفوظ</span></div></div>`;
+      }).join('')
       :'<div style="text-align:center;color:var(--mu);padding:24px;font-size:12px">لم يتم رفع أي بيانات بعد</div>';
   }catch{document.getElementById('hist-list').innerHTML='<div style="text-align:center;color:var(--mu);padding:20px;font-size:12px">تعذّر تحميل السجل</div>';}
 }
