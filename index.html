@@ -1135,6 +1135,8 @@ async function processAndSave(){
         return{...e,branch_purchase_avg:pa,emp_avg_mkg:sa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa,report_date:rdate};
       });
       // Also save branch sales from subtotals
+      await sbDel('branch_sales','report_date=eq.'+rdate);
+      await sbDel('branch_purchases','report_date=eq.'+rdate);
       if(empData.bSubs){
         const bsRows=Object.entries(empData.bSubs).map(([code,d])=>{const name=BM[code]||code;return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',total_sar:d.sar,total_weight_g:d.wn,total_pieces:d.pcs,avg_invoice_sar:d.pcs>0?Math.round(d.sar/d.pcs):0};});
         await sbUp('branch_sales',bsRows);
