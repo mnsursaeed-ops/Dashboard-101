@@ -736,10 +736,13 @@ function loadEmbedded(){
 
 async function loadRange(from,to){
   try{
+    // Get month range for purchases (they're stored once per month, not per day)
+    const monthStart=from.slice(0,7)+'-01';
+    const monthEnd=to.slice(0,7)+'-31';
     const [sales,purch,mothan,emps]=await Promise.all([
       sbQ('branch_sales',`report_date=gte.${from}&report_date=lte.${to}`),
-      sbQ('branch_purchases',`report_date=gte.${from}&report_date=lte.${to}`),
-      sbQ('mothan_transactions',`report_date=gte.${from}&report_date=lte.${to}`),
+      sbQ('branch_purchases',`report_date=gte.${monthStart}&report_date=lte.${monthEnd}&order=report_date.desc&limit=27`),
+      sbQ('mothan_transactions',`report_date=gte.${monthStart}&report_date=lte.${monthEnd}`),
       sbQ('employee_sales',`report_date=gte.${from}&report_date=lte.${to}`)
     ]);
     // Aggregate branches
