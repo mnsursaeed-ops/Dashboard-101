@@ -1139,7 +1139,8 @@ async function processAndSave(){
         const bsRows=Object.entries(empData.bSubs).map(([code,d])=>{const name=BM[code]||code;return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',total_sar:d.sar,total_weight_g:d.wn,total_pieces:d.pcs,avg_invoice_sar:d.pcs>0?Math.round(d.sar/d.pcs):0};});
         await sbUp('branch_sales',bsRows);
       }
-      await sbUp('employee_sales',finalEmps.map(e=>{delete e._wp;delete e._cur;return e;}));
+      await sbDel('employee_sales','report_date=eq.'+rdate);
+      await sbUp('employee_sales',finalEmps.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;}));
       await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:FILES.sales?.name,date_from:empData.df,date_to:empData.dt,records_count:finalEmps.length}]);
     }
 
