@@ -1008,7 +1008,7 @@ function renderBranches(){
     <td style="color:#f59e0b">${sar(b.purch)}</td>
     <td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:700">${sar(b.net)}</td>
     <td style="color:#67e8f9">${(+b.sale_rate||0).toFixed(2)||'—'}</td>
-    <td style="color:#fbbf24">${(+b.purch_avg||0).toFixed(2)||'—'}</td>
+    <td style="color:#fbbf24">${(+b.purch_rate||+b.purch_avg||0).toFixed(2)||'—'}</td>
     <td><span class="pl ${pcc(b.diff)}">${(+b.diff_rate||0).toFixed(1)||'0'}</span></td>
     <td>${b.net>0?'<span class="pl pg">✅ ربح</span>':'<span class="pl pr">❌ خسارة</span>'}</td></tr>`).join('');
   dk('ch-br');
