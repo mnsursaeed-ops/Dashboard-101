@@ -1343,7 +1343,10 @@ async function processAndSave(){
     console.log('FILES:', {bsales:!!FILES.bsales,sales:!!FILES.sales,purch:!!FILES.purch,mothan:!!FILES.mothan});
     let empData=null,purchData=null,mothanRows=[];
     if(FILES.sales)empData=parseEmpSales(FILES.sales.wb);
-    if(FILES.purch)purchData=parsePurchases(FILES.purch.wb);
+    if(FILES.purch){
+      purchData=parsePurchases(FILES.purch.wb);
+      console.log('purchData keys:',Object.keys(purchData).length,'sample:',Object.entries(purchData)[0]);
+    }
     if(FILES.mothan)mothanRows=parseMothanFile(FILES.mothan.wb);
 
     // Get report date from file
