@@ -742,6 +742,9 @@ async function loadRange(from,to){
       sbQ('mothan_transactions','select=*&order=transaction_date.desc&limit=500'),
       sbQ('employee_sales',`report_date=gte.${from}&report_date=lte.${to}&limit=500`)
     ]);
+    console.log('DB results - sales:',sales.length,'purch:',purch.length,'mothan:',mothan.length,'emps:',emps.length);
+    if(purch.length)console.log('purch sample:',purch[0]);
+    if(mothan.length)console.log('mothan sample:',mothan[0]);
     // Aggregate branches
     const bmap={};
     sales.forEach(r=>{
