@@ -747,14 +747,26 @@ async function loadRange(from,to){
     sales.forEach(r=>{
       if(!bmap[r.branch_code])bmap[r.branch_code]={code:r.branch_code,name:r.branch_name,region:r.region,sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,purch_avg:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
       const b=bmap[r.branch_code];
-      b.sar+=+r.total_sar||0;b.wn+=+r.total_weight_g||0;b.pcs+=+r.total_pieces||0;
+      b.sar+=+r.total_sar||0;
+      b.wn+=+r.wt_pure_g||+r.total_weight_g||0;  // use wt_pure_g for sale rate
+      b.wp+=+r.wt_pure_g||0;
+      b.pcs+=+r.total_pieces||0;
+      // karat rates from branch_sales
+      b.k18_sale_rate=+r.k18_rate||0;
+      b.k21_sale_rate=+r.k21_rate||0;
+      b.k24_sale_rate=+r.k24_rate||0;
     });
     purch.forEach(r=>{
       if(!bmap[r.branch_code])bmap[r.branch_code]={code:r.branch_code,name:r.branch_name,region:r.region,sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,purch_avg:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
       const b=bmap[r.branch_code];
-      b.purch+=+r.total_sar||0;b.purch_wt+=+r.total_weight_g||0;b.purch_avg=+r.purchase_avg_mkg||0;
+      b.purch+=+r.total_sar||0;
+      b.purch_wt+=+r.wt_pure_g||+r.total_weight_g||0;  // use wt_pure_g
+      b.purch_avg=+r.purchase_rate||+r.purchase_avg_mkg||0;
       b.k18_sar+=+r.k18_sar||0;b.k21_sar+=+r.k21_sar||0;b.k24_sar+=+r.k24_sar||0;
       b.k18_wt+=+r.k18_weight_g||0;b.k21_wt+=+r.k21_weight_g||0;b.k24_wt+=+r.k24_weight_g||0;
+      b.k18_purch_rate=+r.k18_rate||0;
+      b.k21_purch_rate=+r.k21_rate||0;
+      b.k24_purch_rate=+r.k24_rate||0;
     });
     // Build mothan totals by branch for combined purchase rate
   const mothanByBranch={};
@@ -908,11 +920,14 @@ function renderAll(){
 function renderOv(){
   const bs=filterByAccess(DATA.branches,b=>b.code);
   if(!bs.length){document.getElementById('kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--mu);padding:40px">📂 لا توجد بيانات</div>';return;}
-  const tS=bs.reduce((s,b)=>s+b.sar,0),tP=bs.reduce((s,b)=>s+b.purch,0);
+  const tS=bs.reduce((s,b)=>s+(+b.sar||0),0);
+  const tP=bs.reduce((s,b)=>s+(+b.purch||0),0);
+  const tMothan=DATA.mothan.reduce((s,r)=>s+(+r.amount_sar||0),0);
+  const tPurchCombined=tP+tMothan;
   const tW=bs.reduce((s,b)=>s+b.wn,0),tPc=bs.reduce((s,b)=>s+b.pcs,0);
   const tM=DATA.mothan.reduce((s,r)=>s+(+r.amount_sar||0),0);
   const net=tS-tP,avgInv=tPc>0?tS/tPc:0;
-  const avgDiff=bs.length?bs.reduce((s,b)=>s+b.diff,0)/bs.length:0;
+  const avgDiff=bs.length?bs.reduce((s,b)=>s+(+b.diff_rate||+b.diff||0),0)/bs.length:0;
   document.getElementById('kpis').innerHTML=`
     <div class="kc" style="--kcolor:#3b82f6"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv">${sar(tS)}</div><div class="ks">${wt(tW)} جم · ${num(tPc)} فاتورة</div></div>
     <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🛒</span><div class="kl">إجمالي المشتريات</div><div class="kv">${sar(tP)}</div><div class="ks">${wt(bs.reduce((s,b)=>s+b.purch_wt,0))} جم</div></div>
@@ -970,7 +985,10 @@ function renderBranches(){
   else if(so==='net')bs.sort((a,b)=>b.net-a.net);
   else if(so==='pcs')bs.sort((a,b)=>b.pcs-a.pcs);
   else bs.sort((a,b)=>b.sar-a.sar);
-  const tS=bs.reduce((s,b)=>s+b.sar,0),tP=bs.reduce((s,b)=>s+b.purch,0);
+  const tS=bs.reduce((s,b)=>s+(+b.sar||0),0);
+  const tP=bs.reduce((s,b)=>s+(+b.purch||0),0);
+  const tMothan=DATA.mothan.reduce((s,r)=>s+(+r.amount_sar||0),0);
+  const tPurchCombined=tP+tMothan;
   const tPc=bs.reduce((s,b)=>s+b.pcs,0),avgDiff=bs.length?bs.reduce((s,b)=>s+b.diff,0)/bs.length:0;
   document.getElementById('br-kpis').innerHTML=`
     <div class="kc" style="--kcolor:#3b82f6"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv" style="font-size:17px">${sar(tS)}</div></div>
