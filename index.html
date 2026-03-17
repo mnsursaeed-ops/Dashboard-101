@@ -748,7 +748,7 @@ async function loadRange(from,to){
       if(!bmap[r.branch_code])bmap[r.branch_code]={code:r.branch_code,name:r.branch_name,region:r.region,sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,purch_avg:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
       const b=bmap[r.branch_code];
       b.sar+=+r.total_sar||0;
-      b.wn+=+r.wt_pure_g||+r.total_weight_g||0;  // use wt_pure_g for sale rate
+      b.wn+=+r.total_weight_g||0;  // total_weight_g = الوزن الصافي
       b.wp+=+r.wt_pure_g||0;
       b.pcs+=+r.total_pieces||0;
       // karat rates from branch_sales
@@ -779,7 +779,7 @@ async function loadRange(from,to){
   });
   DATA._allBranches=null;
   DATA.branches=Object.values(bmap).map(b=>{
-    const sale_rate=b.wn>0?Math.round(b.sar/b.wn*10000)/10000:0;
+    const sale_rate=b.wn>0?Math.round(b.sar/b.wn*10000)/10000:0; // wn = weight_net_g from branch_sales
     const m=mothanByBranch[b.code]||{amount:0,weight:0};
     const combined_total=(b.purch||0)+m.amount;
     const combined_wt=(b.purch_wt||0)+m.weight;
@@ -1238,8 +1238,8 @@ function parseEmpSales(wb){
           weight_pure_g:Math.round(wp*1000)/1000,pieces:pcs,
           avg_invoice_sar:pcs>0?Math.round(total/pcs*100)/100:0,
           emp_avg_mkg:wn>0?Math.round(total/wn*10000)/10000:0,
-          sale_rate_g:wp>0?Math.round(total/wp*10000)/10000:0,
-          _wp:wp,_cur:cur});
+          sale_rate_g:wn>0?Math.round(total/wn*10000)/10000:0,
+          _wp:wn,_cur:cur});
       }catch{}
     }
   }
