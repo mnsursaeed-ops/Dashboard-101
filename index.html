@@ -285,6 +285,7 @@ html,body{height:100%;font-family:'Tajawal','Segoe UI',system-ui,sans-serif;back
       <button class="sbb" id="sb-admin" onclick="sw('ad',this)" style="display:none"><span class="i">⚙️</span><span>المستخدمون</span></button>
       <button class="sbb" onclick="sw('rw',this)"><span class="i">🏅</span><span>المكافآت</span></button>
       <button class="sbb" onclick="sw('cmp',this)"><span class="i">📊</span><span>المقارنة</span></button>
+      <button class="sbb" onclick="sw('hm',this)"><span class="i">🌡️</span><span>الخارطة الحرارية</span></button>
     </nav>
     <div class="sb-footer">
       <div class="sb-user" id="sb-user">
@@ -711,6 +712,11 @@ async function init(){
   document.getElementById('lu').textContent='آخر تحديث: '+new Date().toLocaleString('ar-SA');
   const m=new Date().toISOString().slice(0,7);
   document.getElementById('tg-month-sel').value=m;
+  // Set default date range
+  const today=new Date().toISOString().split('T')[0];
+  const firstDay=today.slice(0,7)+'-01';
+  document.getElementById('d-from').value=firstDay;
+  document.getElementById('d-to').value=today;
   loadTargets();
   if(PERMS.users||ROLE==='super_admin')loadUsers();
   loadLoginLog();
@@ -1374,6 +1380,10 @@ async function processAndSave(){
       }
       await sbDel('employee_sales','report_date=eq.'+rdate);
       await sbUp('employee_sales',finalEmps.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;}));
+      // Save bsales upload log
+      if(bsalesData&&Object.keys(bsalesData).length){
+        await sbUp('upload_log',[{report_date:rdate,file_type:'bsales',file_name:FILES.bsales?.name,records_count:Object.keys(bsalesData).length}]);
+      }
       await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:FILES.sales?.name,date_from:empData.df,date_to:empData.dt,records_count:finalEmps.length}]);
     }
 
@@ -1436,8 +1446,8 @@ async function deleteRecord(date, fileType){
 async function loadHistory(){
   try{
     const rows=await sbQ('upload_log','order=uploaded_at.desc&limit=20');
-    const icons={sales:'📊',purchases:'🛒',mothan:'🏦',employees:'👥'};
-    const labels={sales:'مبيعات الموظفين',purchases:'المشتريات',mothan:'موطن الذهب',employees:'موظفون'};
+    const icons={sales:'📊',purchases:'🛒',mothan:'🏦',employees:'👥',bsales:'📈',branch_sales:'📈',branch_purchases:'🛒'};
+    const labels={sales:'مبيعات الموظفين',purchases:'المشتريات',mothan:'موطن الذهب',employees:'موظفون',bsales:'مبيعات الفروع',branch_sales:'مبيعات الفروع',branch_purchases:'مشتريات الفروع'};
     document.getElementById('hist-count').textContent=rows.length+' سجل';
     const canDel=ROLE==='super_admin'||PERMS.delete;
     document.getElementById('hist-list').innerHTML=rows.length
