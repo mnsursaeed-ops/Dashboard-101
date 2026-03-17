@@ -745,7 +745,7 @@ async function applyCustom(){
 }
 
 // ── Helpers ──
-const sar=n=>Math.round(+n||0).toLocaleString('ar-SA')+' ر.س';
+const sar=n=>Math.round(+(n)||0).toLocaleString('ar-SA')+' ر.س';
 const sarC=n=>Math.round(+n||0).toLocaleString('ar-SA');
 const wt=n=>((+n)||0).toFixed(2);
 const num=n=>(+n||0).toLocaleString('ar-SA');
@@ -787,7 +787,7 @@ function renderOv(){
     <div class="kc" style="--kcolor:${net>0?'#22c55e':'#ef4444'}"><span class="ki">${net>0?'📈':'📉'}</span><div class="kl">الصافي</div><div class="kv" style="font-size:17px">${sar(net)}</div><div class="ks">${net>0?'▲ ربح':'▼ خسارة'}</div></div>
     <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🧾</span><div class="kl">متوسط الفاتورة</div><div class="kv" style="font-size:17px">${sar(avgInv)}</div><div class="ks">${num(tPc)} فاتورة</div></div>
     <div class="kc" style="--kcolor:#22c55e"><span class="ki">🏆</span><div class="kl">أعلى فرع مبيعاً</div><div class="kv" style="font-size:13px">${bs[0]?.name||'—'}</div><div class="ks">${sar(bs[0]?.sar||0)}</div></div>
-    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv" style="font-size:17px">${avgDiff.toFixed(1)} ر.س/جم</div><div class="ks">لجميع الفروع</div></div>
+    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv" style="font-size:17px">${(+avgDiff||0).toFixed(1)} ر.س/جم</div><div class="ks">لجميع الفروع</div></div>
     <div class="kc" style="--kcolor:#06b6d4"><span class="ki">🏦</span><div class="kl">موطن الذهب</div><div class="kv" style="font-size:17px">${sar(tM)}</div><div class="ks">${DATA.mothan.length} معاملة</div></div>
     <div class="kc" style="--kcolor:#ef4444"><span class="ki">⚠️</span><div class="kl">فروع صافي سالب</div><div class="kv">${bs.filter(b=>b.net<0).length}</div><div class="ks">من ${bs.length} فرع</div></div>`;
 
@@ -805,7 +805,7 @@ function renderOv(){
     data:{labels:Object.keys(rg),datasets:[{data:Object.values(rg),backgroundColor:Object.keys(rg).map(r=>RC[r]||'#6b7280'),borderWidth:2,borderColor:'#060d1a',hoverOffset:8}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:10},padding:10,boxWidth:10}}}}});
 
-  document.getElementById('top5').innerHTML=bs.slice(0,5).map((b,i)=>`<tr><td>${['🥇','🥈','🥉','4️⃣','5️⃣'][i]}</td><td style="font-weight:700">${b.name}</td><td style="color:#60a5fa;font-weight:600">${sar(b.sar)}</td><td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:600">${sar(b.net)}</td><td><span class="pl ${pcc(b.diff)}">${b.diff.toFixed(1)}</span></td></tr>`).join('');
+  document.getElementById('top5').innerHTML=bs.slice(0,5).map((b,i)=>`<tr><td>${['🥇','🥈','🥉','4️⃣','5️⃣'][i]}</td><td style="font-weight:700">${b.name}</td><td style="color:#60a5fa;font-weight:600">${sar(b.sar)}</td><td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:600">${sar(b.net)}</td><td><span class="pl ${pcc(b.diff)}">${(+b.diff||0).toFixed(1)}</span></td></tr>`).join('');
   document.getElementById('bot5').innerHTML=[...bs].sort((a,b_)=>a.sar-b_.sar).slice(0,5).map((b,i)=>`<tr><td style="color:var(--rd)">${i+1}</td><td style="font-weight:700">${b.name}</td><td style="color:#f87171;font-weight:600">${sar(b.sar)}</td><td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:600">${sar(b.net)}</td></tr>`).join('');
 }
 
@@ -820,7 +820,7 @@ function renderAlerts(){
     else if(b.sar>avg*1.8)als.push({t:'g',icon:'🌟',name:b.name,msg:`أداء استثنائي: ${sar(b.sar)} (${(b.sar/avg*100).toFixed(0)}% من المتوسط)`});
   });
   DATA.employees.filter(e=>e.diff<0).forEach(e=>{
-    als.push({t:'w',icon:'📉',name:e.n,msg:`فرق معدل سالب: ${e.diff.toFixed(1)} ر.س/جم — ${e.b}`});
+    als.push({t:'w',icon:'📉',name:e.n,msg:`فرق معدل سالب: ${(+e.diff||0).toFixed(1)} ر.س/جم — ${e.b}`});
   });
   document.getElementById('al-count').textContent=als.length+' تنبيه';
   document.getElementById('al-list').innerHTML=als.length
@@ -844,7 +844,7 @@ function renderBranches(){
     <div class="kc" style="--kcolor:#3b82f6"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv" style="font-size:17px">${sar(tS)}</div></div>
     <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🛒</span><div class="kl">إجمالي المشتريات</div><div class="kv" style="font-size:17px">${sar(tP)}</div></div>
     <div class="kc" style="--kcolor:#22c55e"><span class="ki">📊</span><div class="kl">الصافي الكلي</div><div class="kv" style="font-size:17px">${sar(tS-tP)}</div></div>
-    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv" style="font-size:17px">${avgDiff.toFixed(1)} ر.س/جم</div></div>`;
+    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv" style="font-size:17px">${(+avgDiff||0).toFixed(1)} ر.س/جم</div></div>`;
   document.getElementById('br-count').textContent=bs.length+' فرع';
   document.getElementById('br-tbl').innerHTML=bs.map((b,i)=>`
     <tr><td style="color:var(--mu)">${i+1}</td><td style="font-weight:700">${b.name}</td>
@@ -854,9 +854,9 @@ function renderBranches(){
     <td style="color:#fbbf24">${sar(b.ai)}</td>
     <td style="color:#f59e0b">${sar(b.purch)}</td>
     <td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:700">${sar(b.net)}</td>
-    <td style="color:#67e8f9">${b.savg?.toFixed(2)||'—'}</td>
-    <td style="color:#fbbf24">${b.purch_avg?.toFixed(2)||'—'}</td>
-    <td><span class="pl ${pcc(b.diff)}">${b.diff?.toFixed(1)||'0'}</span></td>
+    <td style="color:#67e8f9">${(+b.sale_rate||0).toFixed(2)||'—'}</td>
+    <td style="color:#fbbf24">${(+b.purch_avg||0).toFixed(2)||'—'}</td>
+    <td><span class="pl ${pcc(b.diff)}">${(+b.diff_rate||0).toFixed(1)||'0'}</span></td>
     <td>${b.net>0?'<span class="pl pg">✅ ربح</span>':'<span class="pl pr">❌ خسارة</span>'}</td></tr>`).join('');
   dk('ch-br');
   CH['ch-br']=new Chart(document.getElementById('ch-br'),{type:'bar',data:{labels:bs.map(b=>b.name),datasets:[
@@ -885,7 +885,7 @@ function renderRegions(){
   dk('ch-rg-diff');
   const avgDiffs=sorted.map(([r,v])=>{return v.diffs.length?v.diffs.reduce((s,d)=>s+d,0)/v.diffs.length:0;});
   CH['ch-rg-diff']=new Chart(document.getElementById('ch-rg-diff'),{type:'bar',data:{labels:sorted.map(([r])=>r),datasets:[{label:'متوسط فرق المعدل (ر.س/جم)',data:avgDiffs,backgroundColor:avgDiffs.map(d=>d>100?'#22c55e':d>50?'#f59e0b':'#ef4444'),borderRadius:6}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+' ر.س/جم'}}},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(+c.raw||0).toFixed(1)+' ر.س/جم'}}},
       scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+' ر.س'}}}}});
 }
 
@@ -908,7 +908,7 @@ function renderEmployees(){
   const t10d=[...emps].sort((a,b)=>b.diff-a.diff).slice(0,10);
   dk('ch-em1');dk('ch-em2');
   CH['ch-em1']=new Chart(document.getElementById('ch-em1'),{type:'bar',data:{labels:t10n.map(e=>e.n.split(' ').slice(0,2).join(' ')),datasets:[{data:t10n.map(e=>e.sar),backgroundColor:t10n.map((_,i)=>i===0?'#f59e0b':i===1?'#94a3b8':i===2?'#cd7c32':'rgba(99,102,241,.7)'),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>sarC(c.raw)+' ر.س'}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'}},y:{ticks:{color:'#94a3b8',font:{size:9}}}}}});
-  CH['ch-em2']=new Chart(document.getElementById('ch-em2'),{type:'bar',data:{labels:t10d.map(e=>e.n.split(' ').slice(0,2).join(' ')),datasets:[{data:t10d.map(e=>e.diff),backgroundColor:t10d.map(e=>e.diff>150?'#22c55e':e.diff>80?'#3b82f6':e.diff>0?'#f59e0b':'#ef4444'),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+' ر.س/جم'}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+' ر.س'}},y:{ticks:{color:'#94a3b8',font:{size:9}}}}}});
+  CH['ch-em2']=new Chart(document.getElementById('ch-em2'),{type:'bar',data:{labels:t10d.map(e=>e.n.split(' ').slice(0,2).join(' ')),datasets:[{data:t10d.map(e=>e.diff),backgroundColor:t10d.map(e=>e.diff>150?'#22c55e':e.diff>80?'#3b82f6':e.diff>0?'#f59e0b':'#ef4444'),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(+c.raw||0).toFixed(1)+' ر.س/جم'}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+' ر.س'}},y:{ticks:{color:'#94a3b8',font:{size:9}}}}}});
 
   const t3=[...emps].sort((a,b)=>b.sar-a.sar).slice(0,3);
   document.getElementById('awards').innerHTML=[
@@ -975,7 +975,7 @@ function renderKarat(){
     {label:'21',data:t10.map(b=>b.k21_sar||0),backgroundColor:'rgba(59,130,246,.8)',borderRadius:3},
     {label:'24',data:t10.map(b=>b.k24_sar||0),backgroundColor:'rgba(34,197,94,.8)',borderRadius:3}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},scales:{x:{stacked:true,ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{stacked:true,ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
-  document.getElementById('kt-tbl').innerHTML=bs.map(b=>`<tr><td style="font-weight:700">${b.name}</td><td style="color:${RC[b.region]||'#6b7280'};font-size:11px">${b.region}</td><td>${sar(b.k18_sar||0)}</td><td>${wt(b.k18_wt||0)}</td><td>${sar(b.k21_sar||0)}</td><td>${wt(b.k21_wt||0)}</td><td>${sar(b.k24_sar||0)}</td><td>${wt(b.k24_wt||0)}</td><td style="font-weight:700;color:#fbbf24">${sar(b.purch||0)}</td><td style="color:#67e8f9">${b.purch_avg?.toFixed(2)||'—'}</td></tr>`).join('');
+  document.getElementById('kt-tbl').innerHTML=bs.map(b=>`<tr><td style="font-weight:700">${b.name}</td><td style="color:${RC[b.region]||'#6b7280'};font-size:11px">${b.region}</td><td>${sar(b.k18_sar||0)}</td><td>${wt(b.k18_wt||0)}</td><td>${sar(b.k21_sar||0)}</td><td>${wt(b.k21_wt||0)}</td><td>${sar(b.k24_sar||0)}</td><td>${wt(b.k24_wt||0)}</td><td style="font-weight:700;color:#fbbf24">${sar(b.purch||0)}</td><td style="color:#67e8f9">${(+b.purch_avg||0).toFixed(2)||'—'}</td></tr>`).join('');
 }
 
 // ── Mothan ──
