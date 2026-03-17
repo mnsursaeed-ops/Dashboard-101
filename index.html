@@ -774,7 +774,7 @@ async function loadRange(from,to){
     DATA.branches.forEach(b=>{brPurchMap[b.code]=b.purch_rate||0;});
     if(emps.length)DATA.employees=emps.map(e=>{
       const pavg=brPurchMap[e.branch_code]||+e.branch_purchase_avg||0;
-      return{id:e.emp_id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:+e.total_sar||0,wn:+e.weight_net_g||0,wp:+e.weight_pure_g||0,pcs:+e.pieces||0,ai:+e.avg_invoice_sar||0,emkg:+e.emp_avg_mkg||0,pavg,savg:+e.emp_avg_mkg||0,diff:+e.diff_avg||0,ok:e.achieved_target};});
+      return{id:e.emp_id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:+e.total_sar||0,wn:+e.weight_net_g||0,wp:+e.weight_pure_g||0,pcs:+e.pieces||0,ai:+e.avg_invoice_sar||0,emkg:+e.emp_avg_mkg||0,pavg,savg:+e.sale_rate_g||+e.emp_avg_mkg||0,diff:+e.diff_avg||0,ok:e.achieved_target};});
     document.getElementById('period-label').textContent=from+(from!==to?' — '+to:'');
     renderAll();
   }catch(e){console.warn('loadRange error:',e);loadEmbedded();}
@@ -1197,7 +1197,8 @@ function parseEmpSales(wb){
           total_sar:Math.round(total*100)/100,weight_net_g:Math.round(wn*1000)/1000,
           weight_pure_g:Math.round(wp*1000)/1000,pieces:pcs,
           avg_invoice_sar:pcs>0?Math.round(total/pcs*100)/100:0,
-          emp_avg_mkg:Math.round(avgMkg*10000)/10000,
+          emp_avg_mkg:wn>0?Math.round(total/wn*10000)/10000:0,
+          sale_rate_g:wp>0?Math.round(total/wp*10000)/10000:0,
           _wp:wp,_cur:cur});
       }catch{}
     }
@@ -1333,8 +1334,8 @@ async function processAndSave(){
     if(empData&&empData.emps.length){
       // Enrich with purchase avg
       const finalEmps=empData.emps.map(e=>{
-        const pa=purchData?.[e._cur]?.avg||0;
-        const sa=e._wp>0?Math.round(e.total_sar/e._wp*10000)/10000:0;
+        const pa=purchData?.[e._cur]?.sub?.rate||purchData?.[e._cur]?.avg||0;
+        const sa=e.sale_rate_g||0;
         return{...e,branch_purchase_avg:pa,emp_avg_mkg:sa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa,report_date:rdate};
       });
       // Also save branch sales from subtotals
