@@ -309,6 +309,9 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
       <button class="dfb" onclick="setDF('week',this)">آخر 7 أيام</button>
       <button class="dfb" onclick="setDF('month',this)">هذا الشهر</button>
       <button class="dfb" onclick="setDF('all',this)">كل البيانات</button>
+      <select class="di" id="filter-branch" onchange="applyBranchFilter()" style="font-size:11px">
+        <option value="">كل الفروع</option>
+      </select>
       <div style="display:flex;align-items:center;gap:6px;margin-right:auto;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--mu)">من:</span>
         <input type="date" class="di" id="d-from">
@@ -587,7 +590,25 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
         </div>
       </div>
 
-      <div style="font-size:10px;color:var(--mu);text-align:center;padding:12px;border-top:1px solid var(--bd);margin-top:8px" id="lu"></div>
+      
+      <!-- ══ HEATMAP ══ -->
+      <div class="sc" id="sc-hm">
+        <div class="cd">
+          <div class="ct">🗺 الخارطة الحرارية — أداء الفروع <span class="ct-b">فرق المعدل (ر.س/جم)</span></div>
+          <div style="overflow-x:auto">
+            <table class="tbl" id="hm-table">
+              <thead><tr id="hm-head"></tr></thead>
+              <tbody id="hm-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="cd">
+          <div class="ct">📊 ترتيب الفروع بفرق المعدل</div>
+          <div style="height:400px;position:relative"><canvas id="ch-hm"></canvas></div>
+        </div>
+      </div>
+
+<div style="font-size:10px;color:var(--mu);text-align:center;padding:12px;border-top:1px solid var(--bd);margin-top:8px" id="lu"></div>
     </div>
   </main>
  </div>
@@ -693,6 +714,12 @@ function loadEmbedded(){
   DATA.branches=EB.branches;DATA.employees=EB.employees;
   document.getElementById('period-label').textContent='01/03 — 15/03/2026';
   renderAll();
+  // Populate branch filter
+  const bSel=document.getElementById('filter-branch');
+  if(bSel){
+    bSel.innerHTML='<option value="">كل الفروع</option>';
+    DATA.branches.forEach(b=>{const o=document.createElement('option');o.value=b.code;o.textContent=b.name;bSel.appendChild(o);});
+  }
 }
 
 async function loadRange(from,to){
@@ -718,7 +745,8 @@ async function loadRange(from,to){
       b.k18_wt+=+r.k18_weight_g||0;b.k21_wt+=+r.k21_weight_g||0;b.k24_wt+=+r.k24_weight_g||0;
     });
     mothan.forEach(r=>{if(bmap[r.branch_code])bmap[r.branch_code].mothan=(bmap[r.branch_code].mothan||0)+(+r.amount_sar||0);});
-    DATA.branches=Object.values(bmap).map(b=>{
+    DATA._allBranches=null;
+  DATA.branches=Object.values(bmap).map(b=>{
       const savg=b.wn>0?b.sar/b.wn:0;
       return {...b,savg:Math.round(savg*100)/100,diff:Math.round((savg-b.purch_avg)*100)/100,
         net:b.sar-b.purch,ai:b.pcs>0?Math.round(b.sar/b.pcs):0};
@@ -738,6 +766,15 @@ async function setDF(mode,btn){
   else if(mode==='week')await loadRange(d[Math.min(6,d.length-1)],d[0]);
   else if(mode==='month'){const m=d[0].slice(0,7);const inM=d.filter(x=>x.startsWith(m));await loadRange(inM[inM.length-1]||d[0],d[0]);}
   else await loadRange(d[d.length-1],d[0]);
+}
+function applyBranchFilter(){
+  const bc=document.getElementById('filter-branch')?.value||'';
+  if(bc){
+    DATA.branches=DATA._allBranches?DATA._allBranches.filter(b=>b.code===bc):DATA.branches.filter(b=>b.code===bc);
+  }else{
+    if(DATA._allBranches)DATA.branches=DATA._allBranches;
+  }
+  renderAll();
 }
 async function applyCustom(){
   const f=document.getElementById('d-from').value,t=document.getElementById('d-to').value;
@@ -767,6 +804,71 @@ function initRegionFilters(){
 }
 
 // ── Render All ──
+function renderHeatmap(){
+  const bs=[...DATA.branches].sort((a,b)=>b.diff_rate-a.diff_rate);
+  if(!bs.length)return;
+  
+  // Heatmap table - rows=branches, cols=karats+total
+  const cols=['k18','k21','k24','إجمالي'];
+  const head=document.getElementById('hm-head');
+  const body=document.getElementById('hm-body');
+  if(!head||!body)return;
+  
+  head.innerHTML='<th>الفرع</th><th>المنطقة</th>'+cols.map(c=>`<th style="text-align:center">${c}</th>`).join('');
+  
+  const getRate=(b,k)=>{
+    if(k==='إجمالي')return +b.diff_rate||0;
+    const kd=b[k]||{};
+    return +kd.diff||0;
+  };
+  
+  // Find min/max for color scale
+  const allVals=bs.flatMap(b=>cols.map(k=>getRate(b,k))).filter(v=>v!==0);
+  const maxV=Math.max(...allVals,1);
+  const minV=Math.min(...allVals,0);
+  
+  const getColor=(v)=>{
+    if(v===0)return'rgba(30,51,84,.5)';
+    if(v>0){
+      const pct=Math.min(v/maxV,1);
+      return`rgba(34,197,94,${0.15+pct*0.7})`;
+    }else{
+      const pct=Math.min(Math.abs(v)/Math.abs(minV||1),1);
+      return`rgba(239,68,68,${0.15+pct*0.7})`;
+    }
+  };
+  
+  body.innerHTML=bs.map(b=>`
+    <tr>
+      <td style="font-weight:700;white-space:nowrap">${b.name}</td>
+      <td style="font-size:10px;color:var(--mu)">${b.region}</td>
+      ${cols.map(k=>{
+        const v=getRate(b,k);
+        return`<td style="text-align:center;background:${getColor(v)};border-radius:4px;padding:6px 10px;font-weight:600;font-size:12px;color:${v>0?'#4ade80':v<0?'#f87171':'var(--mu)'}">${v!==0?v.toFixed(1):'—'}</td>`;
+      }).join('')}
+    </tr>`).join('');
+  
+  // Bar chart
+  dk('ch-hm');
+  CH['ch-hm']=new Chart(document.getElementById('ch-hm'),{type:'bar',
+    data:{labels:bs.map(b=>b.name),
+      datasets:[{
+        label:'فرق المعدل (ر.س/جم)',
+        data:bs.map(b=>+b.diff_rate||0),
+        backgroundColor:bs.map(b=>(+b.diff_rate||0)>0?'rgba(34,197,94,.8)':'rgba(239,68,68,.8)'),
+        borderRadius:4
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(2)+' ر.س/جم'}}},
+      scales:{
+        x:{ticks:{color:'#64748b',font:{size:8},maxRotation:45},grid:{display:false}},
+        y:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+' ر.س'},grid:{color:'rgba(30,51,84,.5)'}}
+      }
+    }
+  });
+}
+
 function renderAll(){
   renderOv();renderAlerts();renderBranches();renderRegions();
   renderEmployees();renderKarat();renderMothan();renderRewards();
@@ -1138,14 +1240,36 @@ function parsePurchases(wb){
 
 function parseMothanFile(wb){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
-  return rows.filter(r=>String(r[0]).match(/\d{2}\/\d{2}\/\d{4}/)&&BM[String(r[2])]).map(r=>{
-    const raw=String(r[0]).trim().split('\n')[0].trim();
-    const dm=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    const d=dm?`${dm[3]}-${dm[2]}-${dm[1]}`:'';
-    if(!d)return null;
-    return{transaction_date:d,doc_ref:String(r[1]||''),branch_code:String(r[2]),branch_name:BM[String(r[2])]||'',
-      description:String(r[3]||''),amount_sar:Math.abs(+String(r[5]||'').replace(/,/g,'')||0),balance:Math.abs(+String(r[6]||'').replace(/,/g,'')||0)};
-  }).filter(Boolean);
+  const out=[];
+  for(const r of rows){
+    // Date is in col9 (DD/MM/YYYY), branch in col7, amount in col4, weight in col2
+    const dateStr=String(r[9]||'').trim();
+    const branchCode=String(r[7]||'').trim();
+    const dm=dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if(!dm||!BM[branchCode])continue;
+    const d=`${dm[3]}-${dm[2]}-${dm[1]}`;
+    const amountSar=Math.abs(+String(r[4]||'').replace(/,/g,'')||0);
+    const weightCredit=Math.abs(+String(r[1]||'').replace(/,/g,'')||0);
+    const weightDebit=Math.abs(+String(r[2]||'').replace(/,/g,'')||0);
+    const balGold=+String(r[0]||'').replace(/,/g,'')||0;
+    const balSar=+String(r[3]||'').replace(/,/g,'')||0;
+    const details=String(r[6]||'').replace(/'/g,'').replace(/"/g,'').trim().substring(0,60);
+    const docRef=String(r[8]||'').trim();
+    if(amountSar>0||weightDebit>0){
+      out.push({
+        transaction_date:d,doc_ref:docRef,
+        branch_code:branchCode,branch_name:BM[branchCode]||branchCode,
+        description:details,
+        amount_sar:amountSar,
+        weight_credit_g:weightCredit,
+        weight_debit_g:weightDebit,
+        rate_sar_per_g:weightDebit>0?Math.round(amountSar/weightDebit*100)/100:0,
+        balance_gold_g:balGold,
+        balance_sar:balSar
+      });
+    }
+  }
+  return out;
 }
 
 async function processAndSave(){
@@ -1370,6 +1494,7 @@ async function loadLoginLog(){
 
 // ── Tabs ──
 function sw(id,btn){
+  if(id==='hm')renderHeatmap();
   document.querySelectorAll('.sc').forEach(s=>s.classList.remove('on'));
   document.querySelectorAll('.sbb').forEach(b=>b.classList.remove('on'));
   document.getElementById('sc-'+id)?.classList.add('on');
