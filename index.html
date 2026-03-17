@@ -1172,7 +1172,7 @@ function rf(file,t){
       FILES[t]={wb,name:file.name};
       document.getElementById('uc-'+t).classList.add('loaded');
       const s=document.getElementById('st-'+t);s.textContent='✅ '+file.name;s.className='ust sok';
-      document.getElementById('proc-btn').disabled=!(FILES.sales||FILES.purch||FILES.mothan);
+      document.getElementById('proc-btn').disabled=!(FILES.bsales||FILES.sales||FILES.purch||FILES.mothan);
     }catch{const s=document.getElementById('st-'+t);s.textContent='❌ خطأ في القراءة';s.className='ust ser';}
   };
   r.readAsArrayBuffer(file);
