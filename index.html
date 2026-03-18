@@ -650,7 +650,25 @@ Chart.defaults.font.size=11;
 
 // ── Supabase helpers ──
 async function sbQ(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbUp(t,d){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());}
+async function sbUp(t,d){
+  if(!d||!d.length)return;
+  const r=await fetch(`${SB_URL}/rest/v1/${t}`,{
+    method:'POST',
+    headers:{
+      'apikey':SB_KEY,
+      'Authorization':'Bearer '+SB_KEY,
+      'Content-Type':'application/json',
+      'Prefer':'return=minimal'
+    },
+    body:JSON.stringify(d)
+  });
+  if(!r.ok){
+    const err=await r.text();
+    console.error('sbUp error for '+t+':',err);
+    throw new Error(err);
+  }
+  console.log('✅ sbUp '+t+' rows:'+d.length);
+}
 async function sbDel(t,p){await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});}
 
 // ── Auth ──
