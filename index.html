@@ -1459,7 +1459,7 @@ async function processAndSave(){
     }
 
     // Get report date from file
-    const rdate=empData?.df||purchData?.df||new Date().toISOString().split('T')[0];
+    const rdate=empData?.df||purchData?._df||new Date().toISOString().split('T')[0];
     // bsalesData already parsed above from multiple files
     sp(25,'💾 حفظ بيانات المشتريات...');await sl(60);
 
