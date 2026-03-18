@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+<!-- BUST1773841205 -->
 <!-- v1773795124 -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<!-- build:1773841205 -->
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1464,12 +1466,12 @@ async function processAndSave(){
       sp(pct(0.3+i/Math.max(mothanFiles.length,1)*0.2),'💾 حفظ موطن الذهب '+(i+1)+'/'+mothanFiles.length+'...');
       const mRows=parseMothanFile(mothanFiles[i].wb);
       if(mRows.length){
-        const mDates=[...new Set(mRows.map(r=>r.date||r.transaction_date))];
+        const mDates=[...new Set(mRows.map(r=>r.transaction_date||r.date))];
         for(const d of mDates){
           await fetch(`${SB_URL}/rest/v1/mothan_transactions?transaction_date=eq.${d}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
         }
         const mDate=mDates[0]||today;
-        await sbUp('mothan_transactions',mRows.map(r=>({...r,report_date:r.date||r.transaction_date||mDate})));
+        await sbUp('mothan_transactions',mRows.map(r=>({...r,report_date:r.transaction_date||r.date||mDate,date:undefined})));
         await sbUp('upload_log',[{report_date:mDate,file_type:'mothan',file_name:mothanFiles[i].name,records_count:mRows.length}]);
         totalSaved+=mRows.length;
         console.log('✅ mothan saved rows:'+mRows.length);
