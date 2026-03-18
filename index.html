@@ -652,22 +652,32 @@ Chart.defaults.font.size=11;
 async function sbQ(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbUp(t,d){
   if(!d||!d.length)return;
-  const r=await fetch(`${SB_URL}/rest/v1/${t}`,{
-    method:'POST',
-    headers:{
-      'apikey':SB_KEY,
-      'Authorization':'Bearer '+SB_KEY,
-      'Content-Type':'application/json',
-      'Prefer':'return=minimal'
-    },
-    body:JSON.stringify(d)
-  });
-  if(!r.ok){
-    const err=await r.text();
-    console.error('sbUp error for '+t+':',err);
-    throw new Error(err);
+  // Send in batches of 50 to avoid payload limits
+  const batchSize=50;
+  for(let i=0;i<d.length;i+=batchSize){
+    const batch=d.slice(i,i+batchSize);
+    const r=await fetch(`${SB_URL}/rest/v1/${t}`,{
+      method:'POST',
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':'Bearer '+SB_KEY,
+        'Content-Type':'application/json',
+        'Prefer':'return=representation'
+      },
+      body:JSON.stringify(batch)
+    });
+    const txt=await r.text();
+    if(!r.ok){
+      console.error('sbUp error for '+t+' status:'+r.status+' body:'+txt);
+      throw new Error(txt);
+    }
+    try{
+      const result=JSON.parse(txt);
+      console.log('✅ sbUp '+t+' batch saved:',result.length,'rows');
+    }catch{
+      console.log('✅ sbUp '+t+' status:'+r.status);
+    }
   }
-  console.log('✅ sbUp '+t+' rows:'+d.length);
 }
 async function sbDel(t,p){await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});}
 
@@ -1573,13 +1583,17 @@ async function clearAllData(){
   const btn=document.getElementById('clear-btn');
   btn.disabled=true;btn.textContent='⏳ جاري المسح...';
   try{
-    await Promise.all([
-      sbDel('branch_sales','id=gte.1'),
-      sbDel('branch_purchases','id=gte.1'),
-      sbDel('employee_sales','id=gte.1'),
-      sbDel('mothan_transactions','id=gte.1'),
-      sbDel('upload_log','id=gte.1'),
-    ]);
+    // Delete all records using report_date filter (more compatible)
+    const tables=['branch_sales','branch_purchases','employee_sales','mothan_transactions','upload_log'];
+    for(const tbl of tables){
+      try{
+        const r=await fetch(`${SB_URL}/rest/v1/${tbl}?id=not.is.null`,{
+          method:'DELETE',
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+        });
+        console.log('Deleted '+tbl+': status '+r.status);
+      }catch(e){console.warn('Delete failed for '+tbl,e);}
+    }
     DATA.branches=[];DATA.employees=EB.employees;DATA.mothan=[];DATA.dates=[];
     btn.textContent='✅ تم المسح';
     setTimeout(()=>{btn.disabled=false;btn.textContent='🗑️ مسح كل البيانات';},3000);
