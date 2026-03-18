@@ -1526,7 +1526,6 @@ async function processAndSave(){
       });
       // Also save branch sales from subtotals
       await sbDel('branch_sales','report_date=eq.'+rdate);
-      await sbDel('branch_purchases','report_date=eq.'+rdate);
       // Use bsales if available, otherwise fall back to empData.bSubs
       const branchSource = bsalesData || (empData&&empData.bSubs?{
         ...Object.fromEntries(Object.entries(empData.bSubs).map(([k,v])=>[k,{sub:v,karats:{}}]))
@@ -1556,8 +1555,13 @@ async function processAndSave(){
           };}).filter(r=>r.total_sar>0);
         await sbUp('branch_sales',bsRows);
       }
-      await sbDel('employee_sales','report_date=eq.'+rdate);
-      await sbUp('employee_sales',finalEmps.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;}));
+      // Delete existing employee records for this date first
+      await fetch(`${SB_URL}/rest/v1/employee_sales?report_date=eq.${rdate}`,{
+        method:'DELETE',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      });
+      const cleanEmps=finalEmps.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;});
+      await sbUp('employee_sales',cleanEmps);
       // Save bsales upload log
       if(bsalesData&&Object.keys(bsalesData).length){
         await sbUp('upload_log',[{report_date:rdate,file_type:'bsales',file_name:FILES.bsales?.name,records_count:Object.keys(bsalesData).length}]);
