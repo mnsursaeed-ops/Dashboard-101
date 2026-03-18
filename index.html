@@ -1417,186 +1417,159 @@ async function processAndSave(){
   const btn=document.getElementById('proc-btn');btn.disabled=true;
   const sp=(p,m)=>{document.getElementById('pw').style.display='block';document.getElementById('pb2').style.width=p+'%';document.getElementById('pm').textContent=m;};
   try{
-    sp(10,'⏳ قراءة الملفات...');await sl(60);
-    console.log('FILES:', {bsales:!!FILES.bsales,sales:!!FILES.sales,purch:!!FILES.purch,mothan:!!FILES.mothan});
-    let empData=null,purchData=null,mothanRows=[];
-    
-    // Handle single or multiple files per type
+    sp(5,'⏳ قراءة الملفات...');await sl(60);
+    console.log('FILES:',{bsales:!!FILES.bsales,sales:!!FILES.sales,purch:!!FILES.purch,mothan:!!FILES.mothan});
+
+    const today=new Date().toISOString().split('T')[0];
     const getWbs=(t)=>{
       if(!FILES[t])return[];
-      if(FILES[t].multi)return FILES[t].files.map(f=>f.wb);
-      return[FILES[t].wb];
+      if(FILES[t].multi)return FILES[t].files.map(f=>({wb:f.wb,name:f.name}));
+      return[{wb:FILES[t].wb,name:FILES[t].name}];
     };
-    
-    // Parse all sales files (employees) - merge results
-    const salesWbs=getWbs('sales');
-    if(salesWbs.length){
-      if(salesWbs.length===1){empData=parseEmpSales(salesWbs[0]);}
-      else{
-        // Merge multiple emp files
-        const allEmps=[];let lastDf='',lastDt='';
-        salesWbs.forEach(wb=>{
-          const d=parseEmpSales(wb);
-          allEmps.push(...d.emps);
-          if(d.df)lastDf=d.df;
-          if(d.dt)lastDt=d.dt;
-        });
-        empData={emps:allEmps,bSubs:{},df:lastDf,dt:lastDt};
+
+    let totalSaved=0;
+    const pct=(n)=>Math.min(5+Math.round(n*90),95);
+
+    // ── 1. Save purchases (each file independently) ──
+    const purchFiles=getWbs('purch');
+    for(let i=0;i<purchFiles.length;i++){
+      sp(pct(i/Math.max(purchFiles.length,1)),'💾 حفظ المشتريات '+(i+1)+'/'+purchFiles.length+'...');
+      const pd=parsePurchases(purchFiles[i].wb);
+      const pdate=pd._df||today;
+      const pRows=Object.entries(pd).filter(([k])=>k!=='_df'&&k!=='_dt').map(([code,d])=>{
+        const name=BM[code]||code;
+        const sub=d.sub||{};
+        const k18=d.karats?.['18']||{};
+        const k21=d.karats?.['21']||{};
+        const k24=d.karats?.['24']||{};
+        return{report_date:pdate,branch_code:code,branch_name:name,region:RM[name]||'—',
+          total_sar:sub.total||0,total_weight_g:sub.wt_safe||0,
+          wt_pure_g:sub.wt_pure||0,purchase_rate:sub.rate||0,purchase_avg_mkg:0,
+          k18_sar:k18.total||0,k18_weight_g:k18.wt_safe||0,k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,
+          k21_sar:k21.total||0,k21_weight_g:k21.wt_safe||0,k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,
+          k24_sar:k24.total||0,k24_weight_g:k24.wt_safe||0,k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0};
+      }).filter(r=>r.total_sar>0);
+      if(pRows.length){
+        await fetch(`${SB_URL}/rest/v1/branch_purchases?report_date=eq.${pdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+        await sbUp('branch_purchases',pRows);
+        await sbUp('upload_log',[{report_date:pdate,file_type:'purchases',file_name:purchFiles[i].name,date_from:pdate,records_count:pRows.length}]);
+        totalSaved+=pRows.length;
+        console.log('✅ purchases saved date:'+pdate+' rows:'+pRows.length);
       }
     }
-    
-    // Parse all purchases files - merge
-    const purchWbs=getWbs('purch');
-    if(purchWbs.length){
-      purchData={};
-      purchWbs.forEach(wb=>{
-        const d=parsePurchases(wb);
-        Object.entries(d).forEach(([code,v])=>{
-          if(!purchData[code])purchData[code]=v;
-          else{
-            purchData[code].sub.total+=v.sub.total||0;
-            purchData[code].sub.wt_pure+=v.sub.wt_pure||0;
-            purchData[code].sub.wt_safe+=v.sub.wt_safe||0;
-          }
-        });
-      });
-      // Recalculate rates
-      Object.values(purchData).forEach(d=>{
-        if(d.sub.wt_pure>0)d.sub.rate=Math.round(d.sub.total/d.sub.wt_pure*10000)/10000;
-      });
-      console.log('purchData keys:',Object.keys(purchData).length);
-    }
-    
-    // Parse mothan files - concat
-    const mothanWbs=getWbs('mothan');
-    mothanWbs.forEach(wb=>{mothanRows.push(...parseMothanFile(wb));});
-    
-    // Parse bsales files - merge
-    const bsalesWbs=getWbs('bsales');
-    let bsalesData=null;
-    if(bsalesWbs.length){
-      bsalesData={};
-      bsalesWbs.forEach(wb=>{
-        const d=parseBranchSales(wb);
-        Object.entries(d).forEach(([code,v])=>{
-          if(!bsalesData[code])bsalesData[code]=v;
-          else{
-            bsalesData[code].sub.total+=v.sub.total||0;
-            bsalesData[code].sub.wt_pure+=v.sub.wt_pure||0;
-            bsalesData[code].sub.wt_safe+=v.sub.wt_safe||0;
-            bsalesData[code].sub.pieces+=v.sub.pieces||0;
-          }
-        });
-      });
+
+    // ── 2. Save mothan (each file independently) ──
+    const mothanFiles=getWbs('mothan');
+    for(let i=0;i<mothanFiles.length;i++){
+      sp(pct(0.3+i/Math.max(mothanFiles.length,1)*0.2),'💾 حفظ موطن الذهب '+(i+1)+'/'+mothanFiles.length+'...');
+      const mRows=parseMothanFile(mothanFiles[i].wb);
+      if(mRows.length){
+        const mDates=[...new Set(mRows.map(r=>r.date||r.transaction_date))];
+        for(const d of mDates){
+          await fetch(`${SB_URL}/rest/v1/mothan_transactions?transaction_date=eq.${d}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+        }
+        const mDate=mDates[0]||today;
+        await sbUp('mothan_transactions',mRows.map(r=>({...r,report_date:r.date||r.transaction_date||mDate})));
+        await sbUp('upload_log',[{report_date:mDate,file_type:'mothan',file_name:mothanFiles[i].name,records_count:mRows.length}]);
+        totalSaved+=mRows.length;
+        console.log('✅ mothan saved rows:'+mRows.length);
+      }
     }
 
-    // Get report date from file
-    // Each file type uses its own date
-    const today=new Date().toISOString().split('T')[0];
-    const salesDate=empData?.df||today;
-    const purchDate=purchData?._df||today;
-    const bsalesDate=bsalesData?._df||empData?.df||today;
-    // For backward compat
-    const rdate=salesDate;
-    sp(25,'💾 حفظ بيانات المشتريات...');await sl(60);
+    // ── 3. Save branch sales + employee sales (per file) ──
+    const bsalesFiles=getWbs('bsales');
+    const salesFiles=getWbs('sales');
+    const maxSales=Math.max(bsalesFiles.length,salesFiles.length);
 
-    if(purchData&&Object.keys(purchData).length){
-      const pRows=Object.entries(purchData).map(([code,d])=>{
+    for(let i=0;i<maxSales;i++){
+      const bsWb=bsalesFiles[i]||null;
+      const emWb=salesFiles[i]||null;
+      sp(pct(0.5+i/Math.max(maxSales,1)*0.5),'💾 حفظ المبيعات '+(i+1)+'/'+maxSales+'...');
+
+      const empData=emWb?parseEmpSales(emWb.wb):null;
+      const bsalesData=bsWb?parseBranchSales(bsWb.wb):null;
+      const rdate=empData?.df||bsalesData?._df||today;
+
+      // Get purchase rate for this date's branches
+      const purchRows=await sbQ('branch_purchases',`report_date=eq.${rdate}`);
+      const purchMap={};purchRows.forEach(r=>{purchMap[r.branch_code]=+r.purchase_rate||0;});
+
+      // Save employee sales
+      if(empData?.emps?.length){
+        // Enrich with mothan purchase rate
+        const mothanRows=await sbQ('mothan_transactions',`select=*`);
+        const mothanByBranch={};
+        mothanRows.forEach(r=>{
+          const bc=r.branch_code;
+          if(!mothanByBranch[bc])mothanByBranch[bc]={amount:0,weight:0};
+          mothanByBranch[bc].amount+=(+r.amount_sar||0);
+          mothanByBranch[bc].weight+=(+r.weight_debit_g||0);
+        });
+        // Combined purchase rate
+        const combinedPurchMap={};
+        Object.keys({...purchMap,...mothanByBranch}).forEach(bc=>{
+          const p=purchRows.find(r=>r.branch_code===bc)||{};
+          const m=mothanByBranch[bc]||{amount:0,weight:0};
+          const ct=(+p.total_sar||0)+m.amount;
+          const cw=(+p.wt_pure_g||0)+m.weight;
+          combinedPurchMap[bc]=cw>0?Math.round(ct/cw*10000)/10000:+p.purchase_rate||0;
+        });
+
+        const finalEmps=empData.emps.map(e=>{
+          const pa=combinedPurchMap[e._cur]||purchMap[e._cur]||0;
+          const sa=e.sale_rate_g||0;
+          return{...e,branch_purchase_avg:pa,emp_avg_mkg:sa,
+            diff_avg:Math.round((sa-pa)*10000)/10000,
+            achieved_target:sa>pa,report_date:rdate};
+        });
+        await fetch(`${SB_URL}/rest/v1/employee_sales?report_date=eq.${rdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+        const cleanEmps=finalEmps.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;});
+        await sbUp('employee_sales',cleanEmps);
+        await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:emWb?.name||'employees',date_from:rdate,records_count:cleanEmps.length}]);
+        totalSaved+=cleanEmps.length;
+        console.log('✅ employees saved date:'+rdate+' rows:'+cleanEmps.length);
+      }
+
+      // Save branch sales
+      const branchSource=bsalesData||(empData?.bSubs?{...Object.fromEntries(Object.entries(empData.bSubs).map(([k,v])=>[k,{sub:v}]))}:null);
+      if(branchSource&&Object.keys(branchSource).length){
+        const bsRows=Object.entries(branchSource).filter(([k])=>k!=='_df').map(([code,d])=>{
           const name=BM[code]||code;
           const sub=d.sub||{};
-          const total=sub.total||0,wtp=sub.wt_pure||0;
           const k18=d.karats?.['18']||{};
           const k21=d.karats?.['21']||{};
           const k24=d.karats?.['24']||{};
-          return{report_date:purchDate,branch_code:code,branch_name:name,region:RM[name]||'—',
-            total_sar:total,total_weight_g:sub.wt_safe||0,
-            wt_pure_g:wtp,purchase_rate:sub.rate||0,purchase_avg_mkg:0,
+          return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',
+            total_sar:sub.total||0,total_weight_g:sub.wt_safe||0,wt_pure_g:sub.wt_pure||0,
+            total_pieces:sub.pieces||0,sale_rate:sub.total>0&&sub.wt_safe>0?Math.round(sub.total/sub.wt_safe*10000)/10000:0,
             k18_sar:k18.total||0,k18_weight_g:k18.wt_safe||0,k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,
             k21_sar:k21.total||0,k21_weight_g:k21.wt_safe||0,k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,
-            k24_sar:k24.total||0,k24_weight_g:k24.wt_safe||0,k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0,
-          };}).filter(r=>r.total_sar>0);
-      console.log('pRows to save:',pRows.length,'sample:',pRows[0]);
-      await sbUp('branch_purchases',pRows);
-      console.log('✅ branch_purchases saved');
-      await sbUp('upload_log',[{report_date:purchDate,file_type:'purchases',file_name:FILES.purch?.name||'purchases',date_from:purchDate,records_count:pRows.length}]);
+            k24_sar:k24.total||0,k24_weight_g:k24.wt_safe||0,k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0};
+        }).filter(r=>r.total_sar>0);
+        if(bsRows.length){
+          await fetch(`${SB_URL}/rest/v1/branch_sales?report_date=eq.${rdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+          await sbUp('branch_sales',bsRows);
+          await sbUp('upload_log',[{report_date:rdate,file_type:'bsales',file_name:bsWb?.name||'bsales',date_from:rdate,records_count:bsRows.length}]);
+          totalSaved+=bsRows.length;
+          console.log('✅ branch_sales saved date:'+rdate+' rows:'+bsRows.length);
+        }
+      }
     }
 
-    sp(50,'💾 حفظ بيانات الموظفين...');await sl(60);
-    if(empData&&empData.emps.length){
-      // Enrich with purchase avg
-      const finalEmps=empData.emps.map(e=>{
-        const pa=purchData?.[e._cur]?.sub?.rate||purchData?.[e._cur]?.avg||0;
-        const sa=e.sale_rate_g||0;
-        return{...e,branch_purchase_avg:pa,emp_avg_mkg:sa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa,report_date:rdate};
-      });
-      // Also save branch sales from subtotals
-      await sbDel('branch_sales','report_date=eq.'+rdate);
-      // Use bsales if available, otherwise fall back to empData.bSubs
-      const branchSource = bsalesData || (empData&&empData.bSubs?{
-        ...Object.fromEntries(Object.entries(empData.bSubs).map(([k,v])=>[k,{sub:v,karats:{}}]))
-      }:null);
-      if(branchSource){
-        const bsRows=Object.entries(branchSource).map(([code,d])=>{
-          const name=BM[code]||code;
-          const sub=d.sub||d;
-          const total=sub.total||sub.sar||0;
-          const wtp=sub.wt_pure||sub.wp||0;
-          const wts=sub.wt_safe||sub.wn||0;
-          const pcs=sub.pieces||sub.pcs||0;
-          const rate=sub.rate||(wtp>0?Math.round(total/wtp*10000)/10000:0);
-          const k18=d.karats?.['18']||{};
-          const k21=d.karats?.['21']||{};
-          const k24=d.karats?.['24']||{};
-          return{report_date:purchDate,branch_code:code,branch_name:name,region:RM[name]||'—',
-            total_sar:total,total_weight_g:wts,total_pieces:pcs,
-            wt_pure_g:wtp,wt_safe_g:wts,sale_rate:rate,avg_mkg_charge:sub.avg_mkg||0,
-            avg_invoice_sar:pcs>0?Math.round(total/pcs):0,
-            k18_sar:k18.total||0,k18_weight_g:k18.wt_safe||0,k18_pieces:k18.pieces||0,
-            k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,k18_avg_mkg:k18.avg_mkg||0,
-            k21_sar:k21.total||0,k21_weight_g:k21.wt_safe||0,k21_pieces:k21.pieces||0,
-            k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,k21_avg_mkg:k21.avg_mkg||0,
-            k24_sar:k24.total||0,k24_weight_g:k24.wt_safe||0,k24_pieces:k24.pieces||0,
-            k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0,k24_avg_mkg:k24.avg_mkg||0,
-          };}).filter(r=>r.total_sar>0);
-        await sbUp('branch_sales',bsRows);
-      }
-      // Delete existing employee records for this date first
-      await fetch(`${SB_URL}/rest/v1/employee_sales?report_date=eq.${rdate}`,{
-        method:'DELETE',
-        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-      });
-      const cleanEmps=finalEmps.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;});
-      await sbUp('employee_sales',cleanEmps);
-      // Save bsales upload log
-      if(bsalesData&&Object.keys(bsalesData).length){
-        await sbUp('upload_log',[{report_date:rdate,file_type:'bsales',file_name:FILES.bsales?.name,records_count:Object.keys(bsalesData).length}]);
-      }
-      await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:FILES.sales?.name,date_from:empData.df,date_to:empData.dt,records_count:finalEmps.length}]);
-    }
-
-    sp(75,'💾 حفظ موطن الذهب...');await sl(60);
-    if(mothanRows.length){
-      // Mothan uses its own transaction dates
-      const mothanDate=mothanRows[0]?.date||today;
-      // Delete mothan for the date range in this file
-      const mothanDates=[...new Set(mothanRows.map(r=>r.date||r.transaction_date))];
-      for(const d of mothanDates){
-        await fetch(`${SB_URL}/rest/v1/mothan_transactions?transaction_date=eq.${d}`,{
-          method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-        });
-      }
-      await sbUp('mothan_transactions',mothanRows.map(r=>({...r,report_date:r.date||r.transaction_date||today})));
-      await sbUp('upload_log',[{report_date:mothanDate,file_type:'mothan',file_name:FILES.mothan?.name||'mothan',records_count:mothanRows.length}]);
-    }
-
-    sp(100,'✅ تم الحفظ بنجاح!');await sl(500);
+    sp(100,'✅ تم الحفظ بنجاح! ('+totalSaved+' سجل)');
+    await sl(400);
     document.getElementById('pw').style.display='none';
-    await init();
     loadHistory();
-    sw('ov',document.querySelectorAll('.sbb')[1]);
-  }catch(err){sp(100,'❌ خطأ: '+err.message);console.error(err);}
-  btn.disabled=false;
+    await loadRange(DATA.dates[0]||today,today);
+  }catch(err){
+    document.getElementById('pm').textContent='❌ خطأ: '+err.message;
+    console.error('processAndSave error:',err);
+  }finally{
+    btn.disabled=false;
+    document.getElementById('proc-btn').disabled=!(FILES.bsales||FILES.sales||FILES.purch||FILES.mothan);
+  }
 }
+
 
 async function clearAllData(){
   if(ROLE!=='super_admin'&&!PERMS.delete){alert('ليس لديك صلاحية المسح');return;}
