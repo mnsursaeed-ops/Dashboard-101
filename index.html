@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+<!-- v1773795124 -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -1459,8 +1460,7 @@ async function processAndSave(){
 
     // Get report date from file
     const rdate=empData?.df||purchData?.df||new Date().toISOString().split('T')[0];
-    // Parse branch sales
-    let bsalesData=FILES.bsales?parseBranchSales(FILES.bsales.wb):null;
+    // bsalesData already parsed above from multiple files
     sp(25,'💾 حفظ بيانات المشتريات...');await sl(60);
 
     if(purchData&&Object.keys(purchData).length){
