@@ -1491,8 +1491,13 @@ async function processAndSave(){
     }
 
     // Get report date from file
-    const rdate=empData?.df||purchData?._df||new Date().toISOString().split('T')[0];
-    // bsalesData already parsed above from multiple files
+    // Each file type uses its own date
+    const today=new Date().toISOString().split('T')[0];
+    const salesDate=empData?.df||today;
+    const purchDate=purchData?._df||today;
+    const bsalesDate=bsalesData?._df||empData?.df||today;
+    // For backward compat
+    const rdate=salesDate;
     sp(25,'💾 حفظ بيانات المشتريات...');await sl(60);
 
     if(purchData&&Object.keys(purchData).length){
@@ -1503,7 +1508,7 @@ async function processAndSave(){
           const k18=d.karats?.['18']||{};
           const k21=d.karats?.['21']||{};
           const k24=d.karats?.['24']||{};
-          return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',
+          return{report_date:purchDate,branch_code:code,branch_name:name,region:RM[name]||'—',
             total_sar:total,total_weight_g:sub.wt_safe||0,
             wt_pure_g:wtp,purchase_rate:sub.rate||0,purchase_avg_mkg:0,
             k18_sar:k18.total||0,k18_weight_g:k18.wt_safe||0,k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,
@@ -1513,7 +1518,7 @@ async function processAndSave(){
       console.log('pRows to save:',pRows.length,'sample:',pRows[0]);
       await sbUp('branch_purchases',pRows);
       console.log('✅ branch_purchases saved');
-      await sbUp('upload_log',[{report_date:rdate,file_type:'purchases',file_name:FILES.purch?.name,date_from:rdate,records_count:pRows.length}]);
+      await sbUp('upload_log',[{report_date:purchDate,file_type:'purchases',file_name:FILES.purch?.name||'purchases',date_from:purchDate,records_count:pRows.length}]);
     }
 
     sp(50,'💾 حفظ بيانات الموظفين...');await sl(60);
@@ -1542,7 +1547,7 @@ async function processAndSave(){
           const k18=d.karats?.['18']||{};
           const k21=d.karats?.['21']||{};
           const k24=d.karats?.['24']||{};
-          return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',
+          return{report_date:purchDate,branch_code:code,branch_name:name,region:RM[name]||'—',
             total_sar:total,total_weight_g:wts,total_pieces:pcs,
             wt_pure_g:wtp,wt_safe_g:wts,sale_rate:rate,avg_mkg_charge:sub.avg_mkg||0,
             avg_invoice_sar:pcs>0?Math.round(total/pcs):0,
@@ -1571,9 +1576,17 @@ async function processAndSave(){
 
     sp(75,'💾 حفظ موطن الذهب...');await sl(60);
     if(mothanRows.length){
-      await sbDel('mothan_transactions','report_date=eq.'+rdate);
-      await sbUp('mothan_transactions',mothanRows.map(r=>{return{...r,report_date:rdate};}) );
-      await sbUp('upload_log',[{report_date:rdate,file_type:'mothan',file_name:FILES.mothan?.name,records_count:mothanRows.length}]);
+      // Mothan uses its own transaction dates
+      const mothanDate=mothanRows[0]?.date||today;
+      // Delete mothan for the date range in this file
+      const mothanDates=[...new Set(mothanRows.map(r=>r.date||r.transaction_date))];
+      for(const d of mothanDates){
+        await fetch(`${SB_URL}/rest/v1/mothan_transactions?transaction_date=eq.${d}`,{
+          method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+        });
+      }
+      await sbUp('mothan_transactions',mothanRows.map(r=>({...r,report_date:r.date||r.transaction_date||today})));
+      await sbUp('upload_log',[{report_date:mothanDate,file_type:'mothan',file_name:FILES.mothan?.name||'mothan',records_count:mothanRows.length}]);
     }
 
     sp(100,'✅ تم الحفظ بنجاح!');await sl(500);
