@@ -13,7 +13,112 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- BUILD:1773843872 -->
 <title>💎 منصور للذهب v1773755131</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// ── Page Switch ──
+function sw(id,btn){
+  document.querySelectorAll('.sc').forEach(s=>s.style.display='none');
+  document.querySelectorAll('.sbb').forEach(b=>b.classList.remove('on'));
+  const sc=document.getElementById('sc-'+id);
+  if(sc)sc.style.display='block';
+  if(btn)btn.classList.add('on');
+  if(id==='hm')renderHeatmap();
+  if(id==='up')loadHistory();
+  if(id==='ad')loadUsers();
+}
+
+function initBranchCbs(){
+  const sel=document.getElementById('filter-branch');if(!sel)return;
+  sel.innerHTML='<option value="">كل الفروع</option>';
+  (DATA._allBranches||DATA.branches).forEach(b=>{const o=document.createElement('option');o.value=b.code;o.textContent=b.name;sel.appendChild(o);});
+}
+
+// ── File Upload ──
+const FILES={};
+function hdrop(e,t){e.preventDefault();document.getElementById('uc-'+t).classList.remove('drag');const files=e.dataTransfer.files;if(!files.length)return;if(files.length===1){rf(files[0],t);return;}hfile({files},t);}
+function hfile(inp,t){
+  if(!inp.files.length)return;
+  if(inp.files.length===1){rf(inp.files[0],t);return;}
+  const files=Array.from(inp.files);FILES[t]={multi:true,files:[],name:files.length+' ملفات'};let loaded=0;
+  files.forEach(file=>{const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',raw:true});FILES[t].files.push({wb,name:file.name});loaded++;document.getElementById('st-'+t).textContent='✅ '+loaded+'/'+files.length+' ملفات';document.getElementById('st-'+t).className='ust sok';document.getElementById('uc-'+t).classList.add('loaded');document.getElementById('proc-btn').disabled=!(FILES.bsales||FILES.sales||FILES.purch||FILES.mothan);}catch(err){document.getElementById('st-'+t).textContent='❌ '+err.message;}};r.readAsArrayBuffer(file);});
+}
+function rf(file,t){
+  const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',raw:true});FILES[t]={wb,name:file.name};document.getElementById('uc-'+t).classList.add('loaded');document.getElementById('st-'+t).textContent='✅ '+file.name;document.getElementById('st-'+t).className='ust sok';document.getElementById('proc-btn').disabled=!(FILES.bsales||FILES.sales||FILES.purch||FILES.mothan);console.log('✅ Loaded '+t+': '+file.name);}catch(err){document.getElementById('st-'+t).textContent='❌ '+err.message;}};r.readAsArrayBuffer(file);
+}
+
+// ── Process & Save ──
+async function processAndSave(){
+  const btn=document.getElementById('proc-btn');btn.disabled=true;
+  const sp=(p,m)=>{document.getElementById('pw').style.display='block';document.getElementById('pb2').style.width=p+'%';document.getElementById('pm').textContent=m;};
+  try{
+    sp(5,'⏳ قراءة الملفات...');await sl(60);
+    const today=new Date().toISOString().split('T')[0];
+    const getWbs=(t)=>{if(!FILES[t])return[];if(FILES[t].multi)return FILES[t].files.map(f=>({wb:f.wb,name:f.name}));return[{wb:FILES[t].wb,name:FILES[t].name}];};
+    let totalSaved=0;
+    // Purchases
+    const purchFiles=getWbs('purch');
+    for(let i=0;i<purchFiles.length;i++){
+      sp(5+Math.round(i/Math.max(purchFiles.length,1)*20),'💾 حفظ المشتريات '+(i+1)+'/'+purchFiles.length+'...');
+      const pd=parsePurchases(purchFiles[i].wb);const pdate=pd._df||today;
+      const pRows=Object.entries(pd).filter(([k])=>k!=='_df'&&k!=='_dt').map(([code,d])=>{const name=BM[code]||code;const sub=d.sub||{};const k18=d.karats?.['18']||{};const k21=d.karats?.['21']||{};const k24=d.karats?.['24']||{};return{report_date:pdate,branch_code:code,branch_name:name,region:RM[name]||'—',total_sar:sub.total||0,total_weight_g:sub.wt_safe||0,wt_pure_g:sub.wt_pure||0,purchase_rate:sub.rate||0,purchase_avg_mkg:0,k18_sar:k18.total||0,k18_weight_g:k18.wt_safe||0,k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,k21_sar:k21.total||0,k21_weight_g:k21.wt_safe||0,k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,k24_sar:k24.total||0,k24_weight_g:k24.wt_safe||0,k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0};}).filter(r=>r.total_sar>0);
+      if(pRows.length){await fetch(`${SB_URL}/rest/v1/branch_purchases?report_date=eq.${pdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});await sbUp('branch_purchases',pRows);await sbUp('upload_log',[{report_date:pdate,file_type:'purchases',file_name:purchFiles[i].name,date_from:pdate,records_count:pRows.length}]);totalSaved+=pRows.length;console.log('✅ purchases:'+pdate+' rows:'+pRows.length);}
+    }
+    // Mothan
+    const mothanFiles=getWbs('mothan');
+    for(let i=0;i<mothanFiles.length;i++){
+      sp(25+Math.round(i/Math.max(mothanFiles.length,1)*15),'💾 حفظ موطن الذهب '+(i+1)+'/'+mothanFiles.length+'...');
+      const mRows=parseMothanFile(mothanFiles[i].wb);console.log('Mothan parsed:',mRows.length,mRows[0]);
+      if(mRows.length){const mDates=[...new Set(mRows.map(r=>r.transaction_date))];for(const d of mDates)await fetch(`${SB_URL}/rest/v1/mothan_transactions?transaction_date=eq.${d}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});const mDate=mDates[0]||today;await sbUp('mothan_transactions',mRows.map(r=>({...r,report_date:r.transaction_date||mDate})));await sbUp('upload_log',[{report_date:mDate,file_type:'mothan',file_name:mothanFiles[i].name,records_count:mRows.length}]);totalSaved+=mRows.length;console.log('✅ mothan:'+mRows.length);}
+    }
+    // Branch Sales + Employees
+    const bsalesFiles=getWbs('bsales');const salesFiles=getWbs('sales');const maxS=Math.max(bsalesFiles.length,salesFiles.length);
+    for(let i=0;i<maxS;i++){
+      sp(40+Math.round(i/Math.max(maxS,1)*55),'💾 حفظ المبيعات '+(i+1)+'/'+maxS+'...');
+      const bsWb=bsalesFiles[i]||null;const emWb=salesFiles[i]||null;
+      const empData=emWb?parseEmpSales(emWb.wb):null;const bsData=bsWb?parseBranchSales(bsWb.wb):null;
+      const rdate=empData?.df||bsData?._df||today;
+      const purchRows=await sbQ('branch_purchases','select=*&order=report_date.desc&limit=500');
+      const mothanRows=await sbQ('mothan_transactions','select=*&limit=500');
+      const mothanByBranch={};mothanRows.forEach(r=>{if(!mothanByBranch[r.branch_code])mothanByBranch[r.branch_code]={amount:0,weight:0};mothanByBranch[r.branch_code].amount+=(+r.amount_sar||0);mothanByBranch[r.branch_code].weight+=(+r.weight_debit_g||0);});
+      const purchMap={};purchRows.forEach(r=>{const m=mothanByBranch[r.branch_code]||{amount:0,weight:0};const ct=(+r.total_sar||0)+m.amount;const cw=(+r.wt_pure_g||0)+m.weight;purchMap[r.branch_code]=cw>0?Math.round(ct/cw*10000)/10000:(+r.purchase_rate||0);});
+      if(empData?.emps?.length){
+        const finalEmps=empData.emps.map(e=>{const pa=purchMap[e._cur]||0;const sa=e.sale_rate_g||0;return{...e,branch_purchase_avg:pa,emp_avg_mkg:sa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa,report_date:rdate};});
+        await fetch(`${SB_URL}/rest/v1/employee_sales?report_date=eq.${rdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+        const cleanEmps=finalEmps.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;});
+        await sbUp('employee_sales',cleanEmps);await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:emWb?.name||'employees',date_from:rdate,records_count:cleanEmps.length}]);totalSaved+=cleanEmps.length;console.log('✅ employees:'+rdate+' rows:'+cleanEmps.length);
+      }
+      const branchSource=bsData||(empData?.bSubs?Object.fromEntries(Object.entries(empData.bSubs).map(([k,v])=>[k,{sub:v,karats:{}}])):null);
+      if(branchSource){const bsRows=Object.entries(branchSource).filter(([k])=>k!=='_df'&&k!=='_dt').map(([code,d])=>{const name=BM[code]||code;const sub=d.sub||{};const k18=d.karats?.['18']||{};const k21=d.karats?.['21']||{};const k24=d.karats?.['24']||{};return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',total_sar:sub.total||0,total_weight_g:sub.wt_net||sub.wt_safe||0,wt_pure_g:sub.wt_pure||0,total_pieces:sub.pieces||0,sale_rate:sub.total>0&&(sub.wt_net||sub.wt_safe)>0?Math.round(sub.total/(sub.wt_net||sub.wt_safe)*10000)/10000:0,k18_sar:k18.total||0,k18_weight_g:k18.wt_net||0,k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,k21_sar:k21.total||0,k21_weight_g:k21.wt_net||0,k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,k24_sar:k24.total||0,k24_weight_g:k24.wt_net||0,k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0};}).filter(r=>r.total_sar>0);if(bsRows.length){await fetch(`${SB_URL}/rest/v1/branch_sales?report_date=eq.${rdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});await sbUp('branch_sales',bsRows);await sbUp('upload_log',[{report_date:rdate,file_type:'bsales',file_name:bsWb?.name||'bsales',date_from:rdate,records_count:bsRows.length}]);totalSaved+=bsRows.length;console.log('✅ bsales:'+rdate+' rows:'+bsRows.length);}}
+    }
+    sp(100,'✅ تم الحفظ! ('+totalSaved+' سجل)');await sl(500);document.getElementById('pw').style.display='none';loadHistory();const latestDate=DATA.dates[0]||today;await loadRange(latestDate,latestDate);
+  }catch(err){document.getElementById('pm').textContent='❌ خطأ: '+err.message;console.error('processAndSave error:',err);}
+  finally{btn.disabled=false;document.getElementById('proc-btn').disabled=!(FILES.bsales||FILES.sales||FILES.purch||FILES.mothan);}
+}
+
+async function loadHistory(){
+  try{
+    const rows=await sbQ('upload_log','order=uploaded_at.desc&limit=50');
+    const icons={sales:'📊',purchases:'🛒',mothan:'🏦',employees:'👥',bsales:'📈'};
+    const labels={sales:'مبيعات الموظفين',purchases:'المشتريات',mothan:'موطن الذهب',employees:'موظفون',bsales:'مبيعات الفروع'};
+    const el=document.getElementById('hist-count');if(el)el.textContent=rows.length+' سجل';
+    const canDel=ROLE==='super_admin'||PERMS.delete;
+    const hl=document.getElementById('hist-list');if(!hl)return;
+    hl.innerHTML=rows.length?rows.map(r=>{const delBtn=canDel?`<button onclick="deleteRecord('${r.report_date}','${r.file_type}')" style="padding:3px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:6px;font-size:10px;cursor:pointer;font-family:inherit;margin-right:6px">🗑️ حذف</button>`:'';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border-radius:8px;margin-bottom:6px;font-size:12px;border:1px solid var(--bd)"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">${icons[r.file_type]||'📄'}</span><div><div style="font-weight:600">${labels[r.file_type]||r.file_type} — ${r.date_from||r.report_date}</div><div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('ar-SA')}</div></div></div><div style="display:flex;align-items:center">${delBtn}<span class="pl pg">✅ محفوظ</span></div></div>`;}).join(''):'<div style="text-align:center;color:var(--mu);padding:24px;font-size:12px">لم يتم رفع أي بيانات بعد</div>';
+  }catch(e){console.error('loadHistory:',e);}
+}
+
+async function clearAllData(){
+  if(ROLE!=='super_admin'&&!PERMS.delete){alert('ليس لديك صلاحية');return;}
+  if(!confirm('⚠️ مسح كل البيانات؟\nلا يمكن التراجع.'))return;
+  const btn=document.getElementById('clear-btn');if(btn){btn.disabled=true;btn.textContent='⏳...';}
+  try{for(const t of['branch_sales','branch_purchases','employee_sales','mothan_transactions','upload_log'])await fetch(`${SB_URL}/rest/v1/${t}?id=not.is.null`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});if(btn)btn.textContent='✅ تم';setTimeout(()=>{if(btn){btn.disabled=false;btn.textContent='🗑️ مسح كل البيانات';}},3000);loadHistory();alert('✅ تم المسح');}catch(e){alert('❌ '+e.message);if(btn){btn.disabled=false;btn.textContent='🗑️ مسح';}}
+}
+
+async function deleteRecord(date,fileType){
+  if(!confirm(`حذف ${fileType} بتاريخ ${date}؟`))return;
+  try{const tableMap={sales:'branch_sales',purchases:'branch_purchases',employees:'employee_sales',mothan:'mothan_transactions',bsales:'branch_sales'};const tbl=tableMap[fileType];if(tbl)await fetch(`${SB_URL}/rest/v1/${tbl}?report_date=eq.${date}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});await fetch(`${SB_URL}/rest/v1/upload_log?report_date=eq.${date}&file_type=eq.${fileType}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});loadHistory();alert('✅ تم الحذف');}catch(e){alert('❌ '+e.message);}
+}
+
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -1458,515 +1563,7 @@ function parseMothanFile(wb){
   return out;
 }
 
-async function doLogin(){
-  const email=document.getElementById('l-email').value.trim();
-  const pw=document.getElementById('l-pw').value;
-  const btn=document.getElementById('l-btn');
-  const err=document.getElementById('l-err');
-  if(!email||!pw){err.textContent='أدخل البريد وكلمة المرور';return;}
-  btn.disabled=true;btn.textContent='⏳ جاري الدخول...';err.textContent='';
-  const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
-  if(error){err.textContent='بريد أو كلمة مرور غير صحيحة';btn.disabled=false;btn.textContent='🚀 دخول';return;}
-  USER=data.user;
-  await loadUserRole();
-  await logLogin();
-  showApp();
-}
-async function loadUserRole(){
-  try{
-    const rows=await sbQ('user_roles',`user_id=eq.${USER.id}`);
-    if(rows.length){
-      const r=rows[0];
-      ROLE=r.role;PERMS={view:r.can_view,upload:r.can_upload,verify:r.can_verify,
-        targets:r.can_set_targets,notes:r.can_add_notes,export:r.can_export,
-        users:r.can_manage_users,delete:r.can_delete};
-      ALLOWED_BR=r.allowed_branches||[];ALLOWED_RG=r.allowed_regions||[];
-    }else{ROLE='viewer';PERMS={view:true};}
-  }catch{ROLE='viewer';PERMS={view:true};}
-}
-async function logLogin(){
-  try{await sbUp('login_log',[{user_id:USER.id,email:USER.email}]);}catch{}
-}
-function showApp(){
-  document.getElementById('ls').style.display='none';
-  document.getElementById('app').style.display='block';
-  document.getElementById('sb-date').textContent=new Date().toLocaleDateString('ar-SA');
-  document.getElementById('sb-uname').textContent=USER.email.split('@')[0];
-  document.getElementById('sb-role').textContent=ROLE_LABELS[ROLE]||ROLE;
-  if(PERMS.users||ROLE==='super_admin')document.getElementById('sb-admin').style.display='';
-  if(ROLE==='super_admin'||PERMS.delete){
-    const cb=document.getElementById('clear-btn');
-    if(cb)cb.style.display='';
-  }
-  initBranchCbs();
-  initRegionFilters();
-  init();
-}
-async function doLogout(){await sb.auth.signOut();location.reload();}
 
-// Check existing session
-sb.auth.getSession().then(async({data:{session}})=>{
-  if(session){USER=session.user;await loadUserRole();showApp();}
-});
-document.getElementById('l-pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-
-// ── Init ──
-async function init(){
-  try{
-    const rows=await sbQ('branch_sales','select=report_date&order=report_date.desc');
-    DATA.dates=[...new Set(rows.map(r=>r.report_date))].sort().reverse();
-    if(DATA.dates.length){
-      setBadge('🟢 '+DATA.dates.length+' يوم محفوظ','b-ok');
-      document.getElementById('dfbar').style.display='flex';
-      updateCmpDates();
-      await loadRange(DATA.dates[0],DATA.dates[0]);
-    }else{
-      setBadge('📂 لا بيانات — ارفع ملفات','b-warn');
-      loadEmbedded();
-    }
-  }catch(e){setBadge('⚡ بيانات محلية','b-warn');loadEmbedded();}
-  loadHistory();
-  renderRewards();
-  document.getElementById('lu').textContent='آخر تحديث: '+new Date().toLocaleString('ar-SA');
-  const m=new Date().toISOString().slice(0,7);
-  document.getElementById('tg-month-sel').value=m;
-  // Set default date range
-  const today=new Date().toISOString().split('T')[0];
-  const firstDay=today.slice(0,7)+'-01';
-  document.getElementById('d-from').value=firstDay;
-  document.getElementById('d-to').value=today;
-  loadTargets();
-  if(PERMS.users||ROLE==='super_admin')loadUsers();
-  loadLoginLog();
-}
-
-function loadEmbedded(){
-  DATA.branches=EB.branches;DATA.employees=EB.employees;
-  document.getElementById('period-label').textContent='01/03 — 15/03/2026';
-  renderAll();
-  // Populate branch filter
-  const bSel=document.getElementById('filter-branch');
-  if(bSel){
-    bSel.innerHTML='<option value="">كل الفروع</option>';
-    DATA.branches.forEach(b=>{const o=document.createElement('option');o.value=b.code;o.textContent=b.name;bSel.appendChild(o);});
-  }
-}
-
-async function loadRange(from,to){
-  try{
-    const [sales,purch,mothan,emps]=await Promise.all([
-      sbQ('branch_sales',`report_date=gte.${from}&report_date=lte.${to}`),
-      sbQ('branch_purchases','select=*&order=report_date.desc&limit=500'),
-      sbQ('mothan_transactions','select=*&order=transaction_date.desc&limit=500'),
-      sbQ('employee_sales',`report_date=gte.${from}&report_date=lte.${to}&limit=500`)
-    ]);
-    console.log('DB results - sales:',sales.length,'purch:',purch.length,'mothan:',mothan.length,'emps:',emps.length);
-    if(purch.length)console.log('purch sample:',purch[0]);
-    if(mothan.length)console.log('mothan sample:',mothan[0]);
-    // Aggregate branches
-    const bmap={};
-    sales.forEach(r=>{
-      if(!bmap[r.branch_code])bmap[r.branch_code]={code:r.branch_code,name:r.branch_name,region:r.region,sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,purch_avg:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
-      const b=bmap[r.branch_code];
-      b.sar+=+r.total_sar||0;
-      b.wn+=+r.total_weight_g||0;  // total_weight_g = الوزن الصافي
-      b.wp+=+r.wt_pure_g||0;
-      b.pcs+=+r.total_pieces||0;
-      // karat rates from branch_sales
-      b.k18_sale_rate=+r.k18_rate||0;
-      b.k21_sale_rate=+r.k21_rate||0;
-      b.k24_sale_rate=+r.k24_rate||0;
-    });
-    purch.forEach(r=>{
-      const bc=r.branch_code;
-      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,purch_avg:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0,mothan:0};
-      const b=bmap[bc];
-      b.purch+=+r.total_sar||0;
-      b.purch_wt+=+r.wt_pure_g||+r.total_weight_g||0;
-      b.purch_rate=+r.purchase_rate||+r.purchase_avg_mkg||0;
-      b.k18_sar+=+r.k18_sar||0;b.k21_sar+=+r.k21_sar||0;b.k24_sar+=+r.k24_sar||0;
-      b.k18_wt+=+r.k18_weight_g||0;b.k21_wt+=+r.k21_weight_g||0;b.k24_wt+=+r.k24_weight_g||0;
-    });
-    // Build mothan totals by branch for combined purchase rate
-  const mothanByBranch={};
-  mothan.forEach(r=>{
-    const bc=r.branch_code;
-    if(!mothanByBranch[bc])mothanByBranch[bc]={amount:0,weight:0};
-    mothanByBranch[bc].amount+=(+r.amount_sar||0);
-    mothanByBranch[bc].weight+=(+r.weight_debit_g||0);
-    if(bmap[bc])bmap[bc].mothan=(bmap[bc].mothan||0)+(+r.amount_sar||0);
-  });
-  DATA._allBranches=null;
-  DATA.branches=Object.values(bmap).map(b=>{
-    const sale_rate=b.wn>0?Math.round(b.sar/b.wn*10000)/10000:0;
-    const m=mothanByBranch[b.code]||{amount:0,weight:0};
-    const combined_total=(b.purch||0)+m.amount;
-    const combined_wt=(b.purch_wt||0)+m.weight;
-    const purch_rate=combined_wt>0?Math.round(combined_total/combined_wt*10000)/10000:(b.purch_rate||b.purch_avg||0);
-    const diff_rate=purch_rate>0?Math.round((sale_rate-purch_rate)*10000)/10000:0;
-    const net=b.sar-(combined_total);
-    return {...b,sale_rate,purch_rate,diff_rate,
-      net:net,ai:b.pcs>0?Math.round(b.sar/b.pcs):0,
-      mothan_amount:m.amount,mothan_weight:m.weight,
-      purch_combined:combined_total};
-  }).sort((a,b_)=>b_.sar-a.sar);   DATA.mothan=mothan;
-    // Build branch purchase rate map from loaded branches
-    const brPurchMap={};
-    DATA.branches.forEach(b=>{brPurchMap[b.code]=b.purch_rate||0;});
-    if(emps.length)DATA.employees=emps.map(e=>{
-      const pavg=brPurchMap[e.branch_code]||+e.branch_purchase_avg||0;
-      return{id:e.emp_id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:+e.total_sar||0,wn:+e.weight_net_g||0,wp:+e.weight_pure_g||0,pcs:+e.pieces||0,ai:+e.avg_invoice_sar||0,emkg:+e.emp_avg_mkg||0,pavg,savg:+e.sale_rate_g||+e.emp_avg_mkg||0,diff:+e.diff_avg||0,ok:e.achieved_target};});
-    document.getElementById('period-label').textContent=from+(from!==to?' — '+to:'');
-    renderAll();
-  }catch(e){console.warn('loadRange error:',e);loadEmbedded();}
-}
-
-async function setDF(mode,btn){
-  document.querySelectorAll('.dfb').forEach(b=>b.classList.remove('on'));btn?.classList.add('on');
-  if(!DATA.dates.length)return;
-  const d=DATA.dates;
-  if(mode==='latest')await loadRange(d[0],d[0]);
-  else if(mode==='week')await loadRange(d[Math.min(6,d.length-1)],d[0]);
-  else if(mode==='month'){const m=d[0].slice(0,7);const inM=d.filter(x=>x.startsWith(m));await loadRange(inM[inM.length-1]||d[0],d[0]);}
-  else await loadRange(d[d.length-1],d[0]);
-}
-function applyBranchFilter(){
-  const bc=document.getElementById('filter-branch')?.value||'';
-  if(bc){
-    DATA.branches=DATA._allBranches?DATA._allBranches.filter(b=>b.code===bc):DATA.branches.filter(b=>b.code===bc);
-  }else{
-    if(DATA._allBranches)DATA.branches=DATA._allBranches;
-  }
-  renderAll();
-}
-async function applyCustom(){
-  const f=document.getElementById('d-from').value,t=document.getElementById('d-to').value;
-  if(f&&t)await loadRange(f,t);
-}
-
-// ── Render All ──
-function renderHeatmap(){
-  const bs=[...DATA.branches].sort((a,b)=>b.diff_rate-a.diff_rate);
-  if(!bs.length)return;
-  
-  // Heatmap table - rows=branches, cols=karats+total
-  const cols=['k18','k21','k24','إجمالي'];
-  const head=document.getElementById('hm-head');
-  const body=document.getElementById('hm-body');
-  if(!head||!body)return;
-  
-  head.innerHTML='<th>الفرع</th><th>المنطقة</th>'+cols.map(c=>`<th style="text-align:center">${c}</th>`).join('');
-  
-  const getRate=(b,k)=>{
-    if(k==='إجمالي')return +b.diff_rate||0;
-    const kd=b[k]||{};
-    return +kd.diff||0;
-  };
-  
-  // Find min/max for color scale
-  const allVals=bs.flatMap(b=>cols.map(k=>getRate(b,k))).filter(v=>v!==0);
-  const maxV=Math.max(...allVals,1);
-  const minV=Math.min(...allVals,0);
-  
-  const getColor=(v)=>{
-    if(v===0)return'rgba(30,51,84,.5)';
-    if(v>0){
-      const pct=Math.min(v/maxV,1);
-      return`rgba(34,197,94,${0.15+pct*0.7})`;
-    }else{
-      const pct=Math.min(Math.abs(v)/Math.abs(minV||1),1);
-      return`rgba(239,68,68,${0.15+pct*0.7})`;
-    }
-  };
-  
-  body.innerHTML=bs.map(b=>`
-    <tr>
-      <td style="font-weight:700;white-space:nowrap">${b.name}</td>
-      <td style="font-size:10px;color:var(--mu)">${b.region}</td>
-      ${cols.map(k=>{
-        const v=getRate(b,k);
-        return`<td style="text-align:center;background:${getColor(v)};border-radius:4px;padding:6px 10px;font-weight:600;font-size:12px;color:${v>0?'#4ade80':v<0?'#f87171':'var(--mu)'}">${v!==0?v.toFixed(1):'—'}</td>`;
-      }).join('')}
-    </tr>`).join('');
-  
-  // Bar chart
-  dk('ch-hm');
-  CH['ch-hm']=new Chart(document.getElementById('ch-hm'),{type:'bar',
-    data:{labels:bs.map(b=>b.name),
-      datasets:[{
-        label:'فرق المعدل (ر.س/جم)',
-        data:bs.map(b=>+b.diff_rate||0),
-        backgroundColor:bs.map(b=>(+b.diff_rate||0)>0?'rgba(34,197,94,.8)':'rgba(239,68,68,.8)'),
-        borderRadius:4
-      }]
-    },
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(2)+' ر.س/جم'}}},
-      scales:{
-        x:{ticks:{color:'#64748b',font:{size:8},maxRotation:45},grid:{display:false}},
-        y:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+' ر.س'},grid:{color:'rgba(30,51,84,.5)'}}
-      }
-    }
-  });
-}
-
-function renderAll(){
-  renderOv();renderAlerts();renderBranches();renderRegions();
-  renderEmployees();renderKarat();renderMothan();renderRewards();
-}
-
-// ── Overview ──
-function renderOv(){
-  const bs=filterByAccess(DATA.branches,b=>b.code);
-  if(!bs.length){document.getElementById('kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--mu);padding:40px">📂 لا توجد بيانات</div>';return;}
-  const tS=bs.reduce((s,b)=>s+(+b.sar||0),0);
-  const tP=bs.reduce((s,b)=>s+(+b.purch||0),0);
-  const tMothan=bs.reduce((s,b)=>s+(+b.mothan_amount||0),0);
-  const tPurchCombined=bs.reduce((s,b)=>s+(+b.purch_combined||+b.purch||0),0)+tMothan;
-  const tW=bs.reduce((s,b)=>s+b.wn,0),tPc=bs.reduce((s,b)=>s+b.pcs,0);
-  const tM=DATA.mothan.reduce((s,r)=>s+(+r.amount_sar||0),0);
-  const net=tS-tP,avgInv=tPc>0?tS/tPc:0;
-  const avgDiff=bs.length?bs.reduce((s,b)=>s+(+b.diff_rate||+b.diff||0),0)/bs.length:0;
-  document.getElementById('kpis').innerHTML=`
-    <div class="kc" style="--kcolor:#3b82f6"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv">${sar(tS)}</div><div class="ks">${wt(tW)} جم · ${num(tPc)} فاتورة</div></div>
-    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🛒</span><div class="kl">إجمالي المشتريات</div><div class="kv">${sar(tP)}</div><div class="ks">${wt(bs.reduce((s,b)=>s+b.purch_wt,0))} جم</div></div>
-    <div class="kc" style="--kcolor:${net>0?'#22c55e':'#ef4444'}"><span class="ki">${net>0?'📈':'📉'}</span><div class="kl">الصافي</div><div class="kv" style="font-size:17px">${sar(net)}</div><div class="ks">${net>0?'▲ ربح':'▼ خسارة'}</div></div>
-    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🧾</span><div class="kl">متوسط الفاتورة</div><div class="kv" style="font-size:17px">${sar(avgInv)}</div><div class="ks">${num(tPc)} فاتورة</div></div>
-    <div class="kc" style="--kcolor:#22c55e"><span class="ki">🏆</span><div class="kl">أعلى فرع مبيعاً</div><div class="kv" style="font-size:13px">${bs[0]?.name||'—'}</div><div class="ks">${sar(bs[0]?.sar||0)}</div></div>
-    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv" style="font-size:17px">${(+avgDiff||0).toFixed(1)} ر.س/جم</div><div class="ks">لجميع الفروع</div></div>
-    <div class="kc" style="--kcolor:#06b6d4"><span class="ki">🏦</span><div class="kl">موطن الذهب</div><div class="kv" style="font-size:17px">${sar(tM)}</div><div class="ks">${DATA.mothan.length} معاملة</div></div>
-    <div class="kc" style="--kcolor:#ef4444"><span class="ki">⚠️</span><div class="kl">فروع صافي سالب</div><div class="kv">${bs.filter(b=>b.net<0).length}</div><div class="ks">من ${bs.length} فرع</div></div>`;
-
-  dk('ch-ov');
-  const t8=bs.slice(0,8);
-  CH['ch-ov']=new Chart(document.getElementById('ch-ov'),{type:'bar',data:{labels:t8.map(b=>b.name),datasets:[
-    {label:'المبيعات',data:t8.map(b=>b.sar),backgroundColor:'rgba(59,130,246,.8)',borderRadius:5,borderSkipped:false},
-    {label:'المشتريات',data:t8.map(b=>b.purch),backgroundColor:'rgba(245,158,11,.7)',borderRadius:5,borderSkipped:false}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
-    scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
-
-  const rg={};bs.forEach(b=>{rg[b.region]=(rg[b.region]||0)+b.sar;});
-  dk('ch-pie');
-  CH['ch-pie']=new Chart(document.getElementById('ch-pie'),{type:'doughnut',
-    data:{labels:Object.keys(rg),datasets:[{data:Object.values(rg),backgroundColor:Object.keys(rg).map(r=>RC[r]||'#6b7280'),borderWidth:2,borderColor:'#060d1a',hoverOffset:8}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:10},padding:10,boxWidth:10}}}}});
-
-  document.getElementById('top5').innerHTML=bs.slice(0,5).map((b,i)=>`<tr><td>${['🥇','🥈','🥉','4️⃣','5️⃣'][i]}</td><td style="font-weight:700">${b.name}</td><td style="color:#60a5fa;font-weight:600">${sar(b.sar)}</td><td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:600">${sar(b.net)}</td><td><span class="pl ${pcc(b.diff)}">${(+b.diff||0).toFixed(1)}</span></td></tr>`).join('');
-  document.getElementById('bot5').innerHTML=[...bs].sort((a,b_)=>a.sar-b_.sar).slice(0,5).map((b,i)=>`<tr><td style="color:var(--rd)">${i+1}</td><td style="font-weight:700">${b.name}</td><td style="color:#f87171;font-weight:600">${sar(b.sar)}</td><td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:600">${sar(b.net)}</td></tr>`).join('');
-}
-
-// ── Alerts ──
-function renderAlerts(){
-  const bs=filterByAccess(DATA.branches,b=>b.code);if(!bs.length)return;
-  const avg=bs.reduce((s,b)=>s+b.sar,0)/bs.length;
-  const als=[];
-  bs.forEach(b=>{
-    if(b.net<0)als.push({t:'d',icon:'🔴',name:b.name,msg:`الصافي سالب — المشتريات تتجاوز المبيعات بـ ${sar(Math.abs(b.net))}`});
-    else if(b.sar<avg*0.4)als.push({t:'w',icon:'⚠️',name:b.name,msg:`مبيعات منخفضة جداً: ${sar(b.sar)} (${(b.sar/avg*100).toFixed(0)}% من المتوسط)`});
-    else if(b.sar>avg*1.8)als.push({t:'g',icon:'🌟',name:b.name,msg:`أداء استثنائي: ${sar(b.sar)} (${(b.sar/avg*100).toFixed(0)}% من المتوسط)`});
-  });
-  DATA.employees.filter(e=>e.diff<0).forEach(e=>{
-    als.push({t:'w',icon:'📉',name:e.n,msg:`فرق معدل سالب: ${(+e.diff||0).toFixed(1)} ر.س/جم — ${e.b}`});
-  });
-  document.getElementById('al-count').textContent=als.length+' تنبيه';
-  document.getElementById('al-list').innerHTML=als.length
-    ?als.map(a=>`<div class="al al-${a.t}"><span class="al-ico">${a.icon}</span><div><div class="al-name">${a.name}</div><div class="al-detail">${a.msg}</div></div></div>`).join('')
-    :'<div style="text-align:center;color:var(--mu);padding:40px;font-size:13px">✅ لا توجد تنبيهات</div>';
-}
-
-// ── Branches ──
-function renderBranches(){
-  let bs=filterByAccess(DATA.branches,b=>b.code);
-  const rg=document.getElementById('br-region').value;
-  const so=document.getElementById('br-sort').value;
-  if(rg)bs=bs.filter(b=>b.region===rg);
-  if(so==='diff')bs.sort((a,b)=>b.diff-a.diff);
-  else if(so==='net')bs.sort((a,b)=>b.net-a.net);
-  else if(so==='pcs')bs.sort((a,b)=>b.pcs-a.pcs);
-  else bs.sort((a,b)=>b.sar-a.sar);
-  const tS=bs.reduce((s,b)=>s+(+b.sar||0),0);
-  const tP=bs.reduce((s,b)=>s+(+b.purch||0),0);
-  const tMothan=bs.reduce((s,b)=>s+(+b.mothan_amount||0),0);
-  const tPurchCombined=bs.reduce((s,b)=>s+(+b.purch_combined||+b.purch||0),0)+tMothan;
-  const tPc=bs.reduce((s,b)=>s+b.pcs,0),avgDiff=bs.length?bs.reduce((s,b)=>s+b.diff,0)/bs.length:0;
-  document.getElementById('br-kpis').innerHTML=`
-    <div class="kc" style="--kcolor:#3b82f6"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv" style="font-size:17px">${sar(tS)}</div></div>
-    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🛒</span><div class="kl">إجمالي المشتريات</div><div class="kv" style="font-size:17px">${sar(tP)}</div></div>
-    <div class="kc" style="--kcolor:#22c55e"><span class="ki">📊</span><div class="kl">الصافي الكلي</div><div class="kv" style="font-size:17px">${sar(tS-tP)}</div></div>
-    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv" style="font-size:17px">${(+avgDiff||0).toFixed(1)} ر.س/جم</div></div>`;
-  document.getElementById('br-count').textContent=bs.length+' فرع';
-  document.getElementById('br-tbl').innerHTML=bs.map((b,i)=>`
-    <tr><td style="color:var(--mu)">${i+1}</td><td style="font-weight:700">${b.name}</td>
-    <td style="color:${RC[b.region]||'#6b7280'};font-size:11px">${b.region}</td>
-    <td style="color:#60a5fa;font-weight:600">${sar(b.sar)}</td>
-    <td>${wt(b.wn)}</td><td>${num(b.pcs)}</td>
-    <td style="color:#fbbf24">${sar(b.ai)}</td>
-    <td style="color:#f59e0b">${sar(b.purch)}</td>
-    <td style="color:${b.net<0?'#f87171':'#4ade80'};font-weight:700">${sar(b.net)}</td>
-    <td style="color:#67e8f9">${(+b.sale_rate||0).toFixed(2)||'—'}</td>
-    <td style="color:#fbbf24">${(+b.purch_rate||+b.purch_avg||0).toFixed(2)||'—'}</td>
-    <td><span class="pl ${pcc(b.diff)}">${(+b.diff_rate||0).toFixed(1)||'0'}</span></td>
-    <td>${b.net>0?'<span class="pl pg">✅ ربح</span>':'<span class="pl pr">❌ خسارة</span>'}</td></tr>`).join('');
-  dk('ch-br');
-  CH['ch-br']=new Chart(document.getElementById('ch-br'),{type:'bar',data:{labels:bs.map(b=>b.name),datasets:[
-    {label:'المبيعات',data:bs.map(b=>b.sar),backgroundColor:bs.map(b=>RC[b.region]||'#3b82f6'),borderRadius:4},
-    {label:'المشتريات',data:bs.map(b=>b.purch),backgroundColor:'rgba(245,158,11,.5)',borderRadius:4}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
-    scales:{x:{ticks:{color:'#64748b',font:{size:8},maxRotation:45},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
-}
-
-// ── Regions ──
-function renderRegions(){
-  const rg={};filterByAccess(DATA.branches,b=>b.code).forEach(b=>{
-    if(!rg[b.region])rg[b.region]={s:0,p:0,cnt:0,diffs:[]};
-    rg[b.region].s+=b.sar;rg[b.region].p+=b.purch;rg[b.region].cnt++;rg[b.region].diffs.push(b.diff);
-  });
-  const sorted=Object.entries(rg).sort((a,b)=>b[1].s-a[1].s);
-  document.getElementById('rg-kpis').innerHTML=sorted.map(([r,v])=>`
-    <div class="kc" style="--kcolor:${RC[r]||'#6b7280'}"><span class="ki">🗺</span><div class="kl">${r}</div><div class="kv" style="font-size:15px">${sar(v.s)}</div><div class="ks">${v.cnt} فروع · صافي ${sar(v.s-v.p)}</div></div>`).join('');
-  dk('ch-rg');
-  CH['ch-rg']=new Chart(document.getElementById('ch-rg'),{type:'bar',data:{labels:sorted.map(([r])=>r),datasets:[
-    {label:'المبيعات',data:sorted.map(([,v])=>v.s),backgroundColor:sorted.map(([r])=>RC[r]||'#6b7280'),borderRadius:6},
-    {label:'المشتريات',data:sorted.map(([,v])=>v.p),backgroundColor:'rgba(245,158,11,.6)',borderRadius:6}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},
-    scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
-  document.getElementById('rg-tbl').innerHTML=sorted.map(([r,v])=>{const n=v.s-v.p;return`<tr><td style="font-weight:700;color:${RC[r]||'#6b7280'}">${r}</td><td>${v.cnt}</td><td style="color:#60a5fa;font-weight:600">${sar(v.s)}</td><td style="color:#f59e0b">${sar(v.p)}</td><td style="color:${n<0?'#f87171':'#4ade80'};font-weight:600">${sar(n)}</td><td>${n>0?'<span class="pl pg">▲</span>':'<span class="pl pr">▼</span>'}</td></tr>`;}).join('');
-  dk('ch-rg-diff');
-  const avgDiffs=sorted.map(([r,v])=>{return v.diffs.length?v.diffs.reduce((s,d)=>s+d,0)/v.diffs.length:0;});
-  CH['ch-rg-diff']=new Chart(document.getElementById('ch-rg-diff'),{type:'bar',data:{labels:sorted.map(([r])=>r),datasets:[{label:'متوسط فرق المعدل (ر.س/جم)',data:avgDiffs,backgroundColor:avgDiffs.map(d=>d>100?'#22c55e':d>50?'#f59e0b':'#ef4444'),borderRadius:6}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(+c.raw||0).toFixed(1)+' ر.س/جم'}}},
-      scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+' ر.س'}}}}});
-}
-
-// ── Employees ──
-function renderEmployees(){
-  const emps=filterByAccess(DATA.employees,e=>e.bc||e.b);
-  if(!emps.length)return;
-  const tN=emps.reduce((s,e)=>s+(e.sar||0),0);
-  const best=[...emps].sort((a,b)=>b.sar-a.sar)[0];
-  const bestD=[...emps].sort((a,b)=>b.diff-a.diff)[0];
-  const worst=[...emps].sort((a,b)=>a.sar-b.sar)[0];
-  const avgInv=emps.reduce((s,e)=>s+(e.ai||0),0)/emps.length;
-  document.getElementById('em-kpis').innerHTML=`
-    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">👥</span><div class="kl">إجمالي مبيعات الموظفين</div><div class="kv" style="font-size:15px">${sar(tN)}</div><div class="ks">${emps.length} موظف</div></div>
-    <div class="kc" style="--kcolor:#22c55e"><span class="ki">🏆</span><div class="kl">أعلى موظف مبيعاً</div><div class="kv" style="font-size:12px">${best?.n?.split(' ').slice(0,2).join(' ')||'—'}</div><div class="ks">${sar(best?.sar||0)} · ${best?.b||''}</div></div>
-    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">⚡</span><div class="kl">أعلى فرق معدل</div><div class="kv" style="font-size:12px">${bestD?.n?.split(' ').slice(0,2).join(' ')||'—'}</div><div class="ks">${(bestD?.diff||0).toFixed(1)} ر.س/جم · ${bestD?.b||''}</div></div>
-    <div class="kc" style="--kcolor:#06b6d4"><span class="ki">🧾</span><div class="kl">متوسط الفاتورة</div><div class="kv" style="font-size:15px">${sar(avgInv)}</div></div>`;
-
-  const t10n=[...emps].sort((a,b)=>b.sar-a.sar).slice(0,10);
-  const t10d=[...emps].sort((a,b)=>b.diff-a.diff).slice(0,10);
-  dk('ch-em1');dk('ch-em2');
-  CH['ch-em1']=new Chart(document.getElementById('ch-em1'),{type:'bar',data:{labels:t10n.map(e=>(e.n||'').split(' ').slice(0,2).join(' ')),datasets:[{data:t10n.map(e=>e.sar),backgroundColor:t10n.map((_,i)=>i===0?'#f59e0b':i===1?'#94a3b8':i===2?'#cd7c32':'rgba(99,102,241,.7)'),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>sarC(c.raw)+' ر.س'}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'}},y:{ticks:{color:'#94a3b8',font:{size:9}}}}}});
-  CH['ch-em2']=new Chart(document.getElementById('ch-em2'),{type:'bar',data:{labels:t10d.map(e=>(e.n||'').split(' ').slice(0,2).join(' ')),datasets:[{data:t10d.map(e=>e.diff),backgroundColor:t10d.map(e=>e.diff>150?'#22c55e':e.diff>80?'#3b82f6':e.diff>0?'#f59e0b':'#ef4444'),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(+c.raw||0).toFixed(1)+' ر.س/جم'}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+' ر.س'}},y:{ticks:{color:'#94a3b8',font:{size:9}}}}}});
-
-  const t3=[...emps].sort((a,b)=>b.sar-a.sar).slice(0,3);
-  document.getElementById('awards').innerHTML=[
-    {icon:'🥇',t:'الأول مبيعاً',n:t3[0]?.n||'—',d:sar(t3[0]?.sar||0)+' · '+t3[0]?.b,c:'#f59e0b'},
-    {icon:'🥈',t:'الثاني',n:t3[1]?.n||'—',d:sar(t3[1]?.sar||0)+' · '+t3[1]?.b,c:'#94a3b8'},
-    {icon:'🥉',t:'الثالث',n:t3[2]?.n||'—',d:sar(t3[2]?.sar||0)+' · '+t3[2]?.b,c:'#cd7c32'},
-    {icon:'⚡',t:'أعلى فرق معدل',n:bestD?.n||'—',d:(bestD?.diff||0).toFixed(1)+' ر.س/جم · '+bestD?.b,c:'#22c55e'},
-    {icon:'🧾',t:'أكثر فواتير',n:[...emps].sort((a,b)=>b.pcs-a.pcs)[0]?.n||'—',d:num([...emps].sort((a,b)=>b.pcs-a.pcs)[0]?.pcs||0)+' فاتورة',c:'#8b5cf6'},
-    {icon:'⚖️',t:'أعلى وزناً',n:[...emps].sort((a,b)=>b.wn-a.wn)[0]?.n||'—',d:wt([...emps].sort((a,b)=>b.wn-a.wn)[0]?.wn||0)+' جم',c:'#06b6d4'},
-  ].map(a=>`<div style="background:var(--s2);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--bd)"><div style="font-size:28px;margin-bottom:8px">${a.icon}</div><div style="font-size:10px;color:var(--mu);margin-bottom:4px">${a.t}</div><div style="font-size:11px;font-weight:700;color:${a.c};margin-bottom:3px">${a.n}</div><div style="font-size:10px;color:var(--mu)">${a.d}</div></div>`).join('');
-
-  const brSel=document.getElementById('em-br');
-  brSel.innerHTML='<option value="">جميع الفروع</option>';
-  [...new Set(emps.map(e=>e.b))].sort().forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;brSel.appendChild(o);});
-  filterEmps();
-}
-function filterEmps(){
-  const q=document.getElementById('em-srch').value.trim();
-  const bf=document.getElementById('em-br').value;
-  const rg=document.getElementById('em-rg').value;
-  const so=document.getElementById('em-sort').value;
-  let data=filterByAccess([...DATA.employees],e=>e.bc||e.b);
-  if(q)data=data.filter(e=>e.n?.includes(q)||String(e.id||'').includes(q));
-  if(bf)data=data.filter(e=>e.b===bf);
-  if(rg)data=data.filter(e=>e.r===rg);
-  if(so==='diff')data.sort((a,b)=>b.diff-a.diff);
-  else if(so==='wn')data.sort((a,b)=>b.wn-a.wn);
-  else if(so==='pcs')data.sort((a,b)=>b.pcs-a.pcs);
-  else if(so==='nm')data.sort((a,b)=>(a.n||'').localeCompare(b.n||'','ar'));
-  else data.sort((a,b)=>b.sar-a.sar);
-  document.getElementById('em-count').textContent=data.length+' موظف';
-  document.getElementById('em-tbl').innerHTML=data.map((e,i)=>{
-    const diffC=e.diff>150?'#22c55e':e.diff>80?'#3b82f6':e.diff>0?'#f59e0b':'#f87171';
-    const tag=e.diff>150?'<span class="pl pg">🌟 ممتاز</span>':e.diff>80?'<span class="pl pg">✅ جيد</span>':e.diff>0?'<span class="pl py">⚠️ متوسط</span>':'<span class="pl pr">🔴 دون الهدف</span>';
-    return`<tr>
-      <td style="text-align:center">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
-      <td style="font-weight:700">${e.n||''}</td><td style="color:var(--mu)">${e.id||''}</td>
-      <td style="font-size:11px;font-weight:600;color:${RC[e.r]||'#6b7280'}">${e.b||''}</td>
-      <td style="font-size:10px;color:var(--mu)">${e.r||''}</td>
-      <td style="font-weight:600;color:#60a5fa">${sar(e.sar||0)}</td>
-      <td>${wt(e.wn||0)}</td><td>${num(e.pcs||0)}</td>
-      <td style="color:#fbbf24">${sar(e.ai||0)}</td>
-      <td style="color:#67e8f9">${(e.savg||0).toFixed(2)}</td>
-      <td style="color:#f59e0b">${(e.pavg||0).toFixed(2)}</td>
-      <td style="font-weight:700;color:${diffC}">${(e.diff||0).toFixed(1)}</td>
-      <td>${tag}</td></tr>`;
-  }).join('');
-}
-
-// ── Karat ──
-function renderKarat(){
-  const bs=filterByAccess(DATA.branches,b=>b.code);
-  const k18=bs.reduce((s,b)=>s+(b.k18_sar||0),0),k21=bs.reduce((s,b)=>s+(b.k21_sar||0),0),k24=bs.reduce((s,b)=>s+(b.k24_sar||0),0),tot=k18+k21+k24;
-  document.getElementById('kt-kpis').innerHTML=`
-    <div class="kc" style="--kcolor:#f59e0b"><span class="ki">🔶</span><div class="kl">مشتريات عيار 18</div><div class="kv" style="font-size:16px">${sar(k18)}</div><div class="ks">${tot>0?(k18/tot*100).toFixed(1):'0'}%</div></div>
-    <div class="kc" style="--kcolor:#3b82f6"><span class="ki">🔷</span><div class="kl">مشتريات عيار 21</div><div class="kv" style="font-size:16px">${sar(k21)}</div><div class="ks">${tot>0?(k21/tot*100).toFixed(1):'0'}%</div></div>
-    <div class="kc" style="--kcolor:#22c55e"><span class="ki">🟩</span><div class="kl">مشتريات عيار 24</div><div class="kv" style="font-size:16px">${sar(k24)}</div><div class="ks">${tot>0?(k24/tot*100).toFixed(1):'0'}%</div></div>
-    <div class="kc" style="--kcolor:#60a5fa"><span class="ki">💎</span><div class="kl">إجمالي المشتريات</div><div class="kv" style="font-size:16px">${sar(tot)}</div></div>`;
-  dk('ch-kt-pie');
-  CH['ch-kt-pie']=new Chart(document.getElementById('ch-kt-pie'),{type:'doughnut',data:{labels:['عيار 18','عيار 21','عيار 24'],datasets:[{data:[k18,k21,k24],backgroundColor:['#f59e0b','#3b82f6','#22c55e'],borderWidth:3,borderColor:'#060d1a',hoverOffset:10}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:11},padding:14,boxWidth:12}}}}});
-  const t10=bs.slice(0,10);dk('ch-kt-bar');
-  CH['ch-kt-bar']=new Chart(document.getElementById('ch-kt-bar'),{type:'bar',data:{labels:t10.map(b=>b.name),datasets:[
-    {label:'18',data:t10.map(b=>b.k18_sar||0),backgroundColor:'rgba(245,158,11,.8)',borderRadius:3},
-    {label:'21',data:t10.map(b=>b.k21_sar||0),backgroundColor:'rgba(59,130,246,.8)',borderRadius:3},
-    {label:'24',data:t10.map(b=>b.k24_sar||0),backgroundColor:'rgba(34,197,94,.8)',borderRadius:3}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},scales:{x:{stacked:true,ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{stacked:true,ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
-  document.getElementById('kt-tbl').innerHTML=bs.map(b=>`<tr><td style="font-weight:700">${b.name}</td><td style="color:${RC[b.region]||'#6b7280'};font-size:11px">${b.region}</td><td>${sar(b.k18_sar||0)}</td><td>${wt(b.k18_wt||0)}</td><td>${sar(b.k21_sar||0)}</td><td>${wt(b.k21_wt||0)}</td><td>${sar(b.k24_sar||0)}</td><td>${wt(b.k24_wt||0)}</td><td style="font-weight:700;color:#fbbf24">${sar(b.purch||0)}</td><td style="color:#67e8f9">${(+b.purch_avg||0).toFixed(2)||'—'}</td></tr>`).join('');
-}
-
-// ── Mothan ──
-function renderMothan(){
-  const rows=DATA.mothan,tot=rows.reduce((s,r)=>s+(+r.amount_sar||0),0);
-  document.getElementById('mo-kpis').innerHTML=`
-    <div class="kc" style="--kcolor:#06b6d4"><span class="ki">🏦</span><div class="kl">إجمالي المعاملات</div><div class="kv" style="font-size:16px">${sar(tot)}</div><div class="ks">${rows.length} عملية</div></div>
-    <div class="kc" style="--kcolor:#8b5cf6"><span class="ki">🏪</span><div class="kl">عدد الفروع</div><div class="kv">${new Set(rows.map(r=>r.branch_code||r.branch_name)).size}</div></div>
-    <div class="kc" style="--kcolor:#fbbf24"><span class="ki">⬆️</span><div class="kl">أعلى معاملة</div><div class="kv" style="font-size:16px">${sar(Math.max(...rows.map(r=>+r.amount_sar||0),0))}</div></div>
-    <div class="kc" style="--kcolor:#67e8f9"><span class="ki">📊</span><div class="kl">متوسط المعاملة</div><div class="kv" style="font-size:16px">${sar(rows.length?tot/rows.length:0)}</div></div>`;
-  document.getElementById('mo-tbl').innerHTML=rows.map(r=>`<tr><td>${r.transaction_date||r.report_date||''}</td><td style="color:var(--mu);font-size:10px">${r.doc_ref||''}</td><td style="font-weight:700">${r.branch_name||''}</td><td style="font-size:11px;color:var(--mu)">${String(r.description||'').substring(0,40)}</td><td style="font-weight:700;color:#67e8f9">${sar(+r.amount_sar||0)}</td><td style="color:var(--mu);font-size:11px">${sar(+r.balance||0)}</td></tr>`).join('');
-}
-
-// ── Targets ──
-async function loadTargets(){
-  const month=document.getElementById('tg-month-sel').value;
-  document.getElementById('tg-month').textContent=month;
-  let existing={};
-  try{const rows=await sbQ('branch_targets',`target_month=gte.${month}-01&target_month=lte.${month}-31`);rows.forEach(r=>existing[r.branch_code]=r);}catch{}
-  document.getElementById('tg-rows').innerHTML=Object.entries(BM).map(([code,name])=>{
-    const ex=existing[code]||{};
-    return`<div class="target-row">
-      <span style="font-size:12px;font-weight:600">${name}</span>
-      <input class="ti" type="number" id="tg-s-${code}" placeholder="0" value="${ex.daily_sales_sar||''}">
-      <input class="ti" type="number" id="tg-w-${code}" placeholder="0" value="${ex.daily_weight_g||''}">
-      <input class="ti" type="number" id="tg-d-${code}" placeholder="0" value="${ex.target_diff_avg||''}">
-    </div>`;
-  }).join('');
-  // Employee targets
-  const emps=DATA.employees;
-  let empEx={};
-  try{const rows=await sbQ('employee_targets',`target_month=gte.${month}-01&target_month=lte.${month}-31`);rows.forEach(r=>empEx[r.emp_id]=r);}catch{}
-  document.getElementById('emp-tg-rows').innerHTML=emps.slice(0,30).map(e=>{
-    const ex=empEx[e.id||e.emp_id]||{};
-    return`<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;align-items:center;padding:8px 12px;background:var(--s2);border-radius:8px;margin-bottom:6px">
-      <span style="font-size:11px;font-weight:600">${e.n} <span style="color:var(--mu);font-weight:400">· ${e.b}</span></span>
-      <input class="ti" type="number" id="etg-w-${e.id||e.emp_id}" placeholder="وزن جم" value="${ex.target_weight_g||''}">
-      <input class="ti" type="number" id="etg-d-${e.id||e.emp_id}" placeholder="فرق المعدل" value="${ex.target_diff_avg||''}">
-      <input class="ti" type="number" id="etg-p-${e.id||e.emp_id}" placeholder="فواتير" value="${ex.target_pieces||''}">
-    </div>`;
-  }).join('');
-}
 async function saveAllTargets(){
   const month=document.getElementById('tg-month-sel').value;
   const rows=Object.entries(BM).map(([code,name])=>{return{branch_code:code,branch_name:name,target_month:month+'-01',
