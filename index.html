@@ -513,7 +513,7 @@ html,body{height:100%;font-family:'Tajawal','Segoe UI',system-ui,sans-serif;back
         </div>
         <div class="cd">
           <div class="ct">📋 سجل الرفع <span class="ct-b" id="hist-count"></span>
-            <button onclick="clearAllData()" style="padding:5px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;float:left" id="clear-btn">🗑️ مسح كل البيانات</button>
+            <button onclick="clearAllData()" style="padding:5px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;float:left;display:none" id="clear-btn">🗑️ مسح كل البيانات</button>
           </div>
           <div id="hist-list"><div style="text-align:center;color:var(--mu);padding:24px;font-size:12px">⏳ جاري التحميل...</div></div>
         </div>
@@ -718,6 +718,10 @@ function showApp(){
   document.getElementById('sb-uname').textContent=USER.email.split('@')[0];
   document.getElementById('sb-role').textContent=ROLE_LABELS[ROLE]||ROLE;
   if(PERMS.users||ROLE==='super_admin')document.getElementById('sb-admin').style.display='';
+  if(ROLE==='super_admin'||PERMS.delete){
+    const cb=document.getElementById('clear-btn');
+    if(cb)cb.style.display='';
+  }
   initBranchCbs();
   initRegionFilters();
   init();
