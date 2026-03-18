@@ -1643,28 +1643,6 @@ async function applyCustom(){
   if(f&&t)await loadRange(f,t);
 }
 
-// ── Helpers ──
-const sar=n=>Math.round(+(n)||0).toLocaleString('ar-SA')+' ر.س';
-const sarC=n=>Math.round(+n||0).toLocaleString('ar-SA');
-const wt=n=>((+n)||0).toFixed(2);
-const num=n=>(+n||0).toLocaleString('ar-SA');
-const pc=p=>p>=0?'pg':'pr';
-const pcc=p=>p>=200?'pg':p>=100?'pg':p>=50?'py':'pr';
-const sl=ms=>new Promise(r=>setTimeout(r,ms));
-const setBadge=(t,c)=>{const b=document.getElementById('db-badge');b.textContent=t;b.className='badge '+c;};
-function filterByAccess(items,keyFn){
-  if(ROLE==='super_admin'||!ALLOWED_BR.length)return items;
-  return items.filter(i=>ALLOWED_BR.includes(keyFn(i)));
-}
-function initRegionFilters(){
-  const regions=[...new Set(Object.values(RM))];
-  ['br-region','em-rg'].forEach(id=>{
-    const sel=document.getElementById(id);if(!sel)return;
-    sel.innerHTML='<option value="">كل المناطق</option>';
-    regions.forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;sel.appendChild(o);});
-  });
-}
-
 // ── Render All ──
 function renderHeatmap(){
   const bs=[...DATA.branches].sort((a,b)=>b.diff_rate-a.diff_rate);
