@@ -484,13 +484,13 @@ html,body{height:100%;font-family:'Tajawal','Segoe UI',system-ui,sans-serif;back
             <div class="uc" id="uc-bsales" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'bsales')" onclick="document.getElementById('inp-bsales').click()">
               <input type="file" id="inp-bsales" accept=".xlsx,.xls" multiple onchange="hfile(this,'bsales')">
               <div class="ui">📊</div><div class="ut">مبيعات الفروع</div>
-              <div class="us">مبيعات كل فرع بالعيار مع معدل البيع</div>
+              <div class="us">يدعم رفع ملفات متعددة دفعة واحدة</div>
               <div class="ust sw" id="st-bsales">في انتظار الملف</div>
             </div>
             <div class="uc" id="uc-sales" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'sales')" onclick="document.getElementById('inp-sales').click()">
               <input type="file" id="inp-sales" accept=".xlsx,.xls" multiple onchange="hfile(this,'sales')">
               <div class="ui">👥</div><div class="ut">مبيعات الموظفين</div>
-              <div class="us">مبيعات كل موظف مع Avg.Mkg</div>
+              <div class="us">يدعم رفع ملفات متعددة دفعة واحدة</div>
               <div class="ust sw" id="st-sales">في انتظار الملف</div>
             </div>
             <div class="uc" id="uc-purch" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="hdrop(event,'purch')" onclick="document.getElementById('inp-purch').click()">
@@ -1192,8 +1192,41 @@ async function saveAllTargets(){
 
 // ── File Upload & Processing ──
 const FILES={};
-function hdrop(e,t){e.preventDefault();document.getElementById('uc-'+t).classList.remove('drag');const f=e.dataTransfer.files[0];if(f)rf(f,t);}
-function hfile(inp,t){if(inp.files[0])rf(inp.files[0],t);}
+function hdrop(e,t){
+  e.preventDefault();
+  document.getElementById('uc-'+t).classList.remove('drag');
+  const files=e.dataTransfer.files;
+  if(!files.length)return;
+  if(files.length===1){rf(files[0],t);return;}
+  // Multiple dropped files
+  const fakeInp={files};
+  hfile(fakeInp,t);
+}
+function hfile(inp,t){
+  if(!inp.files.length)return;
+  if(inp.files.length===1){rf(inp.files[0],t);return;}
+  // Multiple files - store all and show count
+  const files=Array.from(inp.files);
+  FILES[t]={multi:true,files:[],name:files.length+' ملفات'};
+  let loaded=0;
+  files.forEach((file,i)=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true,raw:true});
+        FILES[t].files.push({wb,name:file.name});
+        loaded++;
+        const s=document.getElementById('st-'+t);
+        s.textContent='✅ '+loaded+'/'+files.length+' ملفات';
+        s.className='ust sok';
+        document.getElementById('uc-'+t).classList.add('loaded');
+        document.getElementById('proc-btn').disabled=!(FILES.bsales||FILES.sales||FILES.purch||FILES.mothan);
+        console.log('Loaded '+t+' file '+loaded+': '+file.name);
+      }catch(err){console.error('Error loading',file.name,err);}
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
 function rf(file,t){
   const r=new FileReader();
   r.onload=e=>{
@@ -1354,12 +1387,75 @@ async function processAndSave(){
     sp(10,'⏳ قراءة الملفات...');await sl(60);
     console.log('FILES:', {bsales:!!FILES.bsales,sales:!!FILES.sales,purch:!!FILES.purch,mothan:!!FILES.mothan});
     let empData=null,purchData=null,mothanRows=[];
-    if(FILES.sales)empData=parseEmpSales(FILES.sales.wb);
-    if(FILES.purch){
-      purchData=parsePurchases(FILES.purch.wb);
-      console.log('purchData keys:',Object.keys(purchData).length,'sample:',Object.entries(purchData)[0]);
+    
+    // Handle single or multiple files per type
+    const getWbs=(t)=>{
+      if(!FILES[t])return[];
+      if(FILES[t].multi)return FILES[t].files.map(f=>f.wb);
+      return[FILES[t].wb];
+    };
+    
+    // Parse all sales files (employees) - merge results
+    const salesWbs=getWbs('sales');
+    if(salesWbs.length){
+      if(salesWbs.length===1){empData=parseEmpSales(salesWbs[0]);}
+      else{
+        // Merge multiple emp files
+        const allEmps=[];let lastDf='',lastDt='';
+        salesWbs.forEach(wb=>{
+          const d=parseEmpSales(wb);
+          allEmps.push(...d.emps);
+          if(d.df)lastDf=d.df;
+          if(d.dt)lastDt=d.dt;
+        });
+        empData={emps:allEmps,bSubs:{},df:lastDf,dt:lastDt};
+      }
     }
-    if(FILES.mothan)mothanRows=parseMothanFile(FILES.mothan.wb);
+    
+    // Parse all purchases files - merge
+    const purchWbs=getWbs('purch');
+    if(purchWbs.length){
+      purchData={};
+      purchWbs.forEach(wb=>{
+        const d=parsePurchases(wb);
+        Object.entries(d).forEach(([code,v])=>{
+          if(!purchData[code])purchData[code]=v;
+          else{
+            purchData[code].sub.total+=v.sub.total||0;
+            purchData[code].sub.wt_pure+=v.sub.wt_pure||0;
+            purchData[code].sub.wt_safe+=v.sub.wt_safe||0;
+          }
+        });
+      });
+      // Recalculate rates
+      Object.values(purchData).forEach(d=>{
+        if(d.sub.wt_pure>0)d.sub.rate=Math.round(d.sub.total/d.sub.wt_pure*10000)/10000;
+      });
+      console.log('purchData keys:',Object.keys(purchData).length);
+    }
+    
+    // Parse mothan files - concat
+    const mothanWbs=getWbs('mothan');
+    mothanWbs.forEach(wb=>{mothanRows.push(...parseMothanFile(wb));});
+    
+    // Parse bsales files - merge
+    const bsalesWbs=getWbs('bsales');
+    let bsalesData=null;
+    if(bsalesWbs.length){
+      bsalesData={};
+      bsalesWbs.forEach(wb=>{
+        const d=parseBranchSales(wb);
+        Object.entries(d).forEach(([code,v])=>{
+          if(!bsalesData[code])bsalesData[code]=v;
+          else{
+            bsalesData[code].sub.total+=v.sub.total||0;
+            bsalesData[code].sub.wt_pure+=v.sub.wt_pure||0;
+            bsalesData[code].sub.wt_safe+=v.sub.wt_safe||0;
+            bsalesData[code].sub.pieces+=v.sub.pieces||0;
+          }
+        });
+      });
+    }
 
     // Get report date from file
     const rdate=empData?.df||purchData?.df||new Date().toISOString().split('T')[0];
