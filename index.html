@@ -835,15 +835,7 @@ async function loadRange(from,to){
     return{...b,sale_rate,purch_rate,diff_rate,
       net:net,ai:b.pcs>0?Math.round(b.sar/b.pcs):0,
       purch_combined:combined_total,mothan_amount:b.mothan||0,mothan_weight:b.mothan_wt||0};
-    const combined_total=(b.purch||0)+m.amount;
-    const combined_wt=(b.purch_wt||0)+m.weight;
-    const purch_rate=combined_wt>0?Math.round(combined_total/combined_wt*10000)/10000:(b.purch_rate||b.purch_avg||0);
-    const diff_rate=purch_rate>0?Math.round((sale_rate-purch_rate)*10000)/10000:0;
-    const net=b.sar-(combined_total);
-    return {...b,sale_rate,purch_rate,diff_rate,
-      net:net,ai:b.pcs>0?Math.round(b.sar/b.pcs):0,
-      mothan_amount:m.amount,mothan_weight:m.weight,
-      purch_combined:combined_total};
+
   }).sort((a,b_)=>b_.sar-a.sar);   DATA.mothan=mothan;
     // Build branch purchase rate map from loaded branches
     const brPurchMap={};
