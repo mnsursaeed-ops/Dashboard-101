@@ -10,7 +10,29 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>💎 منصور للذهب v1773755131</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+function sw(id,btn){
+  document.querySelectorAll('.sc').forEach(s=>s.style.display='none');
+  document.querySelectorAll('.sbb').forEach(b=>b.classList.remove('on'));
+  const sc=document.getElementById('sc-'+id);
+  if(sc)sc.style.display='block';
+  if(btn)btn.classList.add('on');
+  if(id==='hm')renderHeatmap();
+  if(id==='up')loadHistory();
+  if(id==='ad')loadUsers();
+}
+
+async function deleteRecord(date,fileType){
+  if(!confirm(`حذف ${fileType} بتاريخ ${date}؟`))return;
+  try{
+    const m={sales:'branch_sales',purchases:'branch_purchases',employees:'employee_sales',mothan:'mothan_transactions',bsales:'branch_sales'};
+    if(m[fileType])await fetch(`${SB_URL}/rest/v1/${m[fileType]}?report_date=eq.${date}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    await fetch(`${SB_URL}/rest/v1/upload_log?report_date=eq.${date}&file_type=eq.${fileType}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    loadHistory();alert('✅ تم الحذف');
+  }catch(e){alert('❌ '+e.message);}
+}
+
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -803,39 +825,37 @@ async function loadRange(from,to){
     });
     purch.forEach(r=>{
       const bc=r.branch_code;
-      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
+      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,purch_avg:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0,mothan:0};
       const b=bmap[bc];
-      // col6 = wt_pure_g (الوزن النقي — المصدر الصحيح)
       b.purch+=+r.total_sar||0;
-      b.purch_wt+=+r.wt_pure_g||0;
+      b.purch_wt+=+r.wt_pure_g||+r.total_weight_g||0;
+      b.purch_rate=+r.purchase_rate||+r.purchase_avg_mkg||0;
       b.k18_sar+=+r.k18_sar||0;b.k21_sar+=+r.k21_sar||0;b.k24_sar+=+r.k24_sar||0;
-      b.k18_wt+=+r.k18_wt_pure||0;b.k21_wt+=+r.k21_wt_pure||0;b.k24_wt+=+r.k24_wt_pure||0;
+      b.k18_wt+=+r.k18_weight_g||0;b.k21_wt+=+r.k21_weight_g||0;b.k24_wt+=+r.k24_weight_g||0;
     });
     // Build mothan totals by branch for combined purchase rate
   const mothanByBranch={};
   mothan.forEach(r=>{
-      const bc=r.branch_code;
-      if(!bc)return;
-      // Only include if weight_debit_g > 0
-      if((+r.weight_debit_g||0)<=0)return;
-      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:RM[r.branch_name]||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
-      bmap[bc].mothan+=(+r.amount_sar||0);
-      bmap[bc].mothan_wt+=(+r.weight_debit_g||0);
-    });
+    const bc=r.branch_code;
+    if(!mothanByBranch[bc])mothanByBranch[bc]={amount:0,weight:0};
+    mothanByBranch[bc].amount+=(+r.amount_sar||0);
+    mothanByBranch[bc].weight+=(+r.weight_debit_g||0);
+    if(bmap[bc])bmap[bc].mothan=(bmap[bc].mothan||0)+(+r.amount_sar||0);
+  });
   DATA._allBranches=null;
   DATA.branches=Object.values(bmap).map(b=>{
     const sale_rate=b.wn>0?Math.round(b.sar/b.wn*10000)/10000:0;
-    // Combined purchase = branch purchases (col6 wt_pure) + mothan (col2 weight)
-    const combined_total=(b.purch||0)+(b.mothan||0);
-    const combined_wt=(b.purch_wt||0)+(b.mothan_wt||0);
-    // If no purchases at all → rate=0, diff=0
+    // Combined = branch purchases (col6 wt_pure) + mothan (col2 weight)
+    const m_amount=b.mothan_wt>0?(b.mothan||0):(mothanByBranch[b.code]?.amount||0);
+    const m_weight=b.mothan_wt>0?(b.mothan_wt||0):(mothanByBranch[b.code]?.weight||0);
+    const combined_total=(b.purch||0)+m_amount;
+    const combined_wt=(b.purch_wt||0)+m_weight;
+    // No purchases → rate=0, diff=0
     const purch_rate=combined_wt>0?Math.round(combined_total/combined_wt*10000)/10000:0;
     const diff_rate=purch_rate>0?Math.round((sale_rate-purch_rate)*10000)/10000:0;
-    const net=b.sar-combined_total;
-    return{...b,sale_rate,purch_rate,diff_rate,
-      net:net,ai:b.pcs>0?Math.round(b.sar/b.pcs):0,
-      purch_combined:combined_total,mothan_amount:b.mothan||0,mothan_weight:b.mothan_wt||0};
-
+    return {...b,sale_rate,purch_rate,diff_rate,
+      net:b.sar-combined_total,ai:b.pcs>0?Math.round(b.sar/b.pcs):0,
+      mothan_amount:m_amount,mothan_weight:m_weight,purch_combined:combined_total};
   }).sort((a,b_)=>b_.sar-a.sar);   DATA.mothan=mothan;
     // Build branch purchase rate map from loaded branches
     const brPurchMap={};
@@ -1360,32 +1380,25 @@ function parseBranchSales(wb){
 function parsePurchases(wb){
   const sheet=wb.Sheets[wb.SheetNames[0]];
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
-  // Extract date from header
   let df='',dt='';
   for(const row of rows.slice(0,10)){
     const m=String(row[11]||'').match(/From\s+(\S+)\s+To\s+(\S+)/);
     if(m){df=m[1];dt=m[2];break;}
   }
   const bpurch={_df:df,_dt:dt};let cur=null;
-  const km={'0.75':'18','0.875':'21','0.916':'22','1.0':'24','1':'24'};
   for(const row of rows){
     const c12=String(row[12]||'').trim();
     const m=c12.match(/^(\d{4})\s*-/);
     if(m){cur=m[1];if(!bpurch[cur])bpurch[cur]={karats:{},sub:{total:0,wt_pure:0,rate:0}};continue;}
     if(!cur)continue;
-    // Sub Total: col3=value, col6=pure weight (مو col8)
     if(c12.includes('Sub Total')||String(row[11]).trim()==='0'){
       const total=Math.abs(+row[3]||0);
       const wt_pure=Math.abs(+row[6]||0); // col6 = الوزن النقي
-      bpurch[cur].sub={
-        total,
-        wt_pure,
-        wt_safe:Math.abs(+row[8]||0),
-        rate:wt_pure>0?Math.round(total/wt_pure*10000)/10000:0
-      };
+      const wt_safe=Math.abs(+row[8]||0);
+      bpurch[cur].sub={total,wt_pure,wt_safe,rate:wt_pure>0?Math.round(total/wt_pure*10000)/10000:0};
       cur=null;continue;
     }
-    // Karat rows
+    const km={'0.75':'18','0.875':'21','0.916':'22','1.0':'24','1':'24'};
     const karat=km[String(row[7]||'').trim()];
     if(karat){
       const t=Math.abs(+row[3]||0),wp=Math.abs(+row[6]||0),ws=Math.abs(+row[8]||0);
@@ -1403,9 +1416,8 @@ function parsePurchases(wb){
 function parseMothanFile(wb){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
   const out=[];
-  // Detect format:
-  // Format B (old, 10 cols): col9=date DD/MM/YYYY, col7=branch, col4=amount, col2=weight
-  // Format A (new, 7 cols):  col0=date DD/MM/YYYY, col2=branch, col3=details, col4=debit, col5=credit
+  // Format B (old 10-col): col9=date, col7=branch, col4=amount, col2=weight
+  // Format A (new 7-col):  col0=date, col2=branch, col3=details
   let fmt='';
   for(const r of rows){
     if(String(r[9]||'').match(/\d{2}\/\d{2}\/\d{4}/)&&BM[String(r[7]||'').trim()]){fmt='B';break;}
@@ -1414,7 +1426,6 @@ function parseMothanFile(wb){
   for(const r of rows){
     let d='',bc='',amount=0,weight=0,docRef='',details='';
     if(fmt==='B'){
-      // Old format: col9=date, col7=branch, col4=amount SAR, col2=weight grams
       const dm=String(r[9]||'').trim().match(/(\d{2})\/(\d{2})\/(\d{4})/);
       if(!dm)continue;
       d=`${dm[3]}-${dm[2]}-${dm[1]}`;
@@ -1425,7 +1436,6 @@ function parseMothanFile(wb){
       docRef=String(r[8]||'').trim();
       details=String(r[6]||'').substring(0,80);
     } else if(fmt==='A'){
-      // New format: col0=date, col2=branch, col3=details, extract weight+amount from text
       const dm=String(r[0]||'').trim().match(/(\d{2})\/(\d{2})\/(\d{4})/);
       if(!dm)continue;
       d=`${dm[3]}-${dm[2]}-${dm[1]}`;
@@ -1439,7 +1449,7 @@ function parseMothanFile(wb){
       amount=am?parseFloat(am[1].replace(/,/g,'')):0;
       if(amount===0)amount=Math.abs(parseFloat(String(r[5]||'').replace(/[,\-]/g,''))||0);
     }
-    // Only include rows where col2 (weight) > 0
+    // Only include if weight > 0 (col2 > 0)
     if(weight>0&&d&&BM[bc]){
       out.push({
         transaction_date:d,doc_ref:docRef,
@@ -1454,6 +1464,4 @@ function parseMothanFile(wb){
   }
   return out;
 }
-</script>
-</body>
-</html>
+>
