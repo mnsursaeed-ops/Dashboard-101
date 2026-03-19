@@ -6,7 +6,207 @@
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// ══ MERGE PURCHASES ══
+const MG_FILES={p:[],m:[]};
+let MG_RESULT=[];
+
+function mgDrop(e,t){e.preventDefault();document.getElementById('uc-mg-'+t).classList.remove('drag');mgFile({files:e.dataTransfer.files},t);}
+
+function mgFile(inp,t){
+  Array.from(inp.files).forEach(function(file){
+    var r=new FileReader();
+    r.onload=function(ev){
+      try{
+        var wb=XLSX.read(ev.target.result,{type:'array',raw:true});
+        MG_FILES[t].push({wb:wb,name:file.name});
+        var s=document.getElementById('mg-st-'+t);
+        s.textContent='✅ '+MG_FILES[t].length+' ملف';
+        s.className='ust sok';
+        document.getElementById('uc-mg-'+t).classList.add('loaded');
+        document.getElementById('mg-calc-btn').disabled=!(MG_FILES.p.length||MG_FILES.m.length);
+      }catch(e){
+        document.getElementById('mg-st-'+t).textContent='❌ '+e.message;
+        document.getElementById('mg-st-'+t).className='ust ser';
+      }
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function mgParsePurch(wb){
+  var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  var df='',dt='';
+  for(var i=0;i<Math.min(10,rows.length);i++){
+    var m=String(rows[i][11]||'').match(/From\s+(\S+)\s+To\s+(\S+)/);
+    if(m){df=m[1];dt=m[2];break;}
+  }
+  // Skip multi-day files
+  if(df&&dt&&df!==dt){console.log('Skipping multi-day file:',df,'→',dt);return{data:{},df:'',dt:''};}
+  var out={};var cur=null;
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];var c12=String(r[12]||'').trim();
+    var m2=c12.match(/^(\d{4})\s*-/);if(m2){cur=m2[1];continue;}
+    if(!cur)continue;
+    if(c12.indexOf('Sub Total')>=0||String(r[11]).trim()==='0'){
+      var total=Math.abs(+r[3]||0);var wt=Math.abs(+r[6]||0);
+      if(total>0){if(!out[cur])out[cur]={sar:0,wt:0};out[cur].sar+=total;out[cur].wt+=wt;}
+      cur=null;
+    }
+  }
+  return{data:out,df:df,dt:dt};
+}
+
+function mgParseMothan(wb){
+  var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  var out={};
+  // Detect format: Format C (cumulative with col7=branch, col2=weight, col4=amount)
+  // Format A (daily with col0=date, col2=branch, col5=amount)
+  var fmt='';
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    if(BM[String(r[7]||'').trim()]&&Math.abs(+r[2]||0)>0&&Math.abs(+r[4]||0)>0){fmt='C';break;}
+    if(String(r[0]||'').match(/^\d{2}\/\d{2}\/\d{4}$/)&&BM[String(r[2]||'').trim()]){fmt='A';break;}
+  }
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];var bc='',amount=0,weight=0;
+    if(fmt==='C'){
+      bc=String(r[7]||'').trim();if(!BM[bc])continue;
+      amount=Math.abs(parseFloat(String(r[4]||'').replace(/[,\-]/g,''))||0);
+      weight=Math.abs(parseFloat(String(r[2]||'').replace(/,/g,''))||0);
+    }else if(fmt==='A'){
+      if(!String(r[0]||'').match(/^\d{2}\/\d{2}\/\d{4}$/))continue;
+      bc=String(r[2]||'').trim();if(!BM[bc])continue;
+      amount=Math.abs(parseFloat(String(r[5]||'').replace(/[,\-]/g,''))||0);
+      var details=String(r[3]||'');
+      var wm=details.match(/وزن\s*\(\s*([\d.]+)\s*\)/);
+      weight=wm?parseFloat(wm[1]):0;
+    }
+    if(amount>0&&weight>0&&BM[bc]){
+      if(!out[bc])out[bc]={sar:0,wt:0};
+      out[bc].sar+=amount;out[bc].wt+=weight;
+    }
+  }
+  return out;
+}
+
+function mgCalculate(){
+  MG_RESULT=[];
+  var purchData={};var purchDate='';
+  MG_FILES.p.forEach(function(f){
+    var res=mgParsePurch(f.wb);
+    if(res.df&&!purchDate)purchDate=res.df;
+    Object.keys(res.data).forEach(function(bc){
+      if(!purchData[bc])purchData[bc]={sar:0,wt:0};
+      purchData[bc].sar+=res.data[bc].sar;purchData[bc].wt+=res.data[bc].wt;
+    });
+  });
+  var mothanData={};
+  MG_FILES.m.forEach(function(f){
+    var res=mgParseMothan(f.wb);
+    Object.keys(res).forEach(function(bc){
+      if(!mothanData[bc])mothanData[bc]={sar:0,wt:0};
+      mothanData[bc].sar+=res[bc].sar;mothanData[bc].wt+=res[bc].wt;
+    });
+  });
+  var reportDate=purchDate||new Date().toISOString().split('T')[0];
+  var allCodes=new Set(Object.keys(purchData).concat(Object.keys(mothanData)));
+  allCodes.forEach(function(bc){
+    var p=purchData[bc]||{sar:0,wt:0};
+    var m=mothanData[bc]||{sar:0,wt:0};
+    var total_sar=p.sar+m.sar;
+    var total_wt=p.wt+m.wt;
+    var rate=total_wt>0?Math.round(total_sar/total_wt*10000)/10000:0;
+    MG_RESULT.push({
+      branch_code:bc,branch_name:BM[bc]||bc,region:RM[BM[bc]]||'—',
+      report_date:reportDate,
+      purch_sar:Math.round(p.sar*100)/100,mothan_sar:Math.round(m.sar*100)/100,
+      total_sar:Math.round(total_sar*100)/100,
+      total_weight_g:Math.round(total_wt*1000)/1000,
+      wt_pure_g:Math.round(total_wt*1000)/1000,
+      purchase_rate:rate,purchase_avg_mkg:0,
+      k18_sar:0,k18_weight_g:0,k18_wt_pure:0,k18_rate:0,
+      k21_sar:0,k21_weight_g:0,k21_wt_pure:0,k21_rate:0,
+      k24_sar:0,k24_weight_g:0,k24_wt_pure:0,k24_rate:0
+    });
+  });
+  MG_RESULT.sort(function(a,b){return b.total_sar-a.total_sar;});
+
+  var tSar=MG_RESULT.reduce(function(s,r){return s+r.total_sar;},0);
+  var tPur=MG_RESULT.reduce(function(s,r){return s+r.purch_sar;},0);
+  var tMo=MG_RESULT.reduce(function(s,r){return s+r.mothan_sar;},0);
+  document.getElementById('mg-summary').textContent=MG_RESULT.length+' فرع | إجمالي: '+Math.round(tSar).toLocaleString('ar-SA')+' ر.س';
+
+  document.getElementById('mg-tbl').innerHTML=MG_RESULT.map(function(r){
+    return '<tr><td style="font-weight:700">'+r.branch_name+'</td><td style="font-size:10px;color:var(--mu)">'+r.region+'</td>'+
+      '<td style="color:var(--ac)">'+Math.round(r.purch_sar).toLocaleString('ar-SA')+'</td>'+
+      '<td style="color:var(--am)">'+Math.round(r.mothan_sar).toLocaleString('ar-SA')+'</td>'+
+      '<td style="color:var(--gn);font-weight:700">'+Math.round(r.total_sar).toLocaleString('ar-SA')+'</td>'+
+      '<td>'+r.total_weight_g.toFixed(2)+'</td>'+
+      '<td style="color:var(--teal);font-weight:700">'+r.purchase_rate.toFixed(2)+'</td></tr>';
+  }).join('');
+
+  document.getElementById('mg-result-card').style.display='';
+  document.getElementById('mg-save-btn').disabled=MG_RESULT.length===0;
+}
+
+async function mgSave(){
+  var btn=document.getElementById('mg-save-btn');
+  var pw=document.getElementById('mg-pw');
+  var bar=document.getElementById('mg-pb2');
+  var msg=document.getElementById('mg-pm');
+  btn.disabled=true;pw.style.display='block';
+
+  try{
+    var reportDate=MG_RESULT[0]&&MG_RESULT[0].report_date||new Date().toISOString().split('T')[0];
+    msg.textContent='🗑️ حذف القديم...';bar.style.width='15%';
+    await fetch(SB_URL+'/rest/v1/branch_purchases?report_date=eq.'+reportDate,
+      {method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+
+    msg.textContent='💾 رفع '+MG_RESULT.length+' فرع...';bar.style.width='40%';
+    var dbRows=MG_RESULT.map(function(r){
+      return{report_date:r.report_date,branch_code:r.branch_code,branch_name:r.branch_name,
+        region:r.region,total_sar:r.total_sar,total_weight_g:r.total_weight_g,
+        wt_pure_g:r.wt_pure_g,purchase_rate:r.purchase_rate,purchase_avg_mkg:0,
+        k18_sar:0,k18_weight_g:0,k18_wt_pure:0,k18_rate:0,
+        k21_sar:0,k21_weight_g:0,k21_wt_pure:0,k21_rate:0,
+        k24_sar:0,k24_weight_g:0,k24_wt_pure:0,k24_rate:0};
+    });
+    var r1=await fetch(SB_URL+'/rest/v1/branch_purchases',{method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(dbRows)});
+    if(!r1.ok)throw new Error('branch_purchases: '+(await r1.text()));
+
+    msg.textContent='📊 تحديث معدلات الشراء...';bar.style.width='70%';
+    var rateRows=MG_RESULT.map(function(r){
+      return{branch_code:r.branch_code,branch_name:r.branch_name,
+        rate_purchase:r.purchase_rate,total_sar:r.total_sar,
+        total_weight:r.wt_pure_g,last_updated:new Date().toISOString().split('T')[0],
+        source_date:reportDate};
+    });
+    var r2=await fetch(SB_URL+'/rest/v1/branch_purchase_rates',{method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,
+        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(rateRows)});
+    if(!r2.ok)throw new Error('rates: '+(await r2.text()));
+
+    msg.textContent='📋 حفظ السجل...';bar.style.width='90%';
+    await sbUp('upload_log',[{report_date:reportDate,file_type:'purchases',
+      file_name:'دمج مشتريات+موطن ('+MG_FILES.p.length+'+'+(MG_FILES.m.length)+' ملفات)',
+      date_from:reportDate,records_count:MG_RESULT.length}]);
+
+    bar.style.width='100%';
+    msg.textContent='✅ تم الرفع! '+MG_RESULT.length+' فرع';
+    setTimeout(function(){btn.disabled=false;loadHistory();},2000);
+    alert('✅ تم الرفع بنجاح!\n'+MG_RESULT.length+' فرع | تاريخ: '+reportDate);
+  }catch(e){
+    msg.textContent='❌ '+e.message;
+    console.error(e);btn.disabled=false;
+  }
+}
+
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -187,6 +387,7 @@ nav{padding:8px 6px;flex:1}
       <div class="sb-sec">الإدارة</div>
       <button class="sbb" onclick="sw('tg',this)"><span class="i">🎯</span><span>الأهداف</span></button>
       <button class="sbb" onclick="sw('up',this)"><span class="i">📤</span><span>رفع البيانات</span></button>
+      <button class="sbb" onclick="sw('mg',this)"><span class="i">🔗</span><span>دمج المشتريات</span></button>
       <button class="sbb" id="sb-admin" style="display:none" onclick="sw('ad',this)"><span class="i">⚙️</span><span>المستخدمون</span></button>
     </nav>
     <div class="sb-footer">
@@ -419,6 +620,46 @@ nav{padding:8px 6px;flex:1}
       <!-- مستخدمون -->
       <div class="sc" id="sc-ad">
         <div class="cd"><div class="ct">⚙️ إدارة المستخدمين</div><div id="users-list"></div></div>
+      </div>
+
+
+      <!-- دمج المشتريات -->
+      <div class="sc" id="sc-mg">
+        <div class="cd">
+          <div class="ct">🔗 دمج ملفات المشتريات <span class="ct-b">مشتريات الفروع + موطن الذهب</span></div>
+          <p style="font-size:11px;color:var(--mu);margin-bottom:16px">💡 ارفع ملفات مشتريات الفروع (يومية متعددة) + ملف موطن الذهب التراكمي — تُدمج تلقائياً وترفع للنظام</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div class="uc" id="uc-mg-p" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="mgDrop(event,'p')">
+              <input type="file" accept=".xlsx,.xls" multiple onchange="mgFile(this,'p')">
+              <div class="ui">🛒</div>
+              <div class="un">مشتريات الفروع</div>
+              <div class="ud">يدعم ملفات متعددة</div>
+              <div class="ust" id="mg-st-p">في انتظار الملف...</div>
+            </div>
+            <div class="uc" id="uc-mg-m" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="mgDrop(event,'m')">
+              <input type="file" accept=".xlsx,.xls" multiple onchange="mgFile(this,'m')">
+              <div class="ui">🏦</div>
+              <div class="un">موطن الذهب</div>
+              <div class="ud">الملف التراكمي (Format A أو B)</div>
+              <div class="ust" id="mg-st-m">في انتظار الملف...</div>
+            </div>
+          </div>
+          <button class="proc-btn" id="mg-calc-btn" onclick="mgCalculate()" disabled>🔗 دمج وحساب المعدلات</button>
+        </div>
+
+        <div class="cd" id="mg-result-card" style="display:none">
+          <div class="ct">📊 نتيجة الدمج <span class="ct-b" id="mg-summary"></span></div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>الفرع</th><th>المنطقة</th><th>مشتريات الفروع</th><th>موطن الذهب</th><th>الإجمالي</th><th>الوزن (جم)</th><th>معدل الشراء</th></tr></thead>
+              <tbody id="mg-tbl"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:14px">
+            <button class="proc-btn" id="mg-save-btn" onclick="mgSave()" style="background:linear-gradient(135deg,#059669,#34d399)">💾 رفع للنظام</button>
+            <div class="pw" id="mg-pw"><div class="pb2-track"><div class="pb2" id="mg-pb2"></div></div><div id="mg-pm" style="font-size:11px;color:var(--mu);margin-top:6px;text-align:center"></div></div>
+          </div>
+        </div>
       </div>
 
       <div style="font-size:10px;color:var(--mu);text-align:center;padding:16px;border-top:1px solid var(--bd);margin-top:8px" id="last-update"></div>
