@@ -567,9 +567,10 @@ async function loadRange(from,to){
       sbQ('employee_sales',`report_date=gte.${from}&report_date=lte.${to}&limit=500`),
       sbQ('branch_purchase_rates','select=*')
     ]);
-    // Build saved rates map (fallback for branches not in today's files)
+    // Saved rates = fallback for branches with no purchases in selected period
     const savedRatesMap={};
     savedRates.forEach(r=>{savedRatesMap[r.branch_code]=+r.rate_purchase||0;});
+    console.log(`DB: sales=${sales.length} purch=${purch.length} mothan=${mothan.length} emps=${emps.length}`);
 
     // Aggregate branch data
     const bmap={};
@@ -582,6 +583,7 @@ async function loadRange(from,to){
       b.wp+=+r.wt_pure_g||0;
       b.pcs+=+r.total_pieces||0;
     });
+    // Sum ALL purchase records in date range (same logic as sales)
     purch.forEach(r=>{
       const bc=r.branch_code;
       if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0};
@@ -589,7 +591,7 @@ async function loadRange(from,to){
       b.purch+=+r.total_sar||0;
       b.purch_wt+=+r.wt_pure_g||0; // col6 = الوزن النقي
     });
-    // Mothan: only weight_debit_g > 0
+    // Mothan: sum all in date range, only weight_debit_g > 0
     mothan.forEach(r=>{
       if((+r.weight_debit_g||0)<=0)return;
       const bc=r.branch_code;
