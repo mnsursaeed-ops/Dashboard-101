@@ -406,7 +406,7 @@ nav{padding:8px 6px;flex:1}
             </div>
           </div>
           <button class="proc-btn" id="proc-btn" onclick="processAndSave()" disabled>💾 معالجة وحفظ في قاعدة البيانات</button>
-          <div class="pw"><div class="pb2-track"><div class="pb2" id="pb2"></div></div><div id="pm"></div></div>
+          <div class="pw" id="pw" style="display:none"><div class="pb2-track"><div class="pb2" id="pb2"></div></div><div id="pm"></div></div>
         </div>
         <div class="cd">
           <div class="ct">📋 سجل الرفع <span class="ct-b" id="hist-count"></span>
@@ -512,7 +512,7 @@ async function loadUserRole(){
   }catch{ROLE='viewer';}
 }
 async function logLogin(){
-  try{await sbUp('login_log',[{user_email:USER.email,role:ROLE,logged_in_at:new Date().toISOString()}]);}catch{}
+  try{try{await sbUp('login_log',[{user_email:USER.email,logged_in_at:new Date().toISOString()}]);}catch{}}catch{}
 }
 function showApp(){
   document.getElementById('ls').style.display='none';
