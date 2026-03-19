@@ -803,27 +803,38 @@ async function loadRange(from,to){
     });
     purch.forEach(r=>{
       const bc=r.branch_code;
-      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,purch_avg:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0,mothan:0};
+      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
       const b=bmap[bc];
+      // col6 = wt_pure_g (الوزن النقي — المصدر الصحيح)
       b.purch+=+r.total_sar||0;
-      b.purch_wt+=+r.wt_pure_g||+r.total_weight_g||0;
-      b.purch_rate=+r.purchase_rate||+r.purchase_avg_mkg||0;
+      b.purch_wt+=+r.wt_pure_g||0;
       b.k18_sar+=+r.k18_sar||0;b.k21_sar+=+r.k21_sar||0;b.k24_sar+=+r.k24_sar||0;
-      b.k18_wt+=+r.k18_weight_g||0;b.k21_wt+=+r.k21_weight_g||0;b.k24_wt+=+r.k24_weight_g||0;
+      b.k18_wt+=+r.k18_wt_pure||0;b.k21_wt+=+r.k21_wt_pure||0;b.k24_wt+=+r.k24_wt_pure||0;
     });
     // Build mothan totals by branch for combined purchase rate
   const mothanByBranch={};
   mothan.forEach(r=>{
-    const bc=r.branch_code;
-    if(!mothanByBranch[bc])mothanByBranch[bc]={amount:0,weight:0};
-    mothanByBranch[bc].amount+=(+r.amount_sar||0);
-    mothanByBranch[bc].weight+=(+r.weight_debit_g||0);
-    if(bmap[bc])bmap[bc].mothan=(bmap[bc].mothan||0)+(+r.amount_sar||0);
-  });
+      const bc=r.branch_code;
+      if(!bc)return;
+      // Only include if weight_debit_g > 0
+      if((+r.weight_debit_g||0)<=0)return;
+      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:RM[r.branch_name]||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0,k18_sar:0,k21_sar:0,k24_sar:0,k18_wt:0,k21_wt:0,k24_wt:0};
+      bmap[bc].mothan+=(+r.amount_sar||0);
+      bmap[bc].mothan_wt+=(+r.weight_debit_g||0);
+    });
   DATA._allBranches=null;
   DATA.branches=Object.values(bmap).map(b=>{
     const sale_rate=b.wn>0?Math.round(b.sar/b.wn*10000)/10000:0;
-    const m=mothanByBranch[b.code]||{amount:0,weight:0};
+    // Combined purchase = branch purchases (col6 wt_pure) + mothan (col2 weight)
+    const combined_total=(b.purch||0)+(b.mothan||0);
+    const combined_wt=(b.purch_wt||0)+(b.mothan_wt||0);
+    // If no purchases at all → rate=0, diff=0
+    const purch_rate=combined_wt>0?Math.round(combined_total/combined_wt*10000)/10000:0;
+    const diff_rate=purch_rate>0?Math.round((sale_rate-purch_rate)*10000)/10000:0;
+    const net=b.sar-combined_total;
+    return{...b,sale_rate,purch_rate,diff_rate,
+      net:net,ai:b.pcs>0?Math.round(b.sar/b.pcs):0,
+      purch_combined:combined_total,mothan_amount:b.mothan||0,mothan_weight:b.mothan_wt||0};
     const combined_total=(b.purch||0)+m.amount;
     const combined_wt=(b.purch_wt||0)+m.weight;
     const purch_rate=combined_wt>0?Math.round(combined_total/combined_wt*10000)/10000:(b.purch_rate||b.purch_avg||0);
@@ -1357,23 +1368,41 @@ function parseBranchSales(wb){
 function parsePurchases(wb){
   const sheet=wb.Sheets[wb.SheetNames[0]];
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
-  const bpurch={};let cur=null;
+  // Extract date from header
+  let df='',dt='';
+  for(const row of rows.slice(0,10)){
+    const m=String(row[11]||'').match(/From\s+(\S+)\s+To\s+(\S+)/);
+    if(m){df=m[1];dt=m[2];break;}
+  }
+  const bpurch={_df:df,_dt:dt};let cur=null;
+  const km={'0.75':'18','0.875':'21','0.916':'22','1.0':'24','1':'24'};
   for(const row of rows){
     const c12=String(row[12]||'').trim();
-    const m=c12.match(/^(\d{4})\s*-/);if(m){cur=m[1];if(!bpurch[cur])bpurch[cur]={karats:{},sub:{}};continue;}
+    const m=c12.match(/^(\d{4})\s*-/);
+    if(m){cur=m[1];if(!bpurch[cur])bpurch[cur]={karats:{},sub:{total:0,wt_pure:0,rate:0}};continue;}
     if(!cur)continue;
-    if(String(row[11]).trim()==='0'||c12.includes('Sub Total')){
-      const total=Math.abs(+row[3]||0),wtp=Math.abs(+row[6]||0),wts=Math.abs(+row[8]||0);
-      bpurch[cur].sub={total,wt_pure:wtp,wt_safe:wts,
-        rate:wtp>0?Math.round(total/wtp*10000)/10000:0};
+    // Sub Total: col3=value, col6=pure weight (مو col8)
+    if(c12.includes('Sub Total')||String(row[11]).trim()==='0'){
+      const total=Math.abs(+row[3]||0);
+      const wt_pure=Math.abs(+row[6]||0); // col6 = الوزن النقي
+      bpurch[cur].sub={
+        total,
+        wt_pure,
+        wt_safe:Math.abs(+row[8]||0),
+        rate:wt_pure>0?Math.round(total/wt_pure*10000)/10000:0
+      };
       cur=null;continue;
     }
-    const km={'0.75':'18','0.875':'21','1':'24'};
-    const k=km[String(row[7]||'').trim()];
-    if(k&&cur&&bpurch[cur]){
-      const total=Math.abs(+row[3]||0),wtp=Math.abs(+row[6]||0),wts=Math.abs(+row[8]||0);
-      bpurch[cur].karats[k]={total,wt_pure:wtp,wt_safe:wts,
-        rate:wtp>0?Math.round(total/wtp*10000)/10000:0};
+    // Karat rows
+    const karat=km[String(row[7]||'').trim()];
+    if(karat){
+      const t=Math.abs(+row[3]||0),wp=Math.abs(+row[6]||0),ws=Math.abs(+row[8]||0);
+      if(t>0){
+        if(!bpurch[cur].karats[karat])bpurch[cur].karats[karat]={total:0,wt_pure:0,wt_safe:0,rate:0};
+        const k=bpurch[cur].karats[karat];
+        k.total+=t;k.wt_pure+=wp;k.wt_safe+=ws;
+        k.rate=k.wt_pure>0?Math.round(k.total/k.wt_pure*10000)/10000:0;
+      }
     }
   }
   return bpurch;
@@ -1382,395 +1411,55 @@ function parsePurchases(wb){
 function parseMothanFile(wb){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
   const out=[];
+  // Detect format:
+  // Format B (old, 10 cols): col9=date DD/MM/YYYY, col7=branch, col4=amount, col2=weight
+  // Format A (new, 7 cols):  col0=date DD/MM/YYYY, col2=branch, col3=details, col4=debit, col5=credit
+  let fmt='';
   for(const r of rows){
-    // Date is in col9 (DD/MM/YYYY), branch in col7, amount in col4, weight in col2
-    const dateStr=String(r[9]||'').trim();
-    const branchCode=String(r[7]||'').trim();
-    const dm=dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    if(!dm||!BM[branchCode])continue;
-    const d=`${dm[3]}-${dm[2]}-${dm[1]}`;
-    const amountSar=Math.abs(+String(r[4]||'').replace(/,/g,'')||0);
-    const weightCredit=Math.abs(+String(r[1]||'').replace(/,/g,'')||0);
-    const weightDebit=Math.abs(+String(r[2]||'').replace(/,/g,'')||0);
-    const balGold=+String(r[0]||'').replace(/,/g,'')||0;
-    const balSar=+String(r[3]||'').replace(/,/g,'')||0;
-    const details=String(r[6]||'').replace(/'/g,'').replace(/"/g,'').trim().substring(0,60);
-    const docRef=String(r[8]||'').trim();
-    if(amountSar>0||weightDebit>0){
+    if(String(r[9]||'').match(/\d{2}\/\d{2}\/\d{4}/)&&BM[String(r[7]||'').trim()]){fmt='B';break;}
+    if(String(r[0]||'').match(/^\d{2}\/\d{2}\/\d{4}$/)&&BM[String(r[2]||'').trim()]){fmt='A';break;}
+  }
+  for(const r of rows){
+    let d='',bc='',amount=0,weight=0,docRef='',details='';
+    if(fmt==='B'){
+      // Old format: col9=date, col7=branch, col4=amount SAR, col2=weight grams
+      const dm=String(r[9]||'').trim().match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if(!dm)continue;
+      d=`${dm[3]}-${dm[2]}-${dm[1]}`;
+      bc=String(r[7]||'').trim();
+      if(!BM[bc])continue;
+      weight=Math.abs(parseFloat(String(r[2]||'').replace(/,/g,''))||0);
+      amount=Math.abs(parseFloat(String(r[4]||'').replace(/,/g,''))||0);
+      docRef=String(r[8]||'').trim();
+      details=String(r[6]||'').substring(0,80);
+    } else if(fmt==='A'){
+      // New format: col0=date, col2=branch, col3=details, extract weight+amount from text
+      const dm=String(r[0]||'').trim().match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if(!dm)continue;
+      d=`${dm[3]}-${dm[2]}-${dm[1]}`;
+      bc=String(r[2]||'').trim();
+      if(!BM[bc])continue;
+      details=String(r[3]||'').trim();
+      docRef=String(r[1]||'').trim();
+      const wm=details.match(/وزن\s*\(\s*([\d.]+)\s*\)/);
+      weight=wm?parseFloat(wm[1]):0;
+      const am=details.match(/بمبلغ\s*\(\s*([\d,]+)\s*\)/);
+      amount=am?parseFloat(am[1].replace(/,/g,'')):0;
+      if(amount===0)amount=Math.abs(parseFloat(String(r[5]||'').replace(/[,\-]/g,''))||0);
+    }
+    // Only include rows where col2 (weight) > 0
+    if(weight>0&&d&&BM[bc]){
       out.push({
         transaction_date:d,doc_ref:docRef,
-        branch_code:branchCode,branch_name:BM[branchCode]||branchCode,
-        description:details,
-        amount_sar:amountSar,
-        weight_credit_g:weightCredit,
-        weight_debit_g:weightDebit,
-        rate_sar_per_g:weightDebit>0?Math.round(amountSar/weightDebit*100)/100:0,
-        balance_gold_g:balGold,
-        balance_sar:balSar
+        branch_code:bc,branch_name:BM[bc],
+        description:details.replace(/['"]/g,'').substring(0,80),
+        amount_sar:Math.round(amount*100)/100,
+        weight_debit_g:Math.round(weight*1000)/1000,
+        weight_credit_g:0,
+        rate_sar_per_g:weight>0?Math.round(amount/weight*10000)/10000:0
       });
     }
   }
   return out;
 }
-
-async function processAndSave(){
-  const btn=document.getElementById('proc-btn');btn.disabled=true;
-  const sp=(p,m)=>{document.getElementById('pw').style.display='block';document.getElementById('pb2').style.width=p+'%';document.getElementById('pm').textContent=m;};
-  try{
-    sp(10,'⏳ قراءة الملفات...');await sl(60);
-    console.log('FILES:', {bsales:!!FILES.bsales,sales:!!FILES.sales,purch:!!FILES.purch,mothan:!!FILES.mothan});
-    let empData=null,purchData=null,mothanRows=[];
-    
-    // Handle single or multiple files per type
-    const getWbs=(t)=>{
-      if(!FILES[t])return[];
-      if(FILES[t].multi)return FILES[t].files.map(f=>f.wb);
-      return[FILES[t].wb];
-    };
-    
-    // Parse all sales files (employees) - merge results
-    const salesWbs=getWbs('sales');
-    if(salesWbs.length){
-      if(salesWbs.length===1){empData=parseEmpSales(salesWbs[0]);}
-      else{
-        // Merge multiple emp files
-        const allEmps=[];let lastDf='',lastDt='';
-        salesWbs.forEach(wb=>{
-          const d=parseEmpSales(wb);
-          allEmps.push(...d.emps);
-          if(d.df)lastDf=d.df;
-          if(d.dt)lastDt=d.dt;
-        });
-        empData={emps:allEmps,bSubs:{},df:lastDf,dt:lastDt};
-      }
-    }
-    
-    // Parse all purchases files - merge
-    const purchWbs=getWbs('purch');
-    if(purchWbs.length){
-      purchData={};
-      purchWbs.forEach(wb=>{
-        const d=parsePurchases(wb);
-        Object.entries(d).forEach(([code,v])=>{
-          if(!purchData[code])purchData[code]=v;
-          else{
-            purchData[code].sub.total+=v.sub.total||0;
-            purchData[code].sub.wt_pure+=v.sub.wt_pure||0;
-            purchData[code].sub.wt_safe+=v.sub.wt_safe||0;
-          }
-        });
-      });
-      // Recalculate rates
-      Object.values(purchData).forEach(d=>{
-        if(d.sub.wt_pure>0)d.sub.rate=Math.round(d.sub.total/d.sub.wt_pure*10000)/10000;
-      });
-      console.log('purchData keys:',Object.keys(purchData).length);
-    }
-    
-    // Parse mothan files - concat
-    const mothanWbs=getWbs('mothan');
-    mothanWbs.forEach(wb=>{mothanRows.push(...parseMothanFile(wb));});
-    
-    // Parse bsales files - merge
-    const bsalesWbs=getWbs('bsales');
-    let bsalesData=null;
-    if(bsalesWbs.length){
-      bsalesData={};
-      bsalesWbs.forEach(wb=>{
-        const d=parseBranchSales(wb);
-        Object.entries(d).forEach(([code,v])=>{
-          if(!bsalesData[code])bsalesData[code]=v;
-          else{
-            bsalesData[code].sub.total+=v.sub.total||0;
-            bsalesData[code].sub.wt_pure+=v.sub.wt_pure||0;
-            bsalesData[code].sub.wt_safe+=v.sub.wt_safe||0;
-            bsalesData[code].sub.pieces+=v.sub.pieces||0;
-          }
-        });
-      });
-    }
-
-    // Get report date from file
-    const rdate=empData?.df||purchData?._df||new Date().toISOString().split('T')[0];
-    // bsalesData already parsed above from multiple files
-    sp(25,'💾 حفظ بيانات المشتريات...');await sl(60);
-
-    if(purchData&&Object.keys(purchData).length){
-      const pRows=Object.entries(purchData).map(([code,d])=>{
-          const name=BM[code]||code;
-          const sub=d.sub||{};
-          const total=sub.total||0,wtp=sub.wt_pure||0;
-          const k18=d.karats?.['18']||{};
-          const k21=d.karats?.['21']||{};
-          const k24=d.karats?.['24']||{};
-          return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',
-            total_sar:total,total_weight_g:sub.wt_safe||0,
-            wt_pure_g:wtp,purchase_rate:sub.rate||0,purchase_avg_mkg:0,
-            k18_sar:k18.total||0,k18_weight_g:k18.wt_safe||0,k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,
-            k21_sar:k21.total||0,k21_weight_g:k21.wt_safe||0,k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,
-            k24_sar:k24.total||0,k24_weight_g:k24.wt_safe||0,k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0,
-          };}).filter(r=>r.total_sar>0);
-      console.log('pRows to save:',pRows.length,'sample:',pRows[0]);
-      await sbUp('branch_purchases',pRows);
-      console.log('✅ branch_purchases saved');
-      await sbUp('upload_log',[{report_date:rdate,file_type:'purchases',file_name:FILES.purch?.name,date_from:rdate,records_count:pRows.length}]);
-    }
-
-    sp(50,'💾 حفظ بيانات الموظفين...');await sl(60);
-    if(empData&&empData.emps.length){
-      // Enrich with purchase avg
-      const finalEmps=empData.emps.map(e=>{
-        const pa=purchData?.[e._cur]?.sub?.rate||purchData?.[e._cur]?.avg||0;
-        const sa=e.sale_rate_g||0;
-        return{...e,branch_purchase_avg:pa,emp_avg_mkg:sa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa,report_date:rdate};
-      });
-      // Also save branch sales from subtotals
-      await sbDel('branch_sales','report_date=eq.'+rdate);
-      // Use bsales if available, otherwise fall back to empData.bSubs
-      const branchSource = bsalesData || (empData&&empData.bSubs?{
-        ...Object.fromEntries(Object.entries(empData.bSubs).map(([k,v])=>[k,{sub:v,karats:{}}]))
-      }:null);
-      if(branchSource){
-        const bsRows=Object.entries(branchSource).map(([code,d])=>{
-          const name=BM[code]||code;
-          const sub=d.sub||d;
-          const total=sub.total||sub.sar||0;
-          const wtp=sub.wt_pure||sub.wp||0;
-          const wts=sub.wt_safe||sub.wn||0;
-          const pcs=sub.pieces||sub.pcs||0;
-          const rate=sub.rate||(wtp>0?Math.round(total/wtp*10000)/10000:0);
-          const k18=d.karats?.['18']||{};
-          const k21=d.karats?.['21']||{};
-          const k24=d.karats?.['24']||{};
-          return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',
-            total_sar:total,total_weight_g:wts,total_pieces:pcs,
-            wt_pure_g:wtp,wt_safe_g:wts,sale_rate:rate,avg_mkg_charge:sub.avg_mkg||0,
-            avg_invoice_sar:pcs>0?Math.round(total/pcs):0,
-            k18_sar:k18.total||0,k18_weight_g:k18.wt_safe||0,k18_pieces:k18.pieces||0,
-            k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,k18_avg_mkg:k18.avg_mkg||0,
-            k21_sar:k21.total||0,k21_weight_g:k21.wt_safe||0,k21_pieces:k21.pieces||0,
-            k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,k21_avg_mkg:k21.avg_mkg||0,
-            k24_sar:k24.total||0,k24_weight_g:k24.wt_safe||0,k24_pieces:k24.pieces||0,
-            k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0,k24_avg_mkg:k24.avg_mkg||0,
-          };}).filter(r=>r.total_sar>0);
-        await sbUp('branch_sales',bsRows);
-      }
-      // Delete existing employee records for this date first
-      await fetch(`${SB_URL}/rest/v1/employee_sales?report_date=eq.${rdate}`,{
-        method:'DELETE',
-        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-      });
-      const cleanEmps=finalEmps.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;});
-      await sbUp('employee_sales',cleanEmps);
-      // Save bsales upload log
-      if(bsalesData&&Object.keys(bsalesData).length){
-        await sbUp('upload_log',[{report_date:rdate,file_type:'bsales',file_name:FILES.bsales?.name,records_count:Object.keys(bsalesData).length}]);
-      }
-      await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:FILES.sales?.name,date_from:empData.df,date_to:empData.dt,records_count:finalEmps.length}]);
-    }
-
-    sp(75,'💾 حفظ موطن الذهب...');await sl(60);
-    if(mothanRows.length){
-      await sbDel('mothan_transactions','report_date=eq.'+rdate);
-      await sbUp('mothan_transactions',mothanRows.map(r=>{return{...r,report_date:rdate};}) );
-      await sbUp('upload_log',[{report_date:rdate,file_type:'mothan',file_name:FILES.mothan?.name,records_count:mothanRows.length}]);
-    }
-
-    sp(100,'✅ تم الحفظ بنجاح!');await sl(500);
-    document.getElementById('pw').style.display='none';
-    await init();
-    loadHistory();
-    sw('ov',document.querySelectorAll('.sbb')[1]);
-  }catch(err){sp(100,'❌ خطأ: '+err.message);console.error(err);}
-  btn.disabled=false;
-}
-
-async function clearAllData(){
-  if(ROLE!=='super_admin'&&!PERMS.delete){alert('ليس لديك صلاحية المسح');return;}
-  if(!confirm('⚠️ هل أنت متأكد من مسح كل البيانات؟\nلا يمكن التراجع عن هذا الإجراء.'))return;
-  const btn=document.getElementById('clear-btn');
-  btn.disabled=true;btn.textContent='⏳ جاري المسح...';
-  try{
-    // Delete all records using report_date filter (more compatible)
-    const tables=['branch_sales','branch_purchases','employee_sales','mothan_transactions','upload_log'];
-    for(const tbl of tables){
-      try{
-        const r=await fetch(`${SB_URL}/rest/v1/${tbl}?id=not.is.null`,{
-          method:'DELETE',
-          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-        });
-        console.log('Deleted '+tbl+': status '+r.status);
-      }catch(e){console.warn('Delete failed for '+tbl,e);}
-    }
-    DATA.branches=[];DATA.employees=EB.employees;DATA.mothan=[];DATA.dates=[];
-    btn.textContent='✅ تم المسح';
-    setTimeout(()=>{btn.disabled=false;btn.textContent='🗑️ مسح كل البيانات';},3000);
-    loadHistory();
-    setBadge('📂 لا بيانات — ارفع ملفات','b-warn');
-    alert('✅ تم مسح كل البيانات بنجاح');
-  }catch(e){
-    alert('❌ خطأ: '+e.message);
-    btn.disabled=false;btn.textContent='🗑️ مسح كل البيانات';
-  }
-}
-
-async function deleteRecord(date, fileType){
-  if(!confirm(`حذف بيانات ${fileType} بتاريخ ${date}؟`))return;
-  try{
-    const tableMap={sales:'branch_sales',purchases:'branch_purchases',
-      employees:'employee_sales',mothan:'mothan_transactions'};
-    const tbl=tableMap[fileType];
-    if(tbl)await sbDel(tbl,'report_date=eq.'+date);
-    await sbDel('upload_log',`report_date=eq.${date}&file_type=eq.${fileType}&id=gte.1`);
-    loadHistory();
-    // Reload data
-    if(DATA.dates.length)await setDF('latest',document.querySelector('.dfb'));
-    alert('✅ تم الحذف');
-  }catch(e){alert('❌ '+e.message);}
-}
-
-async function loadHistory(){
-  try{
-    const rows=await sbQ('upload_log','order=uploaded_at.desc&limit=20');
-    const icons={sales:'📊',purchases:'🛒',mothan:'🏦',employees:'👥',bsales:'📈',branch_sales:'📈',branch_purchases:'🛒'};
-    const labels={sales:'مبيعات الموظفين',purchases:'المشتريات',mothan:'موطن الذهب',employees:'موظفون',bsales:'مبيعات الفروع',branch_sales:'مبيعات الفروع',branch_purchases:'مشتريات الفروع'};
-    document.getElementById('hist-count').textContent=rows.length+' سجل';
-    const canDel=ROLE==='super_admin'||PERMS.delete;
-    document.getElementById('hist-list').innerHTML=rows.length
-      ?rows.map(r=>{
-        const delBtn=canDel?`<button onclick="deleteRecord('${r.report_date}','${r.file_type}')" style="padding:3px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:6px;font-size:10px;cursor:pointer;font-family:inherit;margin-right:6px">🗑️ حذف</button>`:'';
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border-radius:8px;margin-bottom:6px;font-size:12px;border:1px solid var(--bd)"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">${icons[r.file_type]||'📄'}</span><div><div style="font-weight:600">${labels[r.file_type]||r.file_type} — ${r.date_from||r.report_date}</div><div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('ar-SA')}</div></div></div><div style="display:flex;align-items:center">${delBtn}<span class="pl pg">✅ محفوظ</span></div></div>`;
-      }).join('')
-      :'<div style="text-align:center;color:var(--mu);padding:24px;font-size:12px">لم يتم رفع أي بيانات بعد</div>';
-  }catch{document.getElementById('hist-list').innerHTML='<div style="text-align:center;color:var(--mu);padding:20px;font-size:12px">تعذّر تحميل السجل</div>';}
-}
-
-// ── Rewards ──
-function renderRewards(){
-  const emps=filterByAccess(DATA.employees,e=>e.bc||e.b);if(!emps.length)return;
-  // Score: sar(40%) + diff(40%) + pcs(20%)
-  const maxSar=Math.max(...emps.map(e=>e.sar||0),1);
-  const maxDiff=Math.max(...emps.map(e=>e.diff||0),1);
-  const maxPcs=Math.max(...emps.map(e=>e.pcs||0),1);
-  const scored=emps.map(e=>{const pts=Math.round(((e.sar||0)/maxSar)*40+((Math.max(e.diff||0,0))/maxDiff)*40+((e.pcs||0)/maxPcs)*20);return{...e,pts};}).sort((a,b)=>b.pts-a.pts);
-  document.getElementById('rw-period').textContent=document.getElementById('period-label').textContent||'';
-  document.getElementById('rw-tbl').innerHTML=scored.map((e,i)=>{
-    const reward=i===0?'🥇 5,000 ر.س':i===1?'🥈 3,000 ر.س':i===2?'🥉 2,000 ر.س':e.pts>60?'⭐ 500 ر.س':'—';
-    return`<tr>
-      <td style="text-align:center;font-size:16px">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
-      <td style="font-weight:700">${e.n||''}</td><td style="color:var(--mu);font-size:11px">${e.b||''}</td>
-      <td style="color:#60a5fa;font-weight:600">${sar(e.sar||0)}</td>
-      <td>${(e.wn||0).toFixed(2)} جم</td><td>${num(e.pcs||0)}</td>
-      <td style="color:${(e.diff||0)>0?'#4ade80':'#f87171'};font-weight:600">${(e.diff||0).toFixed(1)}</td>
-      <td><span class="pl ${e.pts>70?'pg':e.pts>40?'py':'pr'}">${e.pts} نقطة</span></td>
-      <td style="font-weight:700">${reward}</td></tr>`;
-  }).join('');
-}
-
-function exportRewards(){
-  const emps=filterByAccess(DATA.employees,e=>e.bc||e.b);if(!emps.length)return;
-  const maxSar=Math.max(...emps.map(e=>e.sar||0),1);
-  const maxDiff=Math.max(...emps.map(e=>e.diff||0),1);
-  const maxPcs=Math.max(...emps.map(e=>e.pcs||0),1);
-  const data=[['الترتيب','الموظف','الفرع','المبيعات','الوزن','الفواتير','فرق المعدل','النقاط','المكافأة']];
-  emps.map(e=>{return{...e,pts:Math.round(((e.sar||0)/maxSar)*40+(Math.max(e.diff||0,0)/maxDiff)*40+((e.pcs||0)/maxPcs)*20)};}).sort((a,b)=>b.pts-a.pts).forEach((e,i)=>{
-    const reward=i===0?5000:i===1?3000:i===2?2000:e.pts>60?500:0;
-    data.push([i+1,e.n,e.b,e.sar,e.wn,e.pcs,(e.diff||0).toFixed(1),e.pts,reward]);
-  });
-  const ws=XLSX.utils.aoa_to_sheet(data);
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'المكافآت');
-  XLSX.writeFile(wb,'rewards_'+new Date().toISOString().slice(0,10)+'.xlsx');
-}
-
-// ── Comparison ──
-function updateCmpDates(){
-  const el=document.getElementById('cmp-dates');if(!el)return;
-  el.innerHTML=DATA.dates.slice(0,10).map(d=>`<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;padding:4px 10px;border-radius:8px;background:var(--s2);border:1px solid var(--bd)"><input type="checkbox" value="${d}" style="accent-color:var(--ac)"> ${d}</label>`).join('');
-}
-async function renderCmp(){
-  const checked=[...document.querySelectorAll('#cmp-dates input:checked')].map(i=>i.value);
-  if(checked.length<2){alert('اختر يومين على الأقل');return;}
-  const d1=checked[0],d2=checked[1];
-  document.getElementById('cmp-h1').textContent=d1;document.getElementById('cmp-h2').textContent=d2;
-  const [s1,s2]=await Promise.all([sbQ('branch_sales','report_date=eq.'+d1),sbQ('branch_sales','report_date=eq.'+d2)]);
-  const m1={},m2={};s1.forEach(r=>m1[r.branch_name]=+r.total_sar||0);s2.forEach(r=>m2[r.branch_name]=+r.total_sar||0);
-  const brs=[...new Set([...Object.keys(m1),...Object.keys(m2)])].sort();
-  dk('ch-cmp');
-  CH['ch-cmp']=new Chart(document.getElementById('ch-cmp'),{type:'bar',data:{labels:brs,datasets:[
-    {label:d1,data:brs.map(b=>m1[b]||0),backgroundColor:'rgba(59,130,246,.8)',borderRadius:4},
-    {label:d2,data:brs.map(b=>m2[b]||0),backgroundColor:'rgba(34,197,94,.7)',borderRadius:4}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}}},scales:{x:{ticks:{color:'#64748b',font:{size:9},maxRotation:45},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>(v/1000000).toFixed(1)+'م'}}}}});
-  document.getElementById('cmp-tbl').innerHTML=brs.map(b=>{const v1=m1[b]||0,v2=m2[b]||0,d=v2-v1,p=v1>0?((d/v1)*100).toFixed(1):0;return`<tr><td style="font-weight:700">${b}</td><td>${sar(v1)}</td><td>${sar(v2)}</td><td style="color:${d>0?'#4ade80':'#f87171'};font-weight:600">${d>0?'+':''}${sar(d)}</td><td><span class="pl ${d>0?'pg':'pr'}">${d>0?'▲':'▼'} ${Math.abs(p)}%</span></td></tr>`;}).join('');
-}
-
-// ── Admin ──
-function initBranchCbs(){
-  const grid=document.getElementById('branch-cbs');if(!grid)return;
-  grid.innerHTML=Object.entries(BM).map(([code,name])=>`<label class="br-cb"><input type="checkbox" class="br-check" value="${code}" style="accent-color:var(--ac)"> ${name}</label>`).join('');
-}
-function toggleAllBranches(cb){document.querySelectorAll('.br-check').forEach(c=>c.checked=cb.checked);}
-async function addUser(){
-  const name=document.getElementById('nu-name').value.trim();
-  const email=document.getElementById('nu-email').value.trim();
-  const pw=document.getElementById('nu-pw').value;
-  const role=document.getElementById('nu-role').value;
-  const ok=id=>document.getElementById('ad-ok');const er=id=>document.getElementById('ad-er');
-  if(!email||!pw){document.getElementById('ad-er').textContent='أدخل البريد وكلمة المرور';document.getElementById('ad-er').style.display='block';return;}
-  const brs=[...document.querySelectorAll('.br-check:checked')].map(c=>c.value);
-  const perms={can_view:document.getElementById('p-view').checked,can_upload:document.getElementById('p-upload').checked,can_verify:document.getElementById('p-verify').checked,can_set_targets:document.getElementById('p-targets').checked,can_add_notes:document.getElementById('p-notes').checked,can_export:document.getElementById('p-export').checked,can_manage_users:document.getElementById('p-users').checked,can_delete:document.getElementById('p-delete').checked};
-  const {data,error}=await sb.auth.signUp({email,password:pw,options:{data:{name}}});
-  if(error){document.getElementById('ad-er').textContent='خطأ: '+error.message;document.getElementById('ad-er').style.display='block';return;}
-  const uid=data?.user?.id;
-  if(uid){await sbUp('user_roles',[{user_id:uid,email,name,role,allowed_branches:brs,...perms}]);document.getElementById('ad-ok').textContent='✅ تم إضافة '+email;document.getElementById('ad-ok').style.display='block';setTimeout(()=>document.getElementById('ad-ok').style.display='none',4000);loadUsers();}
-}
-async function loadUsers(){
-  try{
-    const rows=await sbQ('user_roles','order=created_at.desc');
-    document.getElementById('users-count').textContent=rows.length+' مستخدم';
-    document.getElementById('users-list').innerHTML=rows.map(u=>`
-      <div class="user-card">
-        <div class="uc-top">
-          <div><div class="uc-name">${u.name||u.email}</div><div class="uc-email">${u.email} · ${ROLE_LABELS[u.role]||u.role}</div></div>
-          <div class="uc-actions">
-            <button class="ua" onclick="toggleUser('${u.user_id}','${u.is_active}')">${u.is_active?'تعطيل':'تفعيل'}</button>
-            <button class="ua del" onclick="deleteUser('${u.user_id}','${u.email}')">حذف</button>
-          </div>
-        </div>
-        <div style="font-size:10px;color:var(--mu)">الفروع: ${u.allowed_branches?.length?u.allowed_branches.join('، '):'كل الفروع'}</div>
-        <div class="cb-grid" style="margin-top:8px">
-          ${[['can_view','عرض'],['can_upload','رفع'],['can_verify','تحقق'],['can_set_targets','أهداف'],['can_export','تصدير'],['can_manage_users','إدارة'],['can_delete','حذف']].map(([k,l])=>`<span style="font-size:10px;padding:2px 7px;border-radius:12px;background:${u[k]?'rgba(34,197,94,.1)':'rgba(100,116,139,.1)'};color:${u[k]?'#4ade80':'#64748b'}">${u[k]?'✓':'-'} ${l}</span>`).join('')}
-        </div>
-      </div>`).join('');
-  }catch{document.getElementById('users-list').innerHTML='<div style="text-align:center;color:var(--mu);padding:20px;font-size:12px">تعذّر التحميل</div>';}
-}
-async function toggleUser(uid,active){
-  await sbUp('user_roles',[{user_id:uid,is_active:active==='true'?false:true}]);loadUsers();
-}
-async function deleteUser(uid,email){
-  if(!confirm('حذف '+email+'؟'))return;
-  await sbDel('user_roles','user_id=eq.'+uid);loadUsers();
-}
-async function loadLoginLog(){
-  try{
-    const rows=await sbQ('login_log','order=logged_in_at.desc&limit=20');
-    document.getElementById('login-log').innerHTML=rows.map(r=>`<tr><td style="font-weight:600">${r.email?.split('@')[0]||'—'}</td><td style="color:var(--mu);font-size:11px">${r.email||''}</td><td style="font-size:11px">${new Date(r.logged_in_at).toLocaleString('ar-SA')}</td></tr>`).join('');
-  }catch{}
-}
-
-// ── Tabs ──
-function sw(id,btn){
-  if(id==='hm')renderHeatmap();
-  document.querySelectorAll('.sc').forEach(s=>s.classList.remove('on'));
-  document.querySelectorAll('.sbb').forEach(b=>b.classList.remove('on'));
-  document.getElementById('sc-'+id)?.classList.add('on');
-  btn?.classList.add('on');
-  if(id==='ad'){
-    const ok=PERMS.users||ROLE==='super_admin';
-    document.getElementById('ad-denied').style.display=ok?'none':'block';
-    document.getElementById('ad-content').style.display=ok?'block':'none';
-  }
-}
-<!-- DEPLOY_TS:1773711255 -->
-</script>
-</body>
-</html>
+>
