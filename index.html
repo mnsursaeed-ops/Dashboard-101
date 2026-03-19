@@ -560,12 +560,16 @@ function loadEmbedded(){
 async function loadRange(from,to){
   try{
     document.getElementById('period-badge').textContent=`⏳ جاري التحميل...`;
-    const [sales,purch,mothan,emps]=await Promise.all([
+    const [sales,purch,mothan,emps,savedRates]=await Promise.all([
       sbQ('branch_sales',`report_date=gte.${from}&report_date=lte.${to}`),
-      sbQ('branch_purchases','select=*&order=report_date.desc&limit=500'),
-      sbQ('mothan_transactions','select=*&order=transaction_date.desc&limit=500'),
-      sbQ('employee_sales',`report_date=gte.${from}&report_date=lte.${to}&limit=500`)
+      sbQ('branch_purchases',`report_date=gte.${from}&report_date=lte.${to}&order=report_date.desc`),
+      sbQ('mothan_transactions',`transaction_date=gte.${from}&transaction_date=lte.${to}&order=transaction_date.desc`),
+      sbQ('employee_sales',`report_date=gte.${from}&report_date=lte.${to}&limit=500`),
+      sbQ('branch_purchase_rates','select=*')
     ]);
+    // Build saved rates map (fallback for branches not in today's files)
+    const savedRatesMap={};
+    savedRates.forEach(r=>{savedRatesMap[r.branch_code]=+r.rate_purchase||0;});
 
     // Aggregate branch data
     const bmap={};
@@ -598,7 +602,11 @@ async function loadRange(from,to){
       const sale_rate=b.wn>0?Math.round(b.sar/b.wn*10000)/10000:0;
       const combined_total=(b.purch||0)+(b.mothan||0);
       const combined_wt=(b.purch_wt||0)+(b.mothan_wt||0);
-      const purch_rate=combined_wt>0?Math.round(combined_total/combined_wt*10000)/10000:0;
+      // If branch has purchases today → use combined rate
+      // If not → fallback to saved rate from branch_purchase_rates
+      const purch_rate=combined_wt>0
+        ?Math.round(combined_total/combined_wt*10000)/10000
+        :(savedRatesMap[b.code]||0);
       const diff_rate=purch_rate>0?Math.round((sale_rate-purch_rate)*10000)/10000:0;
       return {...b,sale_rate,purch_rate,diff_rate,
         net:b.sar-combined_total,
@@ -613,6 +621,8 @@ async function loadRange(from,to){
     // Employees with combined purchase rate
     const purchMap={};
     DATA.branches.forEach(b=>{purchMap[b.code]=b.purch_rate||0;});
+    // Also use savedRates for employees whose branch had no purchases today
+    savedRates.forEach(r=>{if(!purchMap[r.branch_code])purchMap[r.branch_code]=+r.rate_purchase||0;});
     if(emps.length)DATA.employees=emps.map(e=>{
       const pavg=purchMap[e.branch_code]||+e.branch_purchase_avg||0;
       const savg=+e.sale_rate_g||+e.emp_avg_mkg||0;
@@ -1276,6 +1286,58 @@ function parseMothanFile(wb){
   return out;
 }
 
+
+// ══ Update branch purchase rates (combined: branch purchases + mothan) ══
+async function updatePurchaseRates(purchMap, sourceDate){
+  try{
+    // Get latest mothan from DB
+    const mothanRows=await sbQ('mothan_transactions','select=*&order=transaction_date.desc&limit=500');
+    // Build mothan by branch (weight_debit_g > 0 only)
+    const mothanByBranch={};
+    mothanRows.filter(r=>(+r.weight_debit_g||0)>0).forEach(r=>{
+      const bc=r.branch_code;
+      if(!mothanByBranch[bc])mothanByBranch[bc]={amount:0,weight:0};
+      mothanByBranch[bc].amount+=(+r.amount_sar||0);
+      mothanByBranch[bc].weight+=(+r.weight_debit_g||0);
+    });
+
+    // Combine all branches from both sources
+    const allCodes=new Set([...Object.keys(purchMap),...Object.keys(mothanByBranch)]);
+    const rateRows=[];
+    allCodes.forEach(bc=>{
+      const p=purchMap[bc]||{sar:0,wt:0};
+      const m=mothanByBranch[bc]||{amount:0,weight:0};
+      const total_sar=(p.sar||0)+m.amount;
+      const total_weight=(p.wt||0)+m.weight;
+      const rate=total_weight>0?Math.round(total_sar/total_weight*10000)/10000:0;
+      if(rate>0){
+        rateRows.push({
+          branch_code:bc,
+          branch_name:BM[bc]||bc,
+          rate_purchase:rate,
+          total_sar:Math.round(total_sar*100)/100,
+          total_weight:Math.round(total_weight*1000)/1000,
+          last_updated:new Date().toISOString().split('T')[0],
+          source_date:p.date||sourceDate
+        });
+      }
+    });
+
+    if(rateRows.length){
+      // Upsert into branch_purchase_rates
+      const r=await fetch(`${SB_URL}/rest/v1/branch_purchase_rates`,{
+        method:'POST',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,
+          'Content-Type':'application/json',
+          'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify(rateRows)
+      });
+      if(r.ok)console.log(`✅ branch_purchase_rates updated: ${rateRows.length} branches`);
+      else console.warn('branch_purchase_rates update failed:',await r.text());
+    }
+  }catch(e){console.warn('updatePurchaseRates error:',e.message);}
+}
+
 // ══ PROCESS & SAVE ══
 async function processAndSave(){
   const btn=document.getElementById('proc-btn');btn.disabled=true;
@@ -1306,6 +1368,10 @@ async function processAndSave(){
         await sbUp('branch_purchases',pRows);
         await sbUp('upload_log',[{report_date:pdate,file_type:'purchases',file_name:purchFiles[i].name,date_from:pdate,records_count:pRows.length}]);
         totalSaved+=pRows.length;console.log('✅ purchases:'+pdate+' rows:'+pRows.length);
+        // Store in purchRatesMap for later combined calculation with mothan
+        pRows.forEach(r=>{if(!window._purchRatesMap)window._purchRatesMap={};
+          window._purchRatesMap[r.branch_code]={sar:r.total_sar||0,wt:r.wt_pure_g||0,date:pdate};
+        });
       }
     }
 
@@ -1324,6 +1390,10 @@ async function processAndSave(){
         totalSaved+=mRows.length;console.log('✅ mothan:'+mRows.length);
       }
     }
+
+    // Update branch_purchase_rates with combined rates
+    await updatePurchaseRates(window._purchRatesMap||{}, today);
+    window._purchRatesMap={};
 
     // 3. Branch Sales + Employees
     const bsalesFiles=getWbs('bsales');const salesFiles=getWbs('sales');
