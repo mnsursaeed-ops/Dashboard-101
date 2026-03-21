@@ -558,6 +558,12 @@ async function logLogin(){
   catch(e){console.log('login_log:',e.message);}
 }
 
+function showApp(){
+  document.getElementById('ls').style.display='none';
+  document.getElementById('app').style.display='block';
+  const d=document.getElementById('sb-date');if(d)d.textContent=new Date().toLocaleDateString('ar-SA');
+  init();
+}
 async function doLogout(){await sb.auth.signOut();location.reload();}
 sb.auth.getSession().then(async({data:{session}})=>{
   if(session){USER=session.user;await loadUserRole();await logLogin();showApp();}
@@ -739,6 +745,19 @@ function initBranchFilter(){
   sel.innerHTML='<option value="">كل الفروع</option>';
   (DATA._allBranches||DATA.branches).forEach(b=>{const o=document.createElement('option');o.value=b.code;o.textContent=b.name;sel.appendChild(o);});
   sel.value=cur;
+}
+function initBranchCbs(){
+  const cont=document.getElementById('branch-cbs');
+  if(!cont)return;
+  cont.innerHTML='';
+  (DATA._allBranches||DATA.branches||[]).forEach(function(b){
+    const lbl=document.createElement('label');
+    lbl.style.cssText='display:flex;align-items:center;gap:4px;cursor:pointer';
+    const cb=document.createElement('input');
+    cb.type='checkbox';cb.value=b.code;cb.checked=true;
+    lbl.appendChild(cb);lbl.appendChild(document.createTextNode(b.name));
+    cont.appendChild(lbl);
+  });
 }
 
 // ══ Page Switch ══
