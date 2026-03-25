@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774651000 -->
+<meta charset="UTF-8"><!-- BUILD:1774652000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -271,6 +271,7 @@ nav{padding:8px 6px;flex:1}
                 <option value="sar">الأعلى مبيعاً</option>
                 <option value="diff">أعلى فرق المعدل</option>
                 <option value="net">الأعلى صافياً</option>
+                <option value="returns">المرتجعات</option>
               </select>
             </div>
           </div>
@@ -780,6 +781,10 @@ function renderOv(){
   const avgDiff=bs.length?bs.reduce((s,b)=>s+(+b.diff_rate||0),0)/bs.length:0;
   const negBr=bs.filter(b=>b.diff_rate<0).length;
   const topBr=bs[0]||{};
+  // المرتجعات: فروع بقيمة مبيعات سالبة
+  const returnBrs=bs.filter(b=>(+b.sar||0)<0);
+  const totalReturns=Math.abs(returnBrs.reduce((s,b)=>s+(+b.sar||0),0));
+  const topReturn=returnBrs.length?returnBrs.sort((a,b)=>a.sar-b.sar)[0]:null;
 
   const kpis=[
     {icon:'💰',label:'إجمالي المبيعات',val:sar(tS),sub:`${wt(tW)} جم · ${num(tPcs)} فاتورة`,color:'var(--ac)'},
@@ -790,6 +795,8 @@ function renderOv(){
     {icon:'⚠️',label:'فروع صافي سالب',val:negBr,sub:`من ${bs.length} فرع`,color:'var(--rd)'},
     {icon:'🏆',label:'أعلى فرع مبيعاً',val:topBr.name||'—',sub:sar(topBr.sar||0),color:'var(--gn)'},
     {icon:'🧾',label:'متوسط الفاتورة',val:sar(tPcs>0?tS/tPcs:0),sub:`${num(tPcs)} فاتورة`,color:'var(--ac)'},
+    {icon:'🔄',label:'إجمالي المرتجعات',val:sar(totalReturns),sub:returnBrs.length?`${returnBrs.length} فرع`:'لا مرتجعات',color:totalReturns>0?'var(--rd)':'var(--gn)'},
+    {icon:'📉',label:'أعلى فرع مرتجعات',val:topReturn?topReturn.name:'لا يوجد',sub:topReturn?sar(Math.abs(topReturn.sar)):'—',color:'var(--rd)'},
   ];
 
   document.getElementById('kpi-grid').innerHTML=kpis.map(k=>`
@@ -845,6 +852,7 @@ function renderAlerts(){
   bs.forEach(b=>{
     if(b.diff_rate<0)alerts.push({type:'rd',icon:'⚠️',msg:`فرع ${b.name}: فرق معدل سالب (${sf(b.diff_rate,1)} ر.س/جم)`});
     if(b.purch_combined===0&&b.sar>0)alerts.push({type:'py',icon:'📋',msg:`فرع ${b.name}: لا توجد مشتريات مسجلة`});
+    if((+b.sar||0)<0)alerts.push({type:'rd',icon:'🔄',msg:`فرع ${b.name}: مرتجعات بقيمة ${sar(Math.abs(b.sar))}`});
   });
   if(alerts.length===0)alerts.push({type:'gn',icon:'✅',msg:'لا توجد تنبيهات — كل شيء طبيعي'});
   document.getElementById('alerts-list').innerHTML=alerts.slice(0,20).map(a=>`
@@ -861,6 +869,7 @@ function renderBranches(){
   if(rg)bs=bs.filter(b=>b.region===rg);
   if(so==='diff')bs.sort((a,b)=>b.diff_rate-a.diff_rate);
   else if(so==='net')bs.sort((a,b)=>b.net-a.net);
+  else if(so==='returns')bs.sort((a,b)=>(+a.sar||0)-(+b.sar||0));
   // Branch KPIs
   const tS=bs.reduce((s,b)=>s+(+b.sar||0),0);
   const tP=bs.reduce((s,b)=>s+(+b.purch_combined||0),0);
@@ -870,19 +879,25 @@ function renderBranches(){
   const avgDiff=bs.length?bs.reduce((s,b)=>s+(+b.diff_rate||0),0)/bs.length:0;
   const profitBr=bs.filter(b=>(+b.diff_rate||0)>0).length;
   const lossBr=bs.filter(b=>(+b.diff_rate||0)<0).length;
+  const returnBrs=bs.filter(b=>(+b.sar||0)<0);
+  const totalReturns=Math.abs(returnBrs.reduce((s,b)=>s+(+b.sar||0),0));
   const brKpi=document.getElementById('br-kpis');
   if(brKpi)brKpi.innerHTML=`
     <div class="kc" style="--kc:var(--ac)"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv">${sar(tS)}</div><div class="ks">${wt(tW)} جم · ${num(tPcs)} فاتورة</div></div>
     <div class="kc" style="--kc:var(--am)"><span class="ki">🛒</span><div class="kl">إجمالي المشتريات</div><div class="kv">${sar(tP)}</div><div class="ks">${bs.length} فرع</div></div>
     <div class="kc" style="--kc:${net>0?'var(--gn)':'var(--rd)'}"><span class="ki">${net>0?'📈':'📉'}</span><div class="kl">الصافي</div><div class="kv">${sar(net)}</div><div class="ks">${net>0?'▲ ربح':'▼ خسارة'}</div></div>
-    <div class="kc" style="--kc:var(--teal)"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv">${sf(avgDiff)+' ر.س/جم'}</div><div class="ks">✅ ${profitBr} ربح · ❌ ${lossBr} خسارة</div></div>`;
+    <div class="kc" style="--kc:var(--teal)"><span class="ki">⚡</span><div class="kl">متوسط فرق المعدل</div><div class="kv">${sf(avgDiff)+' ر.س/جم'}</div><div class="ks">✅ ${profitBr} ربح · ❌ ${lossBr} خسارة</div></div>
+    <div class="kc" style="--kc:var(--rd)"><span class="ki">🔄</span><div class="kl">المرتجعات</div><div class="kv">${sar(totalReturns)}</div><div class="ks">${returnBrs.length?returnBrs.length+' فرع — '+returnBrs.map(b=>b.name).join('، '):'لا مرتجعات'}</div></div>`;
   document.getElementById('br-count').textContent=bs.length+' فرع';
-  document.getElementById('br-tbl').innerHTML=bs.map((b,i)=>`
-    <tr>
+  document.getElementById('br-tbl').innerHTML=bs.map((b,i)=>{
+    const isReturn=(+b.sar||0)<0;
+    const statusLabel=isReturn?'🔄 مرتجع':(b.diff_rate>0?'✅ ربح':'❌ خسارة');
+    const statusClass=isReturn?'py':(b.diff_rate>0?'pg':'pr');
+    return`<tr style="${isReturn?'background:rgba(248,113,113,.05)':''}">
       <td style="color:var(--mu)">${i+1}</td>
-      <td style="font-weight:700">${b.name}</td>
+      <td style="font-weight:700">${b.name}${isReturn?' 🔄':''}</td>
       <td style="font-size:10px;color:var(--mu)">${b.region}</td>
-      <td style="color:var(--ac);font-weight:600">${sar(b.sar)}</td>
+      <td style="color:${isReturn?'var(--rd)':'var(--ac)'};font-weight:600">${sar(b.sar)}</td>
       <td>${wt(b.wn)}</td>
       <td>${num(b.pcs)}</td>
       <td style="color:var(--am)">${sar(b.ai)}</td>
@@ -891,8 +906,8 @@ function renderBranches(){
       <td style="color:var(--teal)">${sf(b.sale_rate,2)}</td>
       <td style="color:var(--am)">${b.purch_rate>0?sf(b.purch_rate,2):'—'}</td>
       <td><span class="pl ${pcc(b.diff_rate)}">${sf(b.diff_rate,1)}</span></td>
-      <td><span class="pl ${b.diff_rate>0?'pg':'pr'}">${b.diff_rate>0?'✅ ربح':'❌'}</span></td>
-    </tr>`).join('');
+      <td><span class="pl ${statusClass}">${statusLabel}</span></td>
+    </tr>`;}).join('');
 
   dk('ch-br-bar');
   if(bs.length){
@@ -1504,7 +1519,7 @@ async function processAndSave(){
             k18_sar:k18.total||0,k18_weight_g:k18.wt_net||0,k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,
             k21_sar:k21.total||0,k21_weight_g:k21.wt_net||0,k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,
             k24_sar:k24.total||0,k24_weight_g:k24.wt_net||0,k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0};
-        }).filter(r=>r.total_sar>0);
+        }).filter(r=>r.total_sar!==0);
         if(bsRows.length){
           await fetch(`${SB_URL}/rest/v1/branch_sales?report_date=eq.${rdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
           await sbUp('branch_sales',bsRows);
