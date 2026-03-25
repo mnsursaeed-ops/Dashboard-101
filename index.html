@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774656000 -->
+<meta charset="UTF-8"><!-- BUILD:1774657000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -625,12 +625,15 @@ async function loadRange(from,to){
     const bmap={};
     sales.forEach(r=>{
       const bc=r.branch_code;
-      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0};
+      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0,returns:0,return_days:0};
       const b=bmap[bc];
-      b.sar+=+r.total_sar||0;
+      const val=+r.total_sar||0;
+      b.sar+=val;
       b.wn+=+r.total_weight_g||0;
       b.wp+=+r.wt_pure_g||0;
       b.pcs+=+r.total_pieces||0;
+      // تتبع المرتجعات بشكل منفصل
+      if(val<0){b.returns+=Math.abs(val);b.return_days++;}
     });
     // Sum ALL purchase records in date range (same logic as sales)
     purch.forEach(r=>{
@@ -805,10 +808,10 @@ function renderOv(){
   const avgDiff=bs.length?bs.reduce((s,b)=>s+(+b.diff_rate||0),0)/bs.length:0;
   const negBr=bs.filter(b=>b.diff_rate<0).length;
   const topBr=bs[0]||{};
-  // المرتجعات: فروع بقيمة مبيعات سالبة
-  const returnBrs=bs.filter(b=>(+b.sar||0)<0);
-  const totalReturns=Math.abs(returnBrs.reduce((s,b)=>s+(+b.sar||0),0));
-  const topReturn=returnBrs.length?returnBrs.sort((a,b)=>a.sar-b.sar)[0]:null;
+  // المرتجعات: من حقل returns المتتبع بشكل منفصل
+  const returnBrs=bs.filter(b=>(+b.returns||0)>0);
+  const totalReturns=returnBrs.reduce((s,b)=>s+(+b.returns||0),0);
+  const topReturn=returnBrs.length?[...returnBrs].sort((a,b)=>(+b.returns||0)-(+a.returns||0))[0]:null;
   // مشتريات الفروع فقط (بدون موطن)
   const tBrPurch=bs.reduce((s,b)=>s+(+b.purch||0),0);
 
@@ -823,7 +826,7 @@ function renderOv(){
     {icon:'🏆',label:'أعلى فرع مبيعاً',val:topBr.name||'—',sub:sar(topBr.sar||0),color:'var(--gn)'},
     {icon:'🧾',label:'متوسط الفاتورة',val:sar(tPcs>0?tS/tPcs:0),sub:`${num(tPcs)} فاتورة`,color:'var(--ac)'},
     {icon:'🔄',label:'إجمالي المرتجعات',val:sar(totalReturns),sub:returnBrs.length?`${returnBrs.length} فرع`:'لا مرتجعات',color:totalReturns>0?'var(--rd)':'var(--gn)'},
-    {icon:'📉',label:'أعلى فرع مرتجعات',val:topReturn?topReturn.name:'لا يوجد',sub:topReturn?sar(Math.abs(topReturn.sar)):'—',color:'var(--rd)'},
+    {icon:'📉',label:'أعلى فرع مرتجعات',val:topReturn?topReturn.name:'لا يوجد',sub:topReturn?sar(topReturn.returns)+' ('+topReturn.return_days+' يوم)':'—',color:'var(--rd)'},
   ];
 
   document.getElementById('kpi-grid').innerHTML=kpis.map(k=>`
@@ -879,7 +882,7 @@ function renderAlerts(){
   bs.forEach(b=>{
     if(b.diff_rate<0)alerts.push({type:'rd',icon:'⚠️',msg:`فرع ${b.name}: فرق معدل سالب (${sf(b.diff_rate,1)} ر.س/جم)`});
     if(b.purch_combined===0&&b.sar>0)alerts.push({type:'py',icon:'📋',msg:`فرع ${b.name}: لا توجد مشتريات مسجلة`});
-    if((+b.sar||0)<0)alerts.push({type:'rd',icon:'🔄',msg:`فرع ${b.name}: مرتجعات بقيمة ${sar(Math.abs(b.sar))}`});
+    if((+b.returns||0)>0)alerts.push({type:'rd',icon:'🔄',msg:`فرع ${b.name}: مرتجعات بقيمة ${sar(b.returns)} (${b.return_days} يوم)`});
   });
   if(alerts.length===0)alerts.push({type:'gn',icon:'✅',msg:'لا توجد تنبيهات — كل شيء طبيعي'});
   document.getElementById('alerts-list').innerHTML=alerts.slice(0,20).map(a=>`
@@ -896,7 +899,7 @@ function renderBranches(){
   if(rg)bs=bs.filter(b=>b.region===rg);
   if(so==='diff')bs.sort((a,b)=>b.diff_rate-a.diff_rate);
   else if(so==='net')bs.sort((a,b)=>b.net-a.net);
-  else if(so==='returns')bs.sort((a,b)=>(+a.sar||0)-(+b.sar||0));
+  else if(so==='returns')bs.sort((a,b)=>(+b.returns||0)-(+a.returns||0));
   // Branch KPIs
   const tS=bs.reduce((s,b)=>s+(+b.sar||0),0);
   const tP=bs.reduce((s,b)=>s+(+b.purch_combined||0),0);
@@ -906,8 +909,8 @@ function renderBranches(){
   const avgDiff=bs.length?bs.reduce((s,b)=>s+(+b.diff_rate||0),0)/bs.length:0;
   const profitBr=bs.filter(b=>(+b.diff_rate||0)>0).length;
   const lossBr=bs.filter(b=>(+b.diff_rate||0)<0).length;
-  const returnBrs=bs.filter(b=>(+b.sar||0)<0);
-  const totalReturns=Math.abs(returnBrs.reduce((s,b)=>s+(+b.sar||0),0));
+  const returnBrs=bs.filter(b=>(+b.returns||0)>0);
+  const totalReturns=returnBrs.reduce((s,b)=>s+(+b.returns||0),0);
   const brKpi=document.getElementById('br-kpis');
   if(brKpi)brKpi.innerHTML=`
     <div class="kc" style="--kc:var(--ac)"><span class="ki">💰</span><div class="kl">إجمالي المبيعات</div><div class="kv">${sar(tS)}</div><div class="ks">${wt(tW)} جم · ${num(tPcs)} فاتورة</div></div>
@@ -917,8 +920,8 @@ function renderBranches(){
     <div class="kc" style="--kc:var(--rd)"><span class="ki">🔄</span><div class="kl">المرتجعات</div><div class="kv">${sar(totalReturns)}</div><div class="ks">${returnBrs.length?returnBrs.length+' فرع — '+returnBrs.map(b=>b.name).join('، '):'لا مرتجعات'}</div></div>`;
   document.getElementById('br-count').textContent=bs.length+' فرع';
   document.getElementById('br-tbl').innerHTML=bs.map((b,i)=>{
-    const isReturn=(+b.sar||0)<0;
-    const statusLabel=isReturn?'🔄 مرتجع':(b.diff_rate>0?'✅ ربح':'❌ خسارة');
+    const isReturn=(+b.returns||0)>0;
+    const statusLabel=isReturn?'🔄 مرتجع '+ sar(b.returns):(b.diff_rate>0?'✅ ربح':'❌ خسارة');
     const statusClass=isReturn?'py':(b.diff_rate>0?'pg':'pr');
     return`<tr style="${isReturn?'background:rgba(248,113,113,.05)':''}">
       <td style="color:var(--mu)">${i+1}</td>
