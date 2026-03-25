@@ -1221,8 +1221,13 @@ function parseBranchSales(wb){
     if(m){cur=m[1];if(!out[cur])out[cur]={sub:{total:0,wt_net:0,wt_pure:0,pieces:0,rate:0},karats:{}};continue;}
     if(!cur)continue;
     if(c12.includes('Sub Total')||String(r[11]).trim()==='0'){
-      const t=Math.abs(+r[3]||0),wn=Math.abs(+r[6]||0),wp=Math.abs(+r[8]||0);
-      out[cur].sub={total:t,wt_net:wn,wt_pure:wp,pieces:0,rate:wn>0?Math.round(t/wn*10000)/10000:0};
+      const raw=+(r[3]||0);
+      // القيمة في الملف: سالب=مبيعات، موجب=مرتجع
+      // نعكس العلامة: مبيعات→موجب، مرتجع→سالب
+      const t=-(raw);
+      const wn=Math.abs(+r[6]||0),wp=Math.abs(+r[8]||0);
+      if(!out[cur])out[cur]={sub:{total:0,wt_net:0,wt_pure:0,pieces:0,rate:0},karats:{}};
+      out[cur].sub={total:t,wt_net:wn,wt_pure:wp,pieces:0,rate:wn>0&&t>0?Math.round(t/wn*10000)/10000:0};
       cur=null;continue;
     }
     const karat=km[String(r[7]||'').trim()];
