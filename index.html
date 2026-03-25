@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774653000 -->
+<meta charset="UTF-8"><!-- BUILD:1774654000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -1543,6 +1543,8 @@ async function processAndSave(){
     }
 
     sp(100,`✅ تم الحفظ! (${totalSaved} سجل)`);
+    sp(100,'🔄 تحديث معدلات الشراء للموظفين...');
+    await syncEmployeePurchaseRates();
     await sl(500);document.getElementById('pw').style.display='none';
     loadHistory();
     const latestDate=DATA.dates[0]||today;
@@ -1554,6 +1556,43 @@ async function processAndSave(){
     btn.disabled=false;
     document.getElementById('proc-btn').disabled=!(FILES.bsales||FILES.sales||FILES.purch||FILES.mothan);
   }
+}
+
+// ══ SYNC EMPLOYEE PURCHASE RATES ══
+// يحدّث معدل الشراء لكل الموظفين تلقائياً بعد كل رفع — بغض النظر عن ترتيب الرفع
+async function syncEmployeePurchaseRates(){
+  try{
+    const [rates,mothanAll]=await Promise.all([
+      sbQ('branch_purchase_rates','select=*'),
+      sbQ('mothan_transactions','select=branch_code,amount_sar,weight_debit_g&limit=1000')
+    ]);
+    // Build combined rate per branch (purchases + mothan)
+    const rateMap={};
+    rates.forEach(r=>{rateMap[r.branch_code]=+r.rate_purchase||0;});
+    // If no rates saved, build from mothan alone
+    if(!rates.length&&mothanAll.length){
+      const mByBr={};
+      mothanAll.filter(r=>(+r.weight_debit_g||0)>0).forEach(r=>{
+        if(!mByBr[r.branch_code])mByBr[r.branch_code]={sar:0,wt:0};
+        mByBr[r.branch_code].sar+=(+r.amount_sar||0);
+        mByBr[r.branch_code].wt+=(+r.weight_debit_g||0);
+      });
+      Object.entries(mByBr).forEach(([bc,d])=>{if(d.wt>0)rateMap[bc]=Math.round(d.sar/d.wt*10000)/10000;});
+    }
+    if(!Object.keys(rateMap).length){console.log('⚠️ لا توجد معدلات شراء لتحديثها');return;}
+    // Update employees per branch
+    let updated=0;
+    for(const [bc,rate] of Object.entries(rateMap)){
+      if(rate<=0)continue;
+      const r=await fetch(`${SB_URL}/rest/v1/employee_sales?branch_code=eq.${bc}`,{
+        method:'PATCH',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({branch_purchase_avg:rate})
+      });
+      if(r.ok)updated++;
+    }
+    console.log(`✅ syncEmployeePurchaseRates: ${updated} فرع محدّث`);
+  }catch(e){console.warn('syncEmployeePurchaseRates error:',e.message);}
 }
 
 // ══ HISTORY ══
@@ -1849,6 +1888,8 @@ async function mgSave(){
       date_from:reportDate,records_count:MG_RESULT.length}]);
 
     bar.style.width='100%';
+    msg.textContent='🔄 تحديث معدلات الشراء للموظفين...';
+    await syncEmployeePurchaseRates();
     msg.textContent='✅ تم الرفع! '+MG_RESULT.length+' فرع';
     setTimeout(function(){btn.disabled=false;loadHistory();},2000);
     alert('✅ تم الرفع بنجاح!\n'+MG_RESULT.length+' فرع | تاريخ: '+reportDate);
