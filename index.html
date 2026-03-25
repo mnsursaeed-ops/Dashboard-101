@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774654000 -->
+<meta charset="UTF-8"><!-- BUILD:1774655000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -596,10 +596,10 @@ async function loadRange(from,to){
   try{
     document.getElementById('period-badge').textContent=`⏳ جاري التحميل...`;
     const [sales,purch,mothan,emps,savedRates]=await Promise.all([
-      sbQ('branch_sales',`report_date=gte.${from}&report_date=lte.${to}`),
-      sbQ('branch_purchases',`report_date=gte.${from}&report_date=lte.${to}&order=report_date.desc`),
-      sbQ('mothan_transactions',`transaction_date=gte.${from}&transaction_date=lte.${to}&order=transaction_date.desc`),
-      sbQ('employee_sales',`report_date=gte.${from}&report_date=lte.${to}&limit=500`),
+      sbQ('branch_sales',`report_date=gte.${from}&report_date=lte.${to}&limit=10000`),
+      sbQ('branch_purchases',`report_date=gte.${from}&report_date=lte.${to}&order=report_date.desc&limit=10000`),
+      sbQ('mothan_transactions',`transaction_date=gte.${from}&transaction_date=lte.${to}&order=transaction_date.desc&limit=10000`),
+      sbQ('employee_sales',`report_date=gte.${from}&report_date=lte.${to}&limit=10000`),
       sbQ('branch_purchase_rates','select=*')
     ]);
     // Saved rates = fallback for branches with no purchases in selected period
@@ -1375,7 +1375,7 @@ function parseMothanFile(wb){
 async function updatePurchaseRates(purchMap, sourceDate){
   try{
     // Get latest mothan from DB
-    const mothanRows=await sbQ('mothan_transactions','select=*&order=transaction_date.desc&limit=500');
+    const mothanRows=await sbQ('mothan_transactions','select=*&order=transaction_date.desc&limit=10000');
     // Build mothan by branch (weight_debit_g > 0 only)
     const mothanByBranch={};
     mothanRows.filter(r=>(+r.weight_debit_g||0)>0).forEach(r=>{
@@ -1490,8 +1490,8 @@ async function processAndSave(){
       const rdate=empData?.df||bsData?._df||today;
 
       // Get purchase rates from DB
-      const purchRows=await sbQ('branch_purchases','select=*&order=report_date.desc&limit=500');
-      const mothanRowsDB=await sbQ('mothan_transactions','select=*&limit=500');
+      const purchRows=await sbQ('branch_purchases','select=*&order=report_date.desc&limit=10000');
+      const mothanRowsDB=await sbQ('mothan_transactions','select=*&limit=10000');
       const mByBr={};
       mothanRowsDB.filter(r=>(+r.weight_debit_g||0)>0).forEach(r=>{
         if(!mByBr[r.branch_code])mByBr[r.branch_code]={amount:0,weight:0};
@@ -1564,7 +1564,7 @@ async function syncEmployeePurchaseRates(){
   try{
     const [rates,mothanAll]=await Promise.all([
       sbQ('branch_purchase_rates','select=*'),
-      sbQ('mothan_transactions','select=branch_code,amount_sar,weight_debit_g&limit=1000')
+      sbQ('mothan_transactions','select=branch_code,amount_sar,weight_debit_g&limit=10000')
     ]);
     // Build combined rate per branch (purchases + mothan)
     const rateMap={};
