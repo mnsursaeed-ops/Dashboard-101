@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774650000 -->
+<meta charset="UTF-8"><!-- BUILD:1774651000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -413,7 +413,7 @@ nav{padding:8px 6px;flex:1}
         </div>
         <div class="cd">
           <div class="ct">📋 سجل الرفع <span class="ct-b" id="hist-count"></span>
-            <button id="clear-btn" onclick="clearAllData()" style="display:none;padding:4px 12px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit">🗑️ مسح كل البيانات</button>
+            <button id="clear-btn" onclick="clearAllData()" style="padding:4px 12px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit">🗑️ مسح كل البيانات</button>
           </div>
           <div id="hist-list"><div class="loading">⏳ جاري التحميل...</div></div>
         </div>
@@ -1549,17 +1549,18 @@ async function loadHistory(){
 }
 
 async function clearAllData(){
-  if(ROLE!=='super_admin'&&!PERMS.delete){alert('ليس لديك صلاحية');return;}
-  if(!confirm('⚠️ مسح كل البيانات؟'))return;
-  const btn=document.getElementById('clear-btn');if(btn){btn.disabled=true;btn.textContent='⏳...';}
+  if(!confirm('⚠️ هل أنت متأكد من مسح كل البيانات؟ هذا الإجراء لا يمكن التراجع عنه'))return;
+  if(!confirm('⚠️⚠️ تأكيد نهائي — سيتم حذف جميع المبيعات والمشتريات والموظفين'))return;
+  const btn=document.getElementById('clear-btn');if(btn){btn.disabled=true;btn.textContent='⏳ جاري المسح...';}
   try{
     for(const t of['branch_sales','branch_purchases','employee_sales','mothan_transactions','upload_log']){
       await fetch(`${SB_URL}/rest/v1/${t}?id=not.is.null`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
     }
-    if(btn)btn.textContent='✅ تم';
+    await fetch(`${SB_URL}/rest/v1/branch_purchase_rates?branch_code=not.is.null`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    if(btn)btn.textContent='✅ تم المسح';
     setTimeout(()=>{if(btn){btn.disabled=false;btn.textContent='🗑️ مسح كل البيانات';}},3000);
-    loadHistory();alert('✅ تم مسح كل البيانات');
-  }catch(e){alert('❌ '+e.message);if(btn){btn.disabled=false;btn.textContent='🗑️ مسح';}}
+    loadHistory();alert('✅ تم مسح كل البيانات بنجاح');
+  }catch(e){alert('❌ '+e.message);if(btn){btn.disabled=false;btn.textContent='🗑️ مسح كل البيانات';}}
 }
 
 async function deleteRecord(date,fileType){
