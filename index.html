@@ -1530,22 +1530,60 @@ async function loadHistory(){
     const icons={sales:'📊',purchases:'🛒',mothan:'🏦',employees:'👥',bsales:'📈'};
     const labels={sales:'مبيعات الموظفين',purchases:'المشتريات',mothan:'موطن الذهب',employees:'موظفون',bsales:'مبيعات الفروع'};
     const el=document.getElementById('hist-count');if(el)el.textContent=rows.length+' سجل';
-    const canDel=ROLE==='super_admin'||PERMS.delete;
     const hl=document.getElementById('hist-list');if(!hl)return;
-    hl.innerHTML=rows.length?rows.map(r=>{
-      const delBtn=canDel?`<button onclick="deleteRecord('${r.report_date}','${r.file_type}')" style="padding:2px 8px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:20px;font-size:10px;cursor:pointer;font-family:inherit">🗑️</button>`:'';
-      return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border-radius:var(--r2);margin-bottom:6px;font-size:12px;border:1px solid var(--bd)">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:18px">${icons[r.file_type]||'📄'}</span>
-          <div>
-            <div style="font-weight:600">${labels[r.file_type]||r.file_type} — ${r.date_from||r.report_date}</div>
-            <div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('ar-SA')}</div>
-          </div>
+    if(!rows.length){hl.innerHTML='<div class="empty">لم يتم رفع أي بيانات بعد</div>';return;}
+    let html=`<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button onclick="deleteSelected()" id="del-sel-btn" style="padding:5px 14px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit;display:none">🗑️ حذف المحدد (<span id="del-sel-count">0</span>)</button>
+      <button onclick="toggleAllHist()" style="padding:5px 14px;background:var(--s3);border:1px solid var(--bd);color:var(--mu);border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit">☑️ تحديد الكل</button>
+    </div>`;
+    html+=rows.map(r=>{
+      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:var(--r2);margin-bottom:6px;font-size:12px;border:1px solid var(--bd)">
+        <input type="checkbox" class="hist-cb" data-date="${r.report_date}" data-type="${r.file_type}" onchange="updateDelCount()" style="accent-color:var(--rd);min-width:16px;min-height:16px;cursor:pointer">
+        <span style="font-size:18px">${icons[r.file_type]||'📄'}</span>
+        <div style="flex:1">
+          <div style="font-weight:600">${labels[r.file_type]||r.file_type} — ${r.date_from||r.report_date}</div>
+          <div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('ar-SA')}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px">${delBtn}<span class="pl pg">✅ محفوظ</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="deleteRecord('${r.report_date}','${r.file_type}')" style="padding:2px 8px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:20px;font-size:10px;cursor:pointer;font-family:inherit" title="حذف هذا فقط">🗑️</button>
+          <span class="pl pg">✅</span>
+        </div>
       </div>`;
-    }).join(''):'<div class="empty">لم يتم رفع أي بيانات بعد</div>';
+    }).join('');
+    hl.innerHTML=html;
   }catch(e){console.error('loadHistory:',e);}
+}
+function updateDelCount(){
+  const checked=document.querySelectorAll('.hist-cb:checked').length;
+  const btn=document.getElementById('del-sel-btn');
+  const cnt=document.getElementById('del-sel-count');
+  if(btn)btn.style.display=checked>0?'':'none';
+  if(cnt)cnt.textContent=checked;
+}
+function toggleAllHist(){
+  const cbs=document.querySelectorAll('.hist-cb');
+  const allChecked=[...cbs].every(c=>c.checked);
+  cbs.forEach(c=>c.checked=!allChecked);
+  updateDelCount();
+}
+async function deleteSelected(){
+  const cbs=[...document.querySelectorAll('.hist-cb:checked')];
+  if(!cbs.length){alert('اختر سجل واحد على الأقل');return;}
+  if(!confirm(`⚠️ حذف ${cbs.length} سجل؟`))return;
+  const btn=document.getElementById('del-sel-btn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ جاري الحذف...';}
+  const m={sales:'branch_sales',purchases:'branch_purchases',employees:'employee_sales',mothan:'mothan_transactions',bsales:'branch_sales'};
+  let ok=0,fail=0;
+  for(const cb of cbs){
+    const date=cb.dataset.date,ft=cb.dataset.type;
+    try{
+      if(m[ft])await fetch(`${SB_URL}/rest/v1/${m[ft]}?report_date=eq.${date}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+      await fetch(`${SB_URL}/rest/v1/upload_log?report_date=eq.${date}&file_type=eq.${ft}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+      ok++;
+    }catch{fail++;}
+  }
+  alert(`✅ تم حذف ${ok} سجل`+(fail?` · ❌ فشل ${fail}`:''));
+  loadHistory();
 }
 
 async function clearAllData(){
