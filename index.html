@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774652000 -->
+<meta charset="UTF-8"><!-- BUILD:1774653000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -499,10 +499,10 @@ Chart.defaults.font.size=11;
 const dk=k=>{if(CH[k]){CH[k].destroy();delete CH[k];}};
 
 // ══ Helpers ══
-const sar=n=>Math.round(+n||0).toLocaleString('ar-SA')+' ر.س';
-const sarN=n=>Math.round(+n||0).toLocaleString('ar-SA');
+const sar=n=>Math.round(+n||0).toLocaleString('en')+' ر.س';
+const sarN=n=>Math.round(+n||0).toLocaleString('en');
 const wt=n=>((+n)||0).toFixed(2);
-const num=n=>(+n||0).toLocaleString('ar-SA');
+const num=n=>(+n||0).toLocaleString('en');
 const sf=(n,d=2)=>((+n)||0).toFixed(d);
 const sl=ms=>new Promise(r=>setTimeout(r,ms));
 const pcc=v=>v>0?'pg':v<0?'pr':'py';
@@ -655,26 +655,36 @@ async function loadRange(from,to){
     DATA.mothan=mothan;
     DATA.dates=[from,to];
 
-    // Employees with combined purchase rate
+    // Employees with combined purchase rate — aggregate by emp_id to avoid duplicates
     const purchMap={};
     DATA.branches.forEach(b=>{purchMap[b.code]=b.purch_rate||0;});
-    // Also use savedRates for employees whose branch had no purchases today
     savedRates.forEach(r=>{if(!purchMap[r.branch_code])purchMap[r.branch_code]=+r.rate_purchase||0;});
-    if(emps.length)DATA.employees=emps.map(e=>{
-      const pavg=purchMap[e.branch_code]||+e.branch_purchase_avg||0;
-      const savg=+e.sale_rate_g||+e.emp_avg_mkg||0;
-      return{id:e.emp_id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,
-        sar:+e.total_sar||0,wn:+e.weight_net_g||0,wp:+e.weight_pure_g||0,
-        pcs:+e.pieces||0,ai:+e.avg_invoice_sar||0,
-        pavg,savg,diff:Math.round((savg-pavg)*10)/10,ok:savg>pavg};
-    });
+    if(emps.length){
+      const empMap={};
+      emps.forEach(e=>{
+        const id=e.emp_id;
+        if(!empMap[id])empMap[id]={id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:0,wn:0,wp:0,pcs:0,days:0};
+        const m=empMap[id];
+        m.sar+=+e.total_sar||0;
+        m.wn+=+e.weight_net_g||0;
+        m.wp+=+e.weight_pure_g||0;
+        m.pcs+=+e.pieces||0;
+        m.days++;
+      });
+      DATA.employees=Object.values(empMap).map(e=>{
+        const pavg=purchMap[e.bc]||0;
+        const savg=e.wn>0?Math.round(e.sar/e.wn*10000)/10000:0;
+        return{...e,ai:e.pcs>0?Math.round(e.sar/e.pcs):0,
+          pavg,savg,diff:Math.round((savg-pavg)*10)/10,ok:savg>pavg};
+      });
+    }
 
     initBranchFilter();
     renderAll();
     const from2=from.split('-').reverse().join('/');
     const to2=to.split('-').reverse().join('/');
     document.getElementById('period-badge').textContent=`📅 ${from2} — ${to2}`;
-    document.getElementById('last-update').textContent=`آخر تحديث: ${new Date().toLocaleString('ar-SA')}`;
+    document.getElementById('last-update').textContent=`آخر تحديث: ${new Date().toLocaleString('en')}`;
   }catch(e){
     console.error('loadRange error:',e);
     document.getElementById('period-badge').textContent='⚠️ خطأ في التحميل';
@@ -785,13 +795,16 @@ function renderOv(){
   const returnBrs=bs.filter(b=>(+b.sar||0)<0);
   const totalReturns=Math.abs(returnBrs.reduce((s,b)=>s+(+b.sar||0),0));
   const topReturn=returnBrs.length?returnBrs.sort((a,b)=>a.sar-b.sar)[0]:null;
+  // مشتريات الفروع فقط (بدون موطن)
+  const tBrPurch=bs.reduce((s,b)=>s+(+b.purch||0),0);
 
   const kpis=[
     {icon:'💰',label:'إجمالي المبيعات',val:sar(tS),sub:`${wt(tW)} جم · ${num(tPcs)} فاتورة`,color:'var(--ac)'},
     {icon:'📈',label:'الصافي',val:sar(net),sub:net>0?'▲ ربح':'▼ خسارة',color:net>0?'var(--gn)':'var(--rd)'},
-    {icon:'🛒',label:'إجمالي المشتريات',val:sar(tP),sub:`موطن: ${sar(tMothan)}`,color:'var(--am)'},
-    {icon:'⚡',label:'متوسط فرق المعدل',val:sf(avgDiff)+' ر.س/جم',sub:'لجميع الفروع',color:'var(--teal)'},
+    {icon:'🛒',label:'إجمالي المشتريات',val:sar(tP),sub:`فروع: ${sar(tBrPurch)} · موطن: ${sar(tMothan)}`,color:'var(--am)'},
+    {icon:'🏪',label:'مشتريات الفروع',val:sar(tBrPurch),sub:`${bs.filter(b=>(+b.purch||0)>0).length} فرع`,color:'var(--am)'},
     {icon:'🏦',label:'موطن الذهب',val:sar(tMothan),sub:`${DATA.mothan.length} معاملة`,color:'var(--gold)'},
+    {icon:'⚡',label:'متوسط فرق المعدل',val:sf(avgDiff)+' ر.س/جم',sub:'لجميع الفروع',color:'var(--teal)'},
     {icon:'⚠️',label:'فروع صافي سالب',val:negBr,sub:`من ${bs.length} فرع`,color:'var(--rd)'},
     {icon:'🏆',label:'أعلى فرع مبيعاً',val:topBr.name||'—',sub:sar(topBr.sar||0),color:'var(--gn)'},
     {icon:'🧾',label:'متوسط الفاتورة',val:sar(tPcs>0?tS/tPcs:0),sub:`${num(tPcs)} فاتورة`,color:'var(--ac)'},
@@ -1562,7 +1575,7 @@ async function loadHistory(){
         <span style="font-size:18px">${icons[r.file_type]||'📄'}</span>
         <div style="flex:1">
           <div style="font-weight:600">${labels[r.file_type]||r.file_type} — ${r.date_from||r.report_date}</div>
-          <div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('ar-SA')}</div>
+          <div style="font-size:10px;color:var(--mu)">${r.file_name||''} · ${r.records_count||0} سجل · ${new Date(r.uploaded_at).toLocaleString('en')}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <button onclick="deleteRecord('${r.report_date}','${r.file_type}')" style="padding:2px 8px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:20px;font-size:10px;cursor:pointer;font-family:inherit" title="حذف هذا فقط">🗑️</button>
@@ -1774,13 +1787,13 @@ function mgCalculate(){
   var tSar=MG_RESULT.reduce(function(s,r){return s+r.total_sar;},0);
   var tPur=MG_RESULT.reduce(function(s,r){return s+r.purch_sar;},0);
   var tMo=MG_RESULT.reduce(function(s,r){return s+r.mothan_sar;},0);
-  document.getElementById('mg-summary').textContent=MG_RESULT.length+' فرع | إجمالي: '+Math.round(tSar).toLocaleString('ar-SA')+' ر.س';
+  document.getElementById('mg-summary').textContent=MG_RESULT.length+' فرع | إجمالي: '+Math.round(tSar).toLocaleString('en')+' ر.س';
 
   document.getElementById('mg-tbl').innerHTML=MG_RESULT.map(function(r){
     return '<tr><td style="font-weight:700">'+r.branch_name+'</td><td style="font-size:10px;color:var(--mu)">'+r.region+'</td>'+
-      '<td style="color:var(--ac)">'+Math.round(r.purch_sar).toLocaleString('ar-SA')+'</td>'+
-      '<td style="color:var(--am)">'+Math.round(r.mothan_sar).toLocaleString('ar-SA')+'</td>'+
-      '<td style="color:var(--gn);font-weight:700">'+Math.round(r.total_sar).toLocaleString('ar-SA')+'</td>'+
+      '<td style="color:var(--ac)">'+Math.round(r.purch_sar).toLocaleString('en')+'</td>'+
+      '<td style="color:var(--am)">'+Math.round(r.mothan_sar).toLocaleString('en')+'</td>'+
+      '<td style="color:var(--gn);font-weight:700">'+Math.round(r.total_sar).toLocaleString('en')+'</td>'+
       '<td>'+r.total_weight_g.toFixed(2)+'</td>'+
       '<td style="color:var(--teal);font-weight:700">'+r.purchase_rate.toFixed(2)+'</td></tr>';
   }).join('');
@@ -1848,7 +1861,7 @@ async function mgSave(){
 function showApp(){
   document.getElementById('ls').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('sb-date').textContent=new Date().toLocaleDateString('ar-SA');
+  document.getElementById('sb-date').textContent=new Date().toLocaleDateString('en-GB');
   document.getElementById('sb-uname').textContent=USER.email.split('@')[0];
   document.getElementById('sb-role').textContent=ROLE_LABELS[ROLE]||ROLE||'مستخدم';
   if(PERMS.users||ROLE==='super_admin')document.getElementById('sb-admin').style.display='';
