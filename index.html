@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774658000 -->
+<meta charset="UTF-8"><!-- BUILD:1774659000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -814,13 +814,16 @@ function renderOv(){
   const topReturn=returnBrs.length?[...returnBrs].sort((a,b)=>(+b.returns||0)-(+a.returns||0))[0]:null;
   // مشتريات الفروع فقط (بدون موطن)
   const tBrPurch=bs.reduce((s,b)=>s+(+b.purch||0),0);
+  const tBrPurchWt=bs.reduce((s,b)=>s+(+b.purch_wt||0),0);
+  const tMothanWt=bs.reduce((s,b)=>s+(+b.mothan_wt||0),0);
+  const tPurchWt=tBrPurchWt+tMothanWt;
 
   const kpis=[
     {icon:'💰',label:'إجمالي المبيعات',val:sar(tS),sub:`${wt(tW)} جم · ${num(tPcs)} فاتورة`,color:'var(--ac)'},
     {icon:'📈',label:'الصافي',val:sar(net),sub:net>0?'▲ ربح':'▼ خسارة',color:net>0?'var(--gn)':'var(--rd)'},
-    {icon:'🛒',label:'إجمالي المشتريات',val:sar(tP),sub:`فروع: ${sar(tBrPurch)} · موطن: ${sar(tMothan)}`,color:'var(--am)'},
-    {icon:'🏪',label:'مشتريات الفروع',val:sar(tBrPurch),sub:`${bs.filter(b=>(+b.purch||0)>0).length} فرع`,color:'var(--am)'},
-    {icon:'🏦',label:'موطن الذهب',val:sar(tMothan),sub:`${DATA.mothan.length} معاملة`,color:'var(--gold)'},
+    {icon:'🛒',label:'إجمالي المشتريات',val:sar(tP),sub:`${wt(tPurchWt)} جم · فروع: ${sar(tBrPurch)} · موطن: ${sar(tMothan)}`,color:'var(--am)'},
+    {icon:'🏪',label:'مشتريات الفروع',val:sar(tBrPurch),sub:`${wt(tBrPurchWt)} جم · ${bs.filter(b=>(+b.purch||0)>0).length} فرع`,color:'var(--am)'},
+    {icon:'🏦',label:'موطن الذهب',val:sar(tMothan),sub:`${wt(tMothanWt)} جم · ${DATA.mothan.length} معاملة`,color:'var(--gold)'},
     {icon:'⚡',label:'متوسط فرق المعدل',val:sf(avgDiff)+' ر.س/جم',sub:'لجميع الفروع',color:'var(--teal)'},
     {icon:'⚠️',label:'فروع صافي سالب',val:negBr,sub:`من ${bs.length} فرع`,color:'var(--rd)'},
     {icon:'🏆',label:'أعلى فرع مبيعاً',val:topBr.name||'—',sub:sar(topBr.sar||0),color:'var(--gn)'},
