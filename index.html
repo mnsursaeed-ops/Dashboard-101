@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774657000 -->
+<meta charset="UTF-8"><!-- BUILD:1774658000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -1270,7 +1270,8 @@ function parseBranchSales(wb){
       // القيمة في الملف: سالب=مبيعات، موجب=مرتجع
       // نعكس العلامة: مبيعات→موجب، مرتجع→سالب
       const t=-(raw);
-      const wn=Math.abs(+r[6]||0),wp=Math.abs(+r[8]||0);
+      const sign=t<0?-1:1;
+      const wn=sign*Math.abs(+r[6]||0),wp=sign*Math.abs(+r[8]||0);
       if(!out[cur])out[cur]={sub:{total:0,wt_net:0,wt_pure:0,pieces:0,rate:0},karats:{}};
       out[cur].sub={total:t,wt_net:wn,wt_pure:wp,pieces:0,rate:wn>0&&t>0?Math.round(t/wn*10000)/10000:0};
       cur=null;continue;
