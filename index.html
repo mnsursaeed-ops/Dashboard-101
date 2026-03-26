@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774659000 -->
+<meta charset="UTF-8"><!-- BUILD:1774660000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -127,6 +127,9 @@ nav{padding:8px 6px;flex:1}
 .proc-btn{width:100%;padding:14px;font-size:14px;font-weight:700;border:none;border-radius:var(--r3);cursor:pointer;font-family:inherit;transition:all .2s;background:linear-gradient(135deg,var(--ac2),var(--teal));color:#fff;margin-bottom:8px}
 .proc-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(56,189,248,.35)}
 .proc-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.hf-btn{padding:5px 12px;background:var(--s3);border:1px solid var(--bd);color:var(--mu);border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .2s}
+.hf-btn:hover{background:var(--s4);color:var(--tx)}
+.hf-active{background:var(--ac2)!important;color:#fff!important;border-color:var(--ac2)!important}
 .pw{display:none;margin-bottom:12px}
 .pb2-track{height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
 .pb2{height:100%;background:linear-gradient(90deg,var(--ac2),var(--teal));border-radius:3px;transition:width .3s;width:0}
@@ -415,6 +418,13 @@ nav{padding:8px 6px;flex:1}
         <div class="cd">
           <div class="ct">📋 سجل الرفع <span class="ct-b" id="hist-count"></span>
             <button id="clear-btn" onclick="clearAllData()" style="padding:4px 12px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit">🗑️ مسح كل البيانات</button>
+          </div>
+          <div id="hist-filters" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="hf-btn hf-active" onclick="filterHist('all',this)">📋 الكل</button>
+            <button class="hf-btn" onclick="filterHist('bsales',this)">📈 مبيعات الفروع</button>
+            <button class="hf-btn" onclick="filterHist('employees',this)">👥 الموظفين</button>
+            <button class="hf-btn" onclick="filterHist('purchases',this)">🛒 المشتريات</button>
+            <button class="hf-btn" onclick="filterHist('mothan',this)">🏦 موطن الذهب</button>
           </div>
           <div id="hist-list"><div class="loading">⏳ جاري التحميل...</div></div>
         </div>
@@ -1617,17 +1627,27 @@ async function syncEmployeePurchaseRates(){
 }
 
 // ══ HISTORY ══
+let HIST_FILTER='all';
+function filterHist(type,btn){
+  HIST_FILTER=type;
+  document.querySelectorAll('.hf-btn').forEach(b=>b.classList.remove('hf-active'));
+  if(btn)btn.classList.add('hf-active');
+  loadHistory();
+}
 async function loadHistory(){
   try{
-    const rows=await sbQ('upload_log','order=uploaded_at.desc&limit=50');
+    let q='order=uploaded_at.desc&limit=50';
+    if(HIST_FILTER!=='all')q+=`&file_type=eq.${HIST_FILTER}`;
+    const rows=await sbQ('upload_log',q);
     const icons={sales:'📊',purchases:'🛒',mothan:'🏦',employees:'👥',bsales:'📈'};
     const labels={sales:'مبيعات الموظفين',purchases:'المشتريات',mothan:'موطن الذهب',employees:'موظفون',bsales:'مبيعات الفروع'};
-    const el=document.getElementById('hist-count');if(el)el.textContent=rows.length+' سجل';
+    const el=document.getElementById('hist-count');if(el)el.textContent=rows.length+' سجل'+(HIST_FILTER!=='all'?' ('+labels[HIST_FILTER]+')':'');
     const hl=document.getElementById('hist-list');if(!hl)return;
     if(!rows.length){hl.innerHTML='<div class="empty">لم يتم رفع أي بيانات بعد</div>';return;}
     let html=`<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <button onclick="deleteSelected()" id="del-sel-btn" style="padding:5px 14px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit;display:none">🗑️ حذف المحدد (<span id="del-sel-count">0</span>)</button>
       <button onclick="toggleAllHist()" style="padding:5px 14px;background:var(--s3);border:1px solid var(--bd);color:var(--mu);border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit">☑️ تحديد الكل</button>
+      ${HIST_FILTER!=='all'?`<button onclick="deleteAllFiltered()" style="padding:5px 14px;background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);color:var(--rd);border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600">🗑️ مسح كل ${labels[HIST_FILTER]} (${rows.length})</button>`:''}
     </div>`;
     html+=rows.map(r=>{
       return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:var(--r2);margin-bottom:6px;font-size:12px;border:1px solid var(--bd)">
@@ -1670,13 +1690,36 @@ async function deleteSelected(){
   for(const cb of cbs){
     const date=cb.dataset.date,ft=cb.dataset.type;
     try{
-      if(m[ft])await fetch(`${SB_URL}/rest/v1/${m[ft]}?report_date=eq.${date}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+      if(m[ft]){
+        const dateCol=ft==='mothan'?'transaction_date':'report_date';
+        await fetch(`${SB_URL}/rest/v1/${m[ft]}?${dateCol}=eq.${date}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+      }
       await fetch(`${SB_URL}/rest/v1/upload_log?report_date=eq.${date}&file_type=eq.${ft}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
       ok++;
     }catch{fail++;}
   }
   alert(`✅ تم حذف ${ok} سجل`+(fail?` · ❌ فشل ${fail}`:''));
   loadHistory();
+}
+
+async function deleteAllFiltered(){
+  if(HIST_FILTER==='all')return;
+  const labels={sales:'مبيعات الموظفين',purchases:'المشتريات',mothan:'موطن الذهب',employees:'موظفون',bsales:'مبيعات الفروع'};
+  const m={sales:'branch_sales',purchases:'branch_purchases',employees:'employee_sales',mothan:'mothan_transactions',bsales:'branch_sales'};
+  const table=m[HIST_FILTER];
+  if(!confirm(`⚠️ حذف كل ${labels[HIST_FILTER]}؟`))return;
+  if(!confirm(`⚠️⚠️ تأكيد نهائي — سيتم حذف جميع سجلات ${labels[HIST_FILTER]} من القاعدة`))return;
+  try{
+    // Delete data
+    if(table){
+      const dateCol=HIST_FILTER==='mothan'?'transaction_date':'report_date';
+      await fetch(`${SB_URL}/rest/v1/${table}?${dateCol}=not.is.null`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    }
+    // Delete upload log
+    await fetch(`${SB_URL}/rest/v1/upload_log?file_type=eq.${HIST_FILTER}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    alert(`✅ تم مسح كل ${labels[HIST_FILTER]}`);
+    loadHistory();
+  }catch(e){alert('❌ '+e.message);}
 }
 
 async function clearAllData(){
@@ -1698,7 +1741,10 @@ async function deleteRecord(date,fileType){
   if(!confirm(`حذف ${fileType} بتاريخ ${date}؟`))return;
   try{
     const m={sales:'branch_sales',purchases:'branch_purchases',employees:'employee_sales',mothan:'mothan_transactions',bsales:'branch_sales'};
-    if(m[fileType])await fetch(`${SB_URL}/rest/v1/${m[fileType]}?report_date=eq.${date}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    if(m[fileType]){
+      const dateCol=fileType==='mothan'?'transaction_date':'report_date';
+      await fetch(`${SB_URL}/rest/v1/${m[fileType]}?${dateCol}=eq.${date}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    }
     await fetch(`${SB_URL}/rest/v1/upload_log?report_date=eq.${date}&file_type=eq.${fileType}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
     loadHistory();alert('✅ تم الحذف');
   }catch(e){alert('❌ '+e.message);}
