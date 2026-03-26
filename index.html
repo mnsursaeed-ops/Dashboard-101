@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774666000 -->
+<meta charset="UTF-8"><!-- BUILD:1774667000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور القابضة ✦ لوحة التحكم</title>
@@ -158,6 +158,91 @@ nav{padding:10px 8px;flex:1}
 .empty{text-align:center;color:var(--mu);padding:32px;font-size:12px}
 .loading{text-align:center;color:var(--mu);padding:24px;font-size:12px;animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Hamburger Menu Button ── */
+.ham-btn{display:none;position:fixed;top:10px;right:10px;z-index:200;width:44px;height:44px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r2);cursor:pointer;align-items:center;justify-content:center;font-size:22px;color:var(--ac);transition:all .2s}
+.ham-btn:hover{background:var(--s3)}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:89;backdrop-filter:blur(4px)}
+
+/* ── Mobile Responsive ── */
+@media(max-width:768px){
+  /* Hamburger */
+  .ham-btn{display:flex}
+  .sb-overlay.show{display:block}
+  
+  /* Sidebar as drawer */
+  #sb{position:fixed;top:0;right:-260px;width:250px;min-width:250px;height:100vh;z-index:90;transition:right .3s ease;box-shadow:-4px 0 24px rgba(0,0,0,.5)}
+  #sb.open{right:0}
+  
+  /* Main takes full width */
+  #main{width:100%}
+  #wp{padding:12px 10px;padding-top:56px}
+  
+  /* Topbar compact */
+  #topbar{padding:8px 12px;padding-right:56px;flex-direction:column;align-items:flex-start;gap:8px}
+  .tb-title{font-size:13px}
+  .dfbar{gap:4px}
+  .dfb{padding:4px 10px;font-size:10px}
+  .df-dates{flex-wrap:wrap}
+  .df-dates input{width:95px;font-size:10px;padding:4px 6px}
+  .apply-btn{padding:4px 10px;font-size:10px}
+  .di{font-size:10px;padding:4px 8px}
+  
+  /* KPI cards */
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .kc{padding:12px}
+  .kc .ki{font-size:16px;margin-bottom:6px}
+  .kc .kl{font-size:8px}
+  .kc .kv{font-size:16px}
+  .kc .ks{font-size:9px}
+  
+  /* Cards */
+  .cd{padding:12px;margin-bottom:10px}
+  .ct{font-size:12px;margin-bottom:10px;flex-wrap:wrap}
+  
+  /* Tables scroll */
+  .tbl-wrap{border-radius:var(--r)}
+  .tbl{font-size:11px}
+  .tbl th{padding:7px 8px;font-size:9px}
+  .tbl td{padding:6px 8px;font-size:11px}
+  
+  /* Grids */
+  .grid-2,.grid-3{grid-template-columns:1fr;gap:10px}
+  
+  /* Upload */
+  .up-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .uc{padding:14px 8px}
+  .uc .ui{font-size:22px}
+  .uc .un{font-size:11px}
+  .proc-btn{padding:12px;font-size:12px}
+  
+  /* Charts */
+  .ch-wrap{height:220px}
+  .ch-wrap-sm{height:160px}
+  .ch-wrap-lg{height:280px}
+  
+  /* Login */
+  .lc{width:92%;padding:32px 24px;border-radius:16px}
+  .lc-logo{width:180px;margin-bottom:20px}
+  .lc h1{font-size:15px}
+  .li{padding:11px 12px;font-size:12px}
+  .lb{padding:12px;font-size:13px}
+  
+  /* Filters row */
+  #em-filters,#br-filters{flex-wrap:wrap;gap:6px}
+  
+  /* History filter buttons */
+  #hist-filters{gap:4px}
+  .hf-btn{padding:4px 8px;font-size:10px}
+}
+
+@media(max-width:480px){
+  .kpi-grid{grid-template-columns:1fr;gap:8px}
+  .up-grid{grid-template-columns:1fr;gap:8px}
+  #topbar{padding-right:50px}
+  .dfbar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .dfb{flex-shrink:0}
+}
 </style>
 </head>
 <body>
@@ -177,6 +262,10 @@ nav{padding:10px 8px;flex:1}
 
 <!-- ══ APP ══ -->
 <div id="app" style="display:none">
+
+  <!-- Mobile Hamburger -->
+  <button class="ham-btn" onclick="toggleMobileSb()">☰</button>
+  <div class="sb-overlay" id="sb-overlay" onclick="closeMobileSb()"></div>
 
   <!-- Sidebar -->
   <div id="sb">
@@ -2183,6 +2272,21 @@ function initBranchCbs(){
   });
   sel.value=cur;
 }
+
+// ══ Mobile Sidebar ══
+function toggleMobileSb(){
+  document.getElementById('sb').classList.toggle('open');
+  document.getElementById('sb-overlay').classList.toggle('show');
+}
+function closeMobileSb(){
+  document.getElementById('sb').classList.remove('open');
+  document.getElementById('sb-overlay').classList.remove('show');
+}
+document.addEventListener('click',function(e){
+  if(e.target.closest('.sbb')&&window.innerWidth<=768){
+    setTimeout(closeMobileSb,200);
+  }
+});
 
 </script>
 </body>
