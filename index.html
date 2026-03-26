@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774660000 -->
+<meta charset="UTF-8"><!-- BUILD:1774661000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -182,16 +182,16 @@ nav{padding:8px 6px;flex:1}
       <button class="sbb" onclick="sw('al',this)"><span class="i">🔔</span><span>التنبيهات</span></button>
       <div class="sb-sec">التحليلات</div>
       <button class="sbb" onclick="sw('br',this)"><span class="i">🏪</span><span>الفروع</span></button>
-      <button class="sbb" onclick="sw('rg',this)"><span class="i">🗺</span><span>المناطق</span></button>
+      <button class="sbb" id="sb-rg" onclick="sw('rg',this)"><span class="i">🗺</span><span>المناطق</span></button>
       <button class="sbb" onclick="sw('em',this)"><span class="i">👤</span><span>الموظفون</span></button>
-      <button class="sbb" onclick="sw('kt',this)"><span class="i">⚖️</span><span>العيار</span></button>
-      <button class="sbb" onclick="sw('mo',this)"><span class="i">🏦</span><span>موطن الذهب</span></button>
-      <button class="sbb" onclick="sw('hm',this)"><span class="i">🌡️</span><span>الخارطة الحرارية</span></button>
-      <button class="sbb" onclick="sw('cmp',this)"><span class="i">📊</span><span>مقارنة الأيام</span></button>
-      <div class="sb-sec">الإدارة</div>
-      <button class="sbb" onclick="sw('tg',this)"><span class="i">🎯</span><span>الأهداف</span></button>
-      <button class="sbb" onclick="sw('up',this)"><span class="i">📤</span><span>رفع البيانات</span></button>
-      <button class="sbb" onclick="sw('mg',this)"><span class="i">🔗</span><span>دمج المشتريات</span></button>
+      <button class="sbb" id="sb-kt" onclick="sw('kt',this)"><span class="i">⚖️</span><span>العيار</span></button>
+      <button class="sbb" id="sb-mo" onclick="sw('mo',this)"><span class="i">🏦</span><span>موطن الذهب</span></button>
+      <button class="sbb" id="sb-hm" onclick="sw('hm',this)"><span class="i">🌡️</span><span>الخارطة الحرارية</span></button>
+      <button class="sbb" id="sb-cmp" onclick="sw('cmp',this)"><span class="i">📊</span><span>مقارنة الأيام</span></button>
+      <div class="sb-sec sb-sec-mgmt" id="sb-sec-mgmt">الإدارة</div>
+      <button class="sbb" id="sb-tg" onclick="sw('tg',this)"><span class="i">🎯</span><span>الأهداف</span></button>
+      <button class="sbb" id="sb-up" onclick="sw('up',this)"><span class="i">📤</span><span>رفع البيانات</span></button>
+      <button class="sbb" id="sb-mg" onclick="sw('mg',this)"><span class="i">🔗</span><span>دمج المشتريات</span></button>
       <button class="sbb" id="sb-admin" style="display:none" onclick="sw('ad',this)"><span class="i">⚙️</span><span>المستخدمون</span></button>
     </nav>
     <div class="sb-footer">
@@ -432,7 +432,44 @@ nav{padding:8px 6px;flex:1}
 
       <!-- مستخدمون -->
       <div class="sc" id="sc-ad">
-        <div class="cd"><div class="ct">⚙️ إدارة المستخدمين</div><div id="users-list"></div></div>
+        <div class="cd">
+          <div class="ct">⚙️ إدارة المستخدمين</div>
+          <p style="font-size:11px;color:var(--mu);margin-bottom:12px">💡 أنشئ المستخدم أولاً في <a href="https://supabase.com/dashboard/project/rcyekrrzxgteoajafgys/auth/users" target="_blank" style="color:var(--ac)">Supabase Auth</a> ثم أضف دوره هنا</p>
+          <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r3);padding:16px;margin-bottom:16px">
+            <div style="font-weight:700;margin-bottom:12px;font-size:13px">➕ إضافة/تعديل دور مستخدم</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div><label style="font-size:10px;color:var(--mu)">البريد الإلكتروني</label><input class="li" id="ur-email" placeholder="user@example.com"></div>
+              <div><label style="font-size:10px;color:var(--mu)">الدور</label>
+                <select class="li" id="ur-role" onchange="onRoleChange()">
+                  <option value="super_admin">👑 Super Admin</option>
+                  <option value="region_manager">🗺 مدير منطقة</option>
+                  <option value="branch_manager">🏪 مدير فرع</option>
+                  <option value="data_entry">📤 مدخل بيانات</option>
+                  <option value="viewer" selected>👁️ اطلاع</option>
+                </select>
+              </div>
+            </div>
+            <div id="ur-branch-sec" style="margin-bottom:10px">
+              <label style="font-size:10px;color:var(--mu)">الفروع المسموحة (اتركها فارغة = كل الفروع)</label>
+              <select class="li" id="ur-branches" multiple style="height:80px"></select>
+            </div>
+            <div id="ur-region-sec" style="margin-bottom:10px">
+              <label style="font-size:10px;color:var(--mu)">المناطق المسموحة</label>
+              <select class="li" id="ur-regions" multiple style="height:60px">
+                <option value="الغربية">الغربية</option><option value="الشمالية">الشمالية</option>
+                <option value="الجنوبية">الجنوبية</option><option value="الوسطى">الوسطى</option>
+                <option value="المدينة">المدينة</option><option value="جازان">جازان</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ur-perm-users"> إدارة المستخدمين</label>
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ur-perm-delete"> حذف البيانات</label>
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ur-perm-targets"> تعديل الأهداف</label>
+            </div>
+            <button class="proc-btn" onclick="saveUserRole()" style="background:linear-gradient(135deg,var(--ac2),var(--teal))">💾 حفظ الدور</button>
+          </div>
+          <div id="users-list"></div>
+        </div>
       </div>
 
 
@@ -631,9 +668,25 @@ async function loadRange(from,to){
     savedRates.forEach(r=>{savedRatesMap[r.branch_code]=+r.rate_purchase||0;});
     console.log(`DB: sales=${sales.length} purch=${purch.length} mothan=${mothan.length} emps=${emps.length}`);
 
+    // Role-based filtering: restrict data to allowed branches/regions
+    const hasBrFilter=ALLOWED_BR&&ALLOWED_BR.length>0&&ALLOWED_BR[0]!=='';
+    const hasRgFilter=ALLOWED_RG&&ALLOWED_RG.length>0&&ALLOWED_RG[0]!=='';
+    function branchAllowed(bc,region){
+      if(ROLE==='super_admin'||ROLE==='region_manager'&&!hasBrFilter&&!hasRgFilter)return true;
+      if(hasBrFilter&&ALLOWED_BR.includes(bc))return true;
+      if(hasRgFilter&&ALLOWED_RG.includes(region))return true;
+      if(!hasBrFilter&&!hasRgFilter)return true;
+      return false;
+    }
+    const fSales=sales.filter(r=>branchAllowed(r.branch_code,r.region));
+    const fPurch=purch.filter(r=>branchAllowed(r.branch_code,r.region));
+    const fMothan=mothan.filter(r=>branchAllowed(r.branch_code,''));
+    const fEmps=emps.filter(r=>branchAllowed(r.branch_code,r.region));
+    if(hasBrFilter||hasRgFilter)console.log(`🔒 Filtered: sales=${fSales.length}/${sales.length} emps=${fEmps.length}/${emps.length}`);
+
     // Aggregate branch data
     const bmap={};
-    sales.forEach(r=>{
+    fSales.forEach(r=>{
       const bc=r.branch_code;
       if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0,returns:0,return_days:0};
       const b=bmap[bc];
@@ -646,7 +699,7 @@ async function loadRange(from,to){
       if(val<0){b.returns+=Math.abs(val);b.return_days++;}
     });
     // Sum ALL purchase records in date range (same logic as sales)
-    purch.forEach(r=>{
+    fPurch.forEach(r=>{
       const bc=r.branch_code;
       if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0};
       const b=bmap[bc];
@@ -654,7 +707,7 @@ async function loadRange(from,to){
       b.purch_wt+=+r.wt_pure_g||0; // col6 = الوزن النقي
     });
     // Mothan: sum all in date range, only weight_debit_g > 0
-    mothan.forEach(r=>{
+    fMothan.forEach(r=>{
       if((+r.weight_debit_g||0)<=0)return;
       const bc=r.branch_code;
       if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:RM[r.branch_name]||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0};
@@ -679,16 +732,16 @@ async function loadRange(from,to){
     }).sort((a,b)=>b.sar-a.sar);
 
     DATA._allBranches=[...DATA.branches];
-    DATA.mothan=mothan;
+    DATA.mothan=fMothan;
     DATA.dates=[from,to];
 
     // Employees with combined purchase rate — aggregate by emp_id to avoid duplicates
     const purchMap={};
     DATA.branches.forEach(b=>{purchMap[b.code]=b.purch_rate||0;});
     savedRates.forEach(r=>{if(!purchMap[r.branch_code])purchMap[r.branch_code]=+r.rate_purchase||0;});
-    if(emps.length){
+    if(fEmps.length){
       const empMap={};
-      emps.forEach(e=>{
+      fEmps.forEach(e=>{
         const id=e.emp_id;
         if(!empMap[id])empMap[id]={id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:0,wn:0,wp:0,pcs:0,days:0};
         const m=empMap[id];
@@ -1210,12 +1263,99 @@ async function saveAllTargets(){
 async function loadUsers(){
   try{
     const rows=await sbQ('user_roles','order=created_at.desc');
-    document.getElementById('users-list').innerHTML=rows.length?`
+    // Populate branches dropdown
+    const brSel=document.getElementById('ur-branches');
+    if(brSel&&!brSel.options.length){
+      Object.entries(BM).sort((a,b)=>a[1].localeCompare(b[1],'ar')).forEach(([code,name])=>{
+        const o=document.createElement('option');o.value=code;o.textContent=`${name} (${code})`;brSel.appendChild(o);
+      });
+    }
+    if(!rows.length){document.getElementById('users-list').innerHTML='<div class="empty">لا توجد مستخدمون</div>';return;}
+    document.getElementById('users-list').innerHTML=`
       <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>البريد</th><th>الدور</th><th>الصلاحيات</th></tr></thead>
-        <tbody>${rows.map(r=>`<tr><td>${r.email}</td><td><span class="pl pb-ac">${ROLE_LABELS[r.role]||r.role}</span></td><td style="font-size:10px;color:var(--mu)">${[r.can_manage_users?'إدارة':'',r.can_delete?'حذف':'',r.can_set_targets?'أهداف':''].filter(Boolean).join(' · ')||'—'}</td></tr>`).join('')}</tbody>
-      </table></div>`:'<div class="empty">لا توجد مستخدمون</div>';
+        <thead><tr><th>البريد</th><th>الدور</th><th>الفروع</th><th>المناطق</th><th>الصلاحيات</th><th>إجراء</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr>
+          <td style="font-weight:600">${r.email}</td>
+          <td><span class="pl pb-ac">${ROLE_LABELS[r.role]||r.role}</span></td>
+          <td style="font-size:10px;color:var(--mu)">${r.allowed_branches||'الكل'}</td>
+          <td style="font-size:10px;color:var(--mu)">${r.allowed_regions||'الكل'}</td>
+          <td style="font-size:10px;color:var(--mu)">${[r.can_manage_users?'👤 إدارة':'',r.can_delete?'🗑️ حذف':'',r.can_set_targets?'🎯 أهداف':''].filter(Boolean).join(' · ')||'—'}</td>
+          <td><button onclick="editUserRole('${r.email}')" style="padding:2px 8px;background:var(--s3);border:1px solid var(--bd);color:var(--ac);border-radius:12px;font-size:10px;cursor:pointer;font-family:inherit;margin-left:4px">✏️</button>
+          <button onclick="deleteUserRole('${r.email}')" style="padding:2px 8px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:12px;font-size:10px;cursor:pointer;font-family:inherit">🗑️</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
   }catch(e){document.getElementById('users-list').innerHTML=`<div class="empty">❌ ${e.message}</div>`;}
+}
+
+function onRoleChange(){
+  const role=document.getElementById('ur-role').value;
+  const brSec=document.getElementById('ur-branch-sec');
+  const rgSec=document.getElementById('ur-region-sec');
+  // Show branch picker for branch_manager/viewer, region picker for region_manager
+  if(brSec)brSec.style.display=(role==='branch_manager'||role==='viewer'||role==='data_entry')?'':'none';
+  if(rgSec)rgSec.style.display=(role==='region_manager')?'':'none';
+}
+
+async function saveUserRole(){
+  const email=document.getElementById('ur-email').value.trim();
+  if(!email){alert('أدخل البريد الإلكتروني');return;}
+  const role=document.getElementById('ur-role').value;
+  const branches=[...document.getElementById('ur-branches').selectedOptions].map(o=>o.value).join(',');
+  const regions=[...document.getElementById('ur-regions').selectedOptions].map(o=>o.value).join(',');
+  const row={
+    email,role,
+    allowed_branches:branches||null,
+    allowed_regions:regions||null,
+    can_manage_users:document.getElementById('ur-perm-users').checked,
+    can_delete:document.getElementById('ur-perm-delete').checked,
+    can_set_targets:document.getElementById('ur-perm-targets').checked
+  };
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/user_roles`,{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify([row])
+    });
+    if(!r.ok)throw new Error(await r.text());
+    alert(`✅ تم حفظ دور ${email}`);
+    document.getElementById('ur-email').value='';
+    loadUsers();
+  }catch(e){alert('❌ '+e.message);}
+}
+
+async function editUserRole(email){
+  try{
+    const rows=await sbQ('user_roles',`email=eq.${email}`);
+    if(!rows.length)return;
+    const r=rows[0];
+    document.getElementById('ur-email').value=r.email;
+    document.getElementById('ur-role').value=r.role;
+    onRoleChange();
+    // Set branches
+    if(r.allowed_branches){
+      const brs=r.allowed_branches.split(',');
+      [...document.getElementById('ur-branches').options].forEach(o=>{o.selected=brs.includes(o.value);});
+    }
+    // Set regions
+    if(r.allowed_regions){
+      const rgs=r.allowed_regions.split(',');
+      [...document.getElementById('ur-regions').options].forEach(o=>{o.selected=rgs.includes(o.value);});
+    }
+    document.getElementById('ur-perm-users').checked=r.can_manage_users||false;
+    document.getElementById('ur-perm-delete').checked=r.can_delete||false;
+    document.getElementById('ur-perm-targets').checked=r.can_set_targets||false;
+    // Scroll to form
+    document.getElementById('ur-email').scrollIntoView({behavior:'smooth'});
+  }catch(e){alert('❌ '+e.message);}
+}
+
+async function deleteUserRole(email){
+  if(!confirm(`حذف دور ${email}؟`))return;
+  try{
+    await fetch(`${SB_URL}/rest/v1/user_roles?email=eq.${email}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    alert('✅ تم الحذف');
+    loadUsers();
+  }catch(e){alert('❌ '+e.message);}
 }
 
 // ══ FILE UPLOAD ══
@@ -1972,8 +2112,25 @@ function showApp(){
   document.getElementById('sb-date').textContent=new Date().toLocaleDateString('en-GB');
   document.getElementById('sb-uname').textContent=USER.email.split('@')[0];
   document.getElementById('sb-role').textContent=ROLE_LABELS[ROLE]||ROLE||'مستخدم';
-  if(PERMS.users||ROLE==='super_admin')document.getElementById('sb-admin').style.display='';
-  if(ROLE==='super_admin'||PERMS.delete)document.getElementById('clear-btn').style.display='';
+  // Role-based menu visibility
+  const isAdmin=ROLE==='super_admin';
+  const isManager=isAdmin||ROLE==='region_manager';
+  const isEntry=ROLE==='data_entry';
+  const isViewer=ROLE==='viewer'||ROLE==='branch_manager';
+  // Admin section
+  if(isAdmin||PERMS.users)document.getElementById('sb-admin').style.display='';
+  if(isAdmin||PERMS.delete){const cb=document.getElementById('clear-btn');if(cb)cb.style.display='';}
+  // Hide management for viewers
+  const mgmtItems=['sb-tg','sb-up','sb-mg','sb-sec-mgmt'];
+  if(isViewer){
+    mgmtItems.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  }
+  // Data entry: show only upload sections
+  if(isEntry){
+    ['sb-rg','sb-kt','sb-mo','sb-hm','sb-cmp','sb-tg'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.style.display='none';
+    });
+  }
   initFilters();
   init();
 }
