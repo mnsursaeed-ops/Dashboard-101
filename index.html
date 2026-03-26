@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774662000 -->
+<meta charset="UTF-8"><!-- BUILD:1774663000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -308,13 +308,15 @@ nav{padding:8px 6px;flex:1}
               <select class="di" id="em-sort" onchange="filterEmps()">
                 <option value="sar">الأعلى مبيعاً</option>
                 <option value="diff">أعلى فرق المعدل</option>
+                <option value="profit">أعلى هامش ربح</option>
+                <option value="returns">الأكثر مرتجعات</option>
                 <option value="name">الاسم</option>
               </select>
             </div>
           </div>
           <div class="tbl-wrap">
             <table class="tbl">
-              <thead><tr><th>#</th><th>الموظف</th><th>الرقم</th><th>الفرع</th><th>المنطقة</th><th>المبيعات (ر.س)</th><th>الوزن (جم)</th><th>الفواتير</th><th>متوسط الفاتورة</th><th>معدل البيع/جم</th><th>معدل الشراء/جم</th><th>فرق المعدل</th><th>التصنيف</th></tr></thead>
+              <thead><tr><th>#</th><th>الموظف</th><th>الرقم</th><th>الفرع</th><th>المنطقة</th><th>المبيعات (ر.س)</th><th>الوزن (جم)</th><th>الفواتير</th><th>متوسط الفاتورة</th><th>معدل البيع/جم</th><th>معدل الشراء/جم</th><th>فرق المعدل</th><th>هامش الربح</th><th>المرتجعات</th><th>التصنيف</th></tr></thead>
               <tbody id="em-tbl"></tbody>
             </table>
           </div>
@@ -322,6 +324,7 @@ nav{padding:8px 6px;flex:1}
         <div class="grid-2">
           <div class="cd"><div class="ct">🏆 أعلى 10 موظفين مبيعاً</div><div class="ch-wrap"><canvas id="ch-em-top"></canvas></div></div>
           <div class="cd"><div class="ct">⚡ أعلى 10 موظفين فرق معدل</div><div class="ch-wrap"><canvas id="ch-em-diff"></canvas></div></div>
+          <div class="cd"><div class="ct">💰 أعلى 10 موظفين هامش ربح</div><div class="ch-wrap"><canvas id="ch-em-profit"></canvas></div></div>
         </div>
       </div>
 
@@ -745,19 +748,24 @@ async function loadRange(from,to){
       const empMap={};
       fEmps.forEach(e=>{
         const id=e.emp_id;
-        if(!empMap[id])empMap[id]={id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:0,wn:0,wp:0,pcs:0,days:0};
+        if(!empMap[id])empMap[id]={id,n:e.emp_name,b:e.branch_name,bc:e.branch_code,r:e.region,sar:0,wn:0,wp:0,pcs:0,days:0,returns:0,return_days:0};
         const m=empMap[id];
-        m.sar+=+e.total_sar||0;
+        const val=+e.total_sar||0;
+        m.sar+=val;
         m.wn+=+e.weight_net_g||0;
         m.wp+=+e.weight_pure_g||0;
         m.pcs+=+e.pieces||0;
         m.days++;
+        if(val<0){m.returns+=Math.abs(val);m.return_days++;}
       });
       DATA.employees=Object.values(empMap).map(e=>{
         const pavg=purchMap[e.bc]||0;
         const savg=e.wn>0?Math.round(e.sar/e.wn*10000)/10000:0;
+        const diff=Math.round((savg-pavg)*10)/10;
+        // هامش الربح = الوزن × فرق المعدل
+        const profit_margin=pavg>0?Math.round(e.wn*diff*100)/100:0;
         return{...e,ai:e.pcs>0?Math.round(e.sar/e.pcs):0,
-          pavg,savg,diff:Math.round((savg-pavg)*10)/10,ok:savg>pavg};
+          pavg,savg,diff,ok:savg>pavg,profit_margin};
       });
     }
 
@@ -1073,6 +1081,8 @@ function filterEmps(){
   if(bc)emps=emps.filter(e=>e.bc===bc);
   if(rg)emps=emps.filter(e=>e.r===rg);
   if(so==='diff')emps.sort((a,b)=>b.diff-a.diff);
+  else if(so==='profit')emps.sort((a,b)=>(b.profit_margin||0)-(a.profit_margin||0));
+  else if(so==='returns')emps.sort((a,b)=>(b.returns||0)-(a.returns||0));
   else if(so==='name')emps.sort((a,b)=>(a.n||'').localeCompare(b.n||''));
   else emps.sort((a,b)=>b.sar-a.sar);
   document.getElementById('em-count').textContent=emps.length+' موظف';
@@ -1091,13 +1101,16 @@ function filterEmps(){
       <td style="color:var(--teal)">${sf(e.savg,2)}</td>
       <td style="color:var(--am)">${e.pavg>0?sf(e.pavg,2):'—'}</td>
       <td><span class="pl ${pcc(e.diff)}">${sf(e.diff,1)}</span></td>
+      <td style="font-weight:700;color:${(e.profit_margin||0)>0?'var(--gn)':'var(--rd)'}">${e.profit_margin?sar(e.profit_margin):'—'}</td>
+      <td>${(e.returns||0)>0?`<span class="pl pr">${sar(e.returns)}</span>`:'—'}</td>
       <td><span class="pl ${e.ok?'pg':'pr'}">${star(e.savg)}</span></td>
     </tr>`).join('');
 
   // Top charts
-  dk('ch-em-top');dk('ch-em-diff');
+  dk('ch-em-top');dk('ch-em-diff');dk('ch-em-profit');
   const t10n=emps.slice(0,10);
   const t10d=[...emps].sort((a,b)=>b.diff-a.diff).slice(0,10);
+  const t10p=[...emps].filter(e=>(e.profit_margin||0)>0).sort((a,b)=>(b.profit_margin||0)-(a.profit_margin||0)).slice(0,10);
   if(t10n.length){
     CH['ch-em-top']=new Chart(document.getElementById('ch-em-top'),{type:'bar',
       data:{labels:t10n.map(e=>(e.n||'').split(' ').slice(0,2).join(' ')),
@@ -1112,6 +1125,13 @@ function filterEmps(){
           backgroundColor:t10d.map(e=>e.diff>=0?'rgba(52,211,153,.7)':'rgba(248,113,113,.7)'),borderRadius:4}]},
       options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
         scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}}});
+  }
+  if(t10p.length){
+    CH['ch-em-profit']=new Chart(document.getElementById('ch-em-profit'),{type:'bar',
+      data:{labels:t10p.map(e=>(e.n||'').split(' ').slice(0,2).join(' ')),
+        datasets:[{label:'هامش الربح',data:t10p.map(e=>e.profit_margin),backgroundColor:'rgba(251,191,36,.7)',borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{callback:v=>(v/1e3).toFixed(0)+'ك',font:{size:9}}},y:{ticks:{font:{size:9}}}}}});
   }
 }
 
@@ -1460,13 +1480,17 @@ function parseEmpSales(wb){
     }
     if(c12&&!['nan','','وصف','Avg. Mkg'].includes(c12)){
       try{
-        const t=Math.abs(+r[3]||0),wn=Math.abs(+r[6]||0),wp=Math.abs(+r[8]||0);
-        const eid=parseInt(r[13])||0;const pcs=Math.abs(parseInt(r[11])||0);
-        if(t>0&&eid>0){
+        const raw=+r[3]||0;
+        // نفس منطق المبيعات: سالب=مبيعات، موجب=مرتجع
+        const t=-(raw);
+        const sign=t<0?-1:1;
+        const wn=sign*Math.abs(+r[6]||0),wp=sign*Math.abs(+r[8]||0);
+        const eid=parseInt(r[13])||0;const pcs=t<0?-Math.abs(parseInt(r[11])||0):Math.abs(parseInt(r[11])||0);
+        if(t!==0&&eid>0){
           emps.push({emp_id:eid,emp_name:c12.trim(),branch_code:cur,branch_name:BM[cur]||cur,region:RM[BM[cur]]||'—',
             total_sar:Math.round(t*100)/100,weight_net_g:Math.round(wn*1000)/1000,weight_pure_g:Math.round(wp*1000)/1000,
-            pieces:pcs,avg_invoice_sar:pcs>0?Math.round(t/pcs*100)/100:0,emp_avg_mkg:Math.abs(+r[0]||0),
-            sale_rate_g:wn>0?Math.round(t/wn*10000)/10000:0,_cur:cur,_wp:wn});
+            pieces:pcs,avg_invoice_sar:Math.abs(pcs)>0?Math.round(Math.abs(t)/Math.abs(pcs)*100)/100:0,emp_avg_mkg:Math.abs(+r[0]||0),
+            sale_rate_g:Math.abs(wn)>0?Math.round(Math.abs(t)/Math.abs(wn)*10000)/10000:0,_cur:cur,_wp:Math.abs(wn)});
         }
       }catch{}
     }
