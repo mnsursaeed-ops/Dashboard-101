@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774665000 -->
+<meta charset="UTF-8"><!-- BUILD:1774666000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور القابضة ✦ لوحة التحكم</title>
@@ -701,13 +701,18 @@ async function loadRange(from,to){
     const bmap={};
     fSales.forEach(r=>{
       const bc=r.branch_code;
-      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0,returns:0,return_days:0};
+      if(!bmap[bc])bmap[bc]={code:bc,name:r.branch_name||bc,region:r.region||'—',sar:0,wn:0,wp:0,pcs:0,purch:0,purch_wt:0,mothan:0,mothan_wt:0,returns:0,return_days:0,
+        k18_sar:0,k18_wt:0,k21_sar:0,k21_wt:0,k24_sar:0,k24_wt:0};
       const b=bmap[bc];
       const val=+r.total_sar||0;
       b.sar+=val;
       b.wn+=+r.total_weight_g||0;
       b.wp+=+r.wt_pure_g||0;
       b.pcs+=+r.total_pieces||0;
+      // تجميع بيانات العيار
+      b.k18_sar+=+r.k18_sar||0;b.k18_wt+=+r.k18_weight_g||0;
+      b.k21_sar+=+r.k21_sar||0;b.k21_wt+=+r.k21_weight_g||0;
+      b.k24_sar+=+r.k24_sar||0;b.k24_wt+=+r.k24_weight_g||0;
       // تتبع المرتجعات بشكل منفصل
       if(val<0){b.returns+=Math.abs(val);b.return_days++;}
     });
