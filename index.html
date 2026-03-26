@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774661000 -->
+<meta charset="UTF-8"><!-- BUILD:1774662000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور للذهب ✦</title>
@@ -610,11 +610,13 @@ async function loadUserRole(){
     if(rows.length){
       const r=rows[0];
       ROLE=r.role;
-      PERMS={users:r.can_manage_users,delete:r.can_delete,targets:r.can_set_targets,regions:r.allowed_regions?r.allowed_regions.split(','):[]};
-      ALLOWED_BR=r.allowed_branches?r.allowed_branches.split(','):[];
-      ALLOWED_RG=r.allowed_regions?r.allowed_regions.split(','):[];
+      PERMS={users:r.can_manage_users,delete:r.can_delete,targets:r.can_set_targets};
+      // Handle both array and string formats
+      const parseBr=v=>Array.isArray(v)?v:typeof v==='string'&&v?v.split(','):[];
+      ALLOWED_BR=parseBr(r.allowed_branches);
+      ALLOWED_RG=parseBr(r.allowed_regions);
     }else{ROLE='viewer';PERMS={};}
-  }catch{ROLE='viewer';}
+  }catch(e){console.error('loadUserRole:',e);ROLE='viewer';}
 }
 async function logLogin(){
   try{await sbUp('login_log',[{email:USER.email,logged_in_at:new Date().toISOString()}]);}
@@ -1277,8 +1279,8 @@ async function loadUsers(){
         <tbody>${rows.map(r=>`<tr>
           <td style="font-weight:600">${r.email}</td>
           <td><span class="pl pb-ac">${ROLE_LABELS[r.role]||r.role}</span></td>
-          <td style="font-size:10px;color:var(--mu)">${r.allowed_branches||'الكل'}</td>
-          <td style="font-size:10px;color:var(--mu)">${r.allowed_regions||'الكل'}</td>
+          <td style="font-size:10px;color:var(--mu)">${Array.isArray(r.allowed_branches)&&r.allowed_branches.length?r.allowed_branches.join(', '):'الكل'}</td>
+          <td style="font-size:10px;color:var(--mu)">${Array.isArray(r.allowed_regions)&&r.allowed_regions.length?r.allowed_regions.join(', '):'الكل'}</td>
           <td style="font-size:10px;color:var(--mu)">${[r.can_manage_users?'👤 إدارة':'',r.can_delete?'🗑️ حذف':'',r.can_set_targets?'🎯 أهداف':''].filter(Boolean).join(' · ')||'—'}</td>
           <td><button onclick="editUserRole('${r.email}')" style="padding:2px 8px;background:var(--s3);border:1px solid var(--bd);color:var(--ac);border-radius:12px;font-size:10px;cursor:pointer;font-family:inherit;margin-left:4px">✏️</button>
           <button onclick="deleteUserRole('${r.email}')" style="padding:2px 8px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--rd);border-radius:12px;font-size:10px;cursor:pointer;font-family:inherit">🗑️</button></td>
@@ -1300,12 +1302,12 @@ async function saveUserRole(){
   const email=document.getElementById('ur-email').value.trim();
   if(!email){alert('أدخل البريد الإلكتروني');return;}
   const role=document.getElementById('ur-role').value;
-  const branches=[...document.getElementById('ur-branches').selectedOptions].map(o=>o.value).join(',');
-  const regions=[...document.getElementById('ur-regions').selectedOptions].map(o=>o.value).join(',');
+  const branches=[...document.getElementById('ur-branches').selectedOptions].map(o=>o.value);
+  const regions=[...document.getElementById('ur-regions').selectedOptions].map(o=>o.value);
   const row={
     email,role,
-    allowed_branches:branches||null,
-    allowed_regions:regions||null,
+    allowed_branches:branches.length?branches:[],
+    allowed_regions:regions.length?regions:[],
     can_manage_users:document.getElementById('ur-perm-users').checked,
     can_delete:document.getElementById('ur-perm-delete').checked,
     can_set_targets:document.getElementById('ur-perm-targets').checked
@@ -1333,12 +1335,12 @@ async function editUserRole(email){
     onRoleChange();
     // Set branches
     if(r.allowed_branches){
-      const brs=r.allowed_branches.split(',');
+      const brs=Array.isArray(r.allowed_branches)?r.allowed_branches:r.allowed_branches.split(',');
       [...document.getElementById('ur-branches').options].forEach(o=>{o.selected=brs.includes(o.value);});
     }
     // Set regions
     if(r.allowed_regions){
-      const rgs=r.allowed_regions.split(',');
+      const rgs=Array.isArray(r.allowed_regions)?r.allowed_regions:r.allowed_regions.split(',');
       [...document.getElementById('ur-regions').options].forEach(o=>{o.selected=rgs.includes(o.value);});
     }
     document.getElementById('ur-perm-users').checked=r.can_manage_users||false;
