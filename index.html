@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774668000 -->
+<meta charset="UTF-8"><!-- BUILD:1774669000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور القابضة ✦ لوحة التحكم</title>
@@ -1857,7 +1857,7 @@ async function processAndSave(){
             k18_sar:r.k18.s,k18_weight_g:r.k18.w,k21_sar:r.k21.s,k21_weight_g:r.k21.w,k24_sar:r.k24.s,k24_weight_g:r.k24.w
           })).filter(r=>r.total_sar>0);
           await sbUp('branch_purchases',pRows);
-          await sbUp('upload_log',[{report_date:pd.df,file_type:'purchases',file_name:purchFiles[i].name,date_from:pd.df+' → '+pd.dt,records_count:pRows.length}]);
+          await sbUp('upload_log',[{report_date:pd.df,file_type:'purchases',file_name:purchFiles[i].name,date_from:pd.df,records_count:pRows.length}]);
           totalSaved+=pRows.length;console.log('✅ purchases(agg):'+pRows.length+' rows, '+pd.df+' → '+pd.dt);
         }
       }else{
@@ -1891,7 +1891,7 @@ async function processAndSave(){
         for(const d of mDates)await fetch(`${SB_URL}/rest/v1/mothan_transactions?transaction_date=eq.${d}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
         const mDate=mDates[0]||today;
         await sbUp('mothan_transactions',mRows.map(r=>Object.assign({},r,{report_date:r.transaction_date||mDate})));
-        await sbUp('upload_log',[{report_date:mDate,file_type:'mothan',file_name:mothanFiles[i].name,date_from:mDates[0]+' → '+(mDates[mDates.length-1]||mDates[0]),records_count:mRows.length}]);
+        await sbUp('upload_log',[{report_date:mDate,file_type:'mothan',file_name:mothanFiles[i].name,date_from:mDates[0],records_count:mRows.length}]);
         totalSaved+=mRows.length;console.log('✅ mothan:'+mRows.length);
       }
     }
@@ -1928,7 +1928,7 @@ async function processAndSave(){
               k18_sar:r.k18.s,k18_weight_g:r.k18.w,k21_sar:r.k21.s,k21_weight_g:r.k21.w,k24_sar:r.k24.s,k24_weight_g:r.k24.w
             })).filter(r=>r.total_sar!==0);
             await sbUp('branch_sales',bsRows);
-            await sbUp('upload_log',[{report_date:bd.df,file_type:'bsales',file_name:bsWb.name,date_from:bd.df+' → '+bd.dt,records_count:bsRows.length}]);
+            await sbUp('upload_log',[{report_date:bd.df,file_type:'bsales',file_name:bsWb.name,date_from:bd.df,records_count:bsRows.length}]);
             totalSaved+=bsRows.length;console.log('✅ branch_sales(agg):'+bsRows.length);
           }
         }
@@ -1948,7 +1948,7 @@ async function processAndSave(){
               };
             }).filter(r=>r.total_sar!==0);
             await sbUp('employee_sales',eRows);
-            await sbUp('upload_log',[{report_date:ed.df,file_type:'employees',file_name:emWb.name,date_from:ed.df+' → '+ed.dt,records_count:eRows.length}]);
+            await sbUp('upload_log',[{report_date:ed.df,file_type:'employees',file_name:emWb.name,date_from:ed.df,records_count:eRows.length}]);
             totalSaved+=eRows.length;console.log('✅ employee_sales(agg):'+eRows.length);
           }
         }
