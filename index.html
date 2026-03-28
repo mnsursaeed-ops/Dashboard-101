@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774667000 -->
+<meta charset="UTF-8"><!-- BUILD:1774668000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور القابضة ✦ لوحة التحكم</title>
@@ -1530,6 +1530,99 @@ function rf(file,t){
 }
 
 // ══ PARSERS ══
+// ══ FORMAT DETECTION ══
+// الصيغة الجديدة: 16 عمود، col0=رقم تسلسلي، col6=تاريخ لكل معاملة
+function isAggFormat(wb){
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  for(const r of rows.slice(10,20)){
+    if(String(r[0]).match(/^\d+$/)&&String(r[6]).match(/\d{2}\/\d{2}\/\d{4}/)&&String(r[1]).trim().match(/^\d{4}$/))return true;
+  }
+  return false;
+}
+function getAggDateRange(wb){
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  for(const r of rows.slice(0,10)){
+    const m=String(r[0]||'').match(/From\s+(\d{4}-\d{2}-\d{2})\s+To\s+(\d{4}-\d{2}-\d{2})/);
+    if(m)return{df:m[1],dt:m[2]};
+  }
+  return{df:'',dt:''};
+}
+function parseAggDate(d){const m=String(d).match(/(\d{2})\/(\d{2})\/(\d{4})/);return m?`${m[3]}-${m[2]}-${m[1]}`:'';}
+const AGG_KM={'0.750000':'18','0.875000':'21','0.916000':'22','1.000000':'24','0.75':'18','0.875':'21','1':'24','1.0':'24'};
+
+// ══ AGG PARSER: Branch Sales ══
+function parseAggBranchSales(wb){
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  const dr=getAggDateRange(wb);
+  const map={};// key: bc|date
+  for(const r of rows){
+    if(!String(r[0]).match(/^\d+$/))continue;
+    const bc=String(r[1]).trim();if(!bc.match(/^\d{4}$/))continue;
+    const dt=parseAggDate(r[6]);if(!dt)continue;
+    const key=bc+'|'+dt;
+    if(!map[key])map[key]={bc,dt,name:BM[bc]||bc,region:RM[BM[bc]]||'—',sar:0,wn:0,wp:0,pcs:0,k18:{s:0,w:0},k21:{s:0,w:0},k24:{s:0,w:0}};
+    const m=map[key];
+    const raw=parseFloat(String(r[15]).replace(/,/g,'')||0);
+    const t=-(raw);// سالب=مبيعات→موجب، موجب=مرتجع→سالب
+    const sign=t<0?-1:1;
+    const wn=sign*Math.abs(parseFloat(String(r[10]).replace(/,/g,'')||0));
+    const wp=sign*Math.abs(parseFloat(String(r[12]).replace(/,/g,'')||0));
+    const pcs=Math.abs(parseInt(r[7])||0)*(t<0?-1:1);
+    m.sar+=t;m.wn+=wn;m.wp+=wp;m.pcs+=pcs;
+    // Karat
+    const k=AGG_KM[String(r[11]).trim()];
+    if(k&&m['k'+k]){m['k'+k].s+=Math.abs(t);m['k'+k].w+=Math.abs(wn);}
+  }
+  return{rows:Object.values(map),df:dr.df,dt:dr.dt};
+}
+
+// ══ AGG PARSER: Employee Sales ══
+function parseAggEmpSales(wb){
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  const dr=getAggDateRange(wb);
+  const map={};// key: empId|bc|date
+  for(const r of rows){
+    if(!String(r[0]).match(/^\d+$/))continue;
+    const bc=String(r[1]).trim();if(!bc.match(/^\d{4}$/))continue;
+    const eid=parseInt(String(r[3]).trim())||0;if(!eid)continue;
+    const ename=String(r[5]).trim();if(!ename)continue;
+    const dt=parseAggDate(r[6]);if(!dt)continue;
+    const key=eid+'|'+bc+'|'+dt;
+    if(!map[key])map[key]={eid,ename,bc,dt,name:BM[bc]||bc,region:RM[BM[bc]]||'—',sar:0,wn:0,wp:0,pcs:0};
+    const m=map[key];
+    const raw=parseFloat(String(r[15]).replace(/,/g,'')||0);
+    const t=-(raw);
+    const sign=t<0?-1:1;
+    const wn=sign*Math.abs(parseFloat(String(r[10]).replace(/,/g,'')||0));
+    const wp=sign*Math.abs(parseFloat(String(r[12]).replace(/,/g,'')||0));
+    const pcs=Math.abs(parseInt(r[7])||0)*(t<0?-1:1);
+    m.sar+=t;m.wn+=wn;m.wp+=wp;m.pcs+=pcs;
+  }
+  return{rows:Object.values(map),df:dr.df,dt:dr.dt};
+}
+
+// ══ AGG PARSER: Purchases ══
+function parseAggPurchases(wb){
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  const dr=getAggDateRange(wb);
+  const map={};// key: bc|date
+  for(const r of rows){
+    if(!String(r[0]).match(/^\d+$/))continue;
+    const bc=String(r[1]).trim();if(!bc.match(/^\d{4}$/))continue;
+    const dt=parseAggDate(r[6]);if(!dt)continue;
+    const key=bc+'|'+dt;
+    if(!map[key])map[key]={bc,dt,name:BM[bc]||bc,region:RM[BM[bc]]||'—',sar:0,wn:0,wp:0,k18:{s:0,w:0},k21:{s:0,w:0},k24:{s:0,w:0}};
+    const m=map[key];
+    const t=Math.abs(parseFloat(String(r[15]).replace(/,/g,'')||0));// مشتريات موجبة
+    const wn=Math.abs(parseFloat(String(r[10]).replace(/,/g,'')||0));
+    const wp=Math.abs(parseFloat(String(r[12]).replace(/,/g,'')||0));
+    m.sar+=t;m.wn+=wn;m.wp+=wp;
+    const k=AGG_KM[String(r[11]).trim()];
+    if(k&&m['k'+k]){m['k'+k].s+=t;m['k'+k].w+=wn;}
+  }
+  return{rows:Object.values(map),df:dr.df,dt:dr.dt};
+}
+
 // PARSER 1: Branch Sales (col3=total, col6=wt_net, col8=wt_pure)
 function parseBranchSales(wb){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
@@ -1721,6 +1814,20 @@ async function updatePurchaseRates(purchMap, sourceDate){
   }catch(e){console.warn('updatePurchaseRates error:',e.message);}
 }
 
+// Reads purchases from DB and updates rates
+async function updatePurchaseRatesFromDB(){
+  try{
+    const purchRows=await sbQ('branch_purchases','select=branch_code,total_sar,wt_pure_g&limit=10000');
+    const purchMap={};
+    purchRows.forEach(r=>{
+      if(!purchMap[r.branch_code])purchMap[r.branch_code]={sar:0,wt:0};
+      purchMap[r.branch_code].sar+=(+r.total_sar||0);
+      purchMap[r.branch_code].wt+=(+r.wt_pure_g||0);
+    });
+    await updatePurchaseRates(purchMap, new Date().toISOString().split('T')[0]);
+  }catch(e){console.warn('updatePurchaseRatesFromDB:',e.message);}
+}
+
 // ══ PROCESS & SAVE ══
 async function processAndSave(){
   const btn=document.getElementById('proc-btn');btn.disabled=true;
@@ -1731,34 +1838,49 @@ async function processAndSave(){
     const getWbs=t=>{if(!FILES[t])return[];if(FILES[t].multi)return FILES[t].files.map(f=>{return{wb:f.wb,name:f.name}});return[{wb:FILES[t].wb,name:FILES[t].name}];};
     let totalSaved=0;
 
-    // 1. Purchases
+    // ── 1. PURCHASES ──
     const purchFiles=getWbs('purch');
     for(let i=0;i<purchFiles.length;i++){
       sp(5+Math.round(i/Math.max(purchFiles.length,1)*20),'💾 المشتريات '+(i+1)+'/'+purchFiles.length+'...');
-      const pd=parsePurchases(purchFiles[i].wb);const pdate=pd._df||today;
-      const pRows=Object.entries(pd).filter(([k])=>k!=='_df'&&k!=='_dt').map(([code,d])=>{
-        const name=BM[code]||code;const sub=d.sub||{};
-        const k18=d.karats?.['18']||{};const k21=d.karats?.['21']||{};const k24=d.karats?.['24']||{};
-        return{report_date:pdate,branch_code:code,branch_name:name,region:RM[name]||'—',
-          total_sar:sub.total||0,total_weight_g:sub.wt_safe||0,wt_pure_g:sub.wt_pure||0,
-          purchase_rate:sub.rate||0,purchase_avg_mkg:0,
-          k18_sar:k18.total||0,k18_weight_g:k18.wt_safe||0,k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,
-          k21_sar:k21.total||0,k21_weight_g:k21.wt_safe||0,k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,
-          k24_sar:k24.total||0,k24_weight_g:k24.wt_safe||0,k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0};
-      }).filter(r=>r.total_sar>0);
-      if(pRows.length){
-        await fetch(`${SB_URL}/rest/v1/branch_purchases?report_date=eq.${pdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
-        await sbUp('branch_purchases',pRows);
-        await sbUp('upload_log',[{report_date:pdate,file_type:'purchases',file_name:purchFiles[i].name,date_from:pdate,records_count:pRows.length}]);
-        totalSaved+=pRows.length;console.log('✅ purchases:'+pdate+' rows:'+pRows.length);
-        // Store in purchRatesMap for later combined calculation with mothan
-        pRows.forEach(r=>{if(!window._purchRatesMap)window._purchRatesMap={};
-          window._purchRatesMap[r.branch_code]={sar:r.total_sar||0,wt:r.wt_pure_g||0,date:pdate};
-        });
+      const isAgg=isAggFormat(purchFiles[i].wb);
+      if(isAgg){
+        const pd=parseAggPurchases(purchFiles[i].wb);
+        if(pd.rows.length){
+          // Delete date range
+          if(pd.df&&pd.dt){
+            await fetch(`${SB_URL}/rest/v1/branch_purchases?report_date=gte.${pd.df}&report_date=lte.${pd.dt}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+          }
+          const pRows=pd.rows.map(r=>({
+            report_date:r.dt,branch_code:r.bc,branch_name:r.name,region:r.region,
+            total_sar:Math.round(r.sar*100)/100,total_weight_g:Math.round(r.wn*1000)/1000,wt_pure_g:Math.round(r.wp*1000)/1000,
+            purchase_rate:r.wp>0?Math.round(r.sar/r.wp*10000)/10000:0,
+            k18_sar:r.k18.s,k18_weight_g:r.k18.w,k21_sar:r.k21.s,k21_weight_g:r.k21.w,k24_sar:r.k24.s,k24_weight_g:r.k24.w
+          })).filter(r=>r.total_sar>0);
+          await sbUp('branch_purchases',pRows);
+          await sbUp('upload_log',[{report_date:pd.df,file_type:'purchases',file_name:purchFiles[i].name,date_from:pd.df+' → '+pd.dt,records_count:pRows.length}]);
+          totalSaved+=pRows.length;console.log('✅ purchases(agg):'+pRows.length+' rows, '+pd.df+' → '+pd.dt);
+        }
+      }else{
+        const pd=parsePurchases(purchFiles[i].wb);const pdate=pd._df||today;
+        const pRows=Object.entries(pd).filter(([k])=>k!=='_df'&&k!=='_dt').map(([code,d])=>{
+          const name=BM[code]||code;const sub=d.sub||{};
+          const k18=d.karats?.['18']||{};const k21=d.karats?.['21']||{};const k24=d.karats?.['24']||{};
+          return{report_date:pdate,branch_code:code,branch_name:name,region:RM[name]||'—',
+            total_sar:sub.total||0,total_weight_g:sub.wt_safe||0,wt_pure_g:sub.wt_pure||0,
+            purchase_rate:sub.rate||0,
+            k18_sar:k18.total||0,k18_weight_g:k18.wt_safe||0,k21_sar:k21.total||0,k21_weight_g:k21.wt_safe||0,
+            k24_sar:k24.total||0,k24_weight_g:k24.wt_safe||0};
+        }).filter(r=>r.total_sar>0);
+        if(pRows.length){
+          await fetch(`${SB_URL}/rest/v1/branch_purchases?report_date=eq.${pdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+          await sbUp('branch_purchases',pRows);
+          await sbUp('upload_log',[{report_date:pdate,file_type:'purchases',file_name:purchFiles[i].name,date_from:pdate,records_count:pRows.length}]);
+          totalSaved+=pRows.length;
+        }
       }
     }
 
-    // 2. Mothan
+    // ── 2. MOTHAN ──
     const mothanFiles=getWbs('mothan');
     for(let i=0;i<mothanFiles.length;i++){
       sp(25+Math.round(i/Math.max(mothanFiles.length,1)*15),'💾 موطن الذهب '+(i+1)+'/'+mothanFiles.length+'...');
@@ -1769,74 +1891,103 @@ async function processAndSave(){
         for(const d of mDates)await fetch(`${SB_URL}/rest/v1/mothan_transactions?transaction_date=eq.${d}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
         const mDate=mDates[0]||today;
         await sbUp('mothan_transactions',mRows.map(r=>Object.assign({},r,{report_date:r.transaction_date||mDate})));
-        await sbUp('upload_log',[{report_date:mDate,file_type:'mothan',file_name:mothanFiles[i].name,records_count:mRows.length}]);
+        await sbUp('upload_log',[{report_date:mDate,file_type:'mothan',file_name:mothanFiles[i].name,date_from:mDates[0]+' → '+(mDates[mDates.length-1]||mDates[0]),records_count:mRows.length}]);
         totalSaved+=mRows.length;console.log('✅ mothan:'+mRows.length);
       }
     }
 
-    // Update branch_purchase_rates with combined rates
-    await updatePurchaseRates(window._purchRatesMap||{}, today);
-    window._purchRatesMap={};
+    // Update branch_purchase_rates
+    sp(40,'🔄 تحديث معدلات الشراء...');
+    await updatePurchaseRatesFromDB();
 
-    // 3. Branch Sales + Employees
+    // ── 3. BRANCH SALES + EMPLOYEES ──
     const bsalesFiles=getWbs('bsales');const salesFiles=getWbs('sales');
     const maxS=Math.max(bsalesFiles.length,salesFiles.length);
     for(let i=0;i<maxS;i++){
-      sp(40+Math.round(i/Math.max(maxS,1)*55),'💾 المبيعات '+(i+1)+'/'+maxS+'...');
+      sp(45+Math.round(i/Math.max(maxS,1)*50),'💾 المبيعات '+(i+1)+'/'+maxS+'...');
       const bsWb=bsalesFiles[i]||null;const emWb=salesFiles[i]||null;
-      const empData=emWb?parseEmpSales(emWb.wb):null;
-      const bsData=bsWb?parseBranchSales(bsWb.wb):null;
-      const rdate=empData?.df||bsData?._df||today;
+      const bsIsAgg=bsWb&&isAggFormat(bsWb.wb);
+      const emIsAgg=emWb&&isAggFormat(emWb.wb);
 
-      // Get purchase rates from DB
-      const purchRows=await sbQ('branch_purchases','select=*&order=report_date.desc&limit=10000');
-      const mothanRowsDB=await sbQ('mothan_transactions','select=*&limit=10000');
-      const mByBr={};
-      mothanRowsDB.filter(r=>(+r.weight_debit_g||0)>0).forEach(r=>{
-        if(!mByBr[r.branch_code])mByBr[r.branch_code]={amount:0,weight:0};
-        mByBr[r.branch_code].amount+=(+r.amount_sar||0);
-        mByBr[r.branch_code].weight+=(+r.weight_debit_g||0);
-      });
-      const purchMap={};
-      purchRows.forEach(r=>{
-        const m=mByBr[r.branch_code]||{amount:0,weight:0};
-        const ct=(+r.total_sar||0)+m.amount;
-        const cw=(+r.wt_pure_g||0)+m.weight;
-        purchMap[r.branch_code]=cw>0?Math.round(ct/cw*10000)/10000:(+r.purchase_rate||0);
-      });
+      // Get purchase rates for employee enrichment
+      const savedRatesAll=await sbQ('branch_purchase_rates','select=*');
+      const purchMap2={};savedRatesAll.forEach(r=>{purchMap2[r.branch_code]=+r.rate_purchase||0;});
 
-      // Save employees
-      if(empData?.emps?.length){
-        const fe=empData.emps.map(e=>{
-          const pa=purchMap[e._cur]||0;const sa=e.sale_rate_g||0;
-          return{...e,branch_purchase_avg:pa,emp_avg_mkg:sa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa,report_date:rdate};
-        });
-        await fetch(`${SB_URL}/rest/v1/employee_sales?report_date=eq.${rdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
-        const ce=fe.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;});
-        await sbUp('employee_sales',ce);
-        await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:emWb?.name||'employees',date_from:rdate,records_count:ce.length}]);
-        totalSaved+=ce.length;
-      }
-
-      // Save branch sales
-      const bs=bsData||(empData?.bSubs?Object.fromEntries(Object.entries(empData.bSubs).map(([k,v])=>[k,{sub:v,karats:{}}])):null);
-      if(bs){
-        const bsRows=Object.entries(bs).filter(([k])=>k!=='_df'&&k!=='_dt').map(([code,d])=>{
-          const name=BM[code]||code;const sub=d.sub||{};
-          const k18=d.karats?.['18']||{};const k21=d.karats?.['21']||{};const k24=d.karats?.['24']||{};
-          return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',
-            total_sar:sub.total||0,total_weight_g:sub.wt_net||sub.wt_safe||0,wt_pure_g:sub.wt_pure||0,
-            total_pieces:sub.pieces||0,
-            sale_rate:sub.total>0&&(sub.wt_net||sub.wt_safe)>0?Math.round(sub.total/(sub.wt_net||sub.wt_safe)*10000)/10000:0,
-            k18_sar:k18.total||0,k18_weight_g:k18.wt_net||0,k18_wt_pure:k18.wt_pure||0,k18_rate:k18.rate||0,
-            k21_sar:k21.total||0,k21_weight_g:k21.wt_net||0,k21_wt_pure:k21.wt_pure||0,k21_rate:k21.rate||0,
-            k24_sar:k24.total||0,k24_weight_g:k24.wt_net||0,k24_wt_pure:k24.wt_pure||0,k24_rate:k24.rate||0};
-        }).filter(r=>r.total_sar!==0);
-        if(bsRows.length){
-          await fetch(`${SB_URL}/rest/v1/branch_sales?report_date=eq.${rdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
-          await sbUp('branch_sales',bsRows);
-          await sbUp('upload_log',[{report_date:rdate,file_type:'bsales',file_name:bsWb?.name||'bsales',date_from:rdate,records_count:bsRows.length}]);
-          totalSaved+=bsRows.length;
+      if(bsIsAgg||emIsAgg){
+        // ── AGG FORMAT ──
+        // Branch sales
+        if(bsWb&&bsIsAgg){
+          const bd=parseAggBranchSales(bsWb.wb);
+          if(bd.rows.length){
+            if(bd.df&&bd.dt)await fetch(`${SB_URL}/rest/v1/branch_sales?report_date=gte.${bd.df}&report_date=lte.${bd.dt}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+            const bsRows=bd.rows.map(r=>({
+              report_date:r.dt,branch_code:r.bc,branch_name:r.name,region:r.region,
+              total_sar:Math.round(r.sar*100)/100,total_weight_g:Math.round(r.wn*1000)/1000,wt_pure_g:Math.round(r.wp*1000)/1000,
+              total_pieces:Math.abs(r.pcs),
+              sale_rate:Math.abs(r.wn)>0?Math.round(Math.abs(r.sar)/Math.abs(r.wn)*10000)/10000:0,
+              k18_sar:r.k18.s,k18_weight_g:r.k18.w,k21_sar:r.k21.s,k21_weight_g:r.k21.w,k24_sar:r.k24.s,k24_weight_g:r.k24.w
+            })).filter(r=>r.total_sar!==0);
+            await sbUp('branch_sales',bsRows);
+            await sbUp('upload_log',[{report_date:bd.df,file_type:'bsales',file_name:bsWb.name,date_from:bd.df+' → '+bd.dt,records_count:bsRows.length}]);
+            totalSaved+=bsRows.length;console.log('✅ branch_sales(agg):'+bsRows.length);
+          }
+        }
+        // Employee sales
+        if(emWb&&emIsAgg){
+          const ed=parseAggEmpSales(emWb.wb);
+          if(ed.rows.length){
+            if(ed.df&&ed.dt)await fetch(`${SB_URL}/rest/v1/employee_sales?report_date=gte.${ed.df}&report_date=lte.${ed.dt}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+            const eRows=ed.rows.map(r=>{
+              const pa=purchMap2[r.bc]||0;
+              const sa=Math.abs(r.wn)>0?Math.round(Math.abs(r.sar)/Math.abs(r.wn)*10000)/10000:0;
+              return{
+                report_date:r.dt,emp_id:r.eid,emp_name:r.ename,branch_code:r.bc,branch_name:r.name,region:r.region,
+                total_sar:Math.round(r.sar*100)/100,weight_net_g:Math.round(r.wn*1000)/1000,weight_pure_g:Math.round(r.wp*1000)/1000,
+                pieces:Math.abs(r.pcs),avg_invoice_sar:Math.abs(r.pcs)>0?Math.round(Math.abs(r.sar)/Math.abs(r.pcs)*100)/100:0,
+                sale_rate_g:sa,branch_purchase_avg:pa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa
+              };
+            }).filter(r=>r.total_sar!==0);
+            await sbUp('employee_sales',eRows);
+            await sbUp('upload_log',[{report_date:ed.df,file_type:'employees',file_name:emWb.name,date_from:ed.df+' → '+ed.dt,records_count:eRows.length}]);
+            totalSaved+=eRows.length;console.log('✅ employee_sales(agg):'+eRows.length);
+          }
+        }
+      }else{
+        // ── OLD FORMAT ──
+        const empData=emWb?parseEmpSales(emWb.wb):null;
+        const bsData=bsWb?parseBranchSales(bsWb.wb):null;
+        const rdate=empData?.df||bsData?._df||today;
+        // Save employees
+        if(empData?.emps?.length){
+          const fe=empData.emps.map(e=>{
+            const pa=purchMap2[e._cur]||0;const sa=e.sale_rate_g||0;
+            return{...e,branch_purchase_avg:pa,emp_avg_mkg:sa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa,report_date:rdate};
+          });
+          await fetch(`${SB_URL}/rest/v1/employee_sales?report_date=eq.${rdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+          const ce=fe.filter(e=>e.emp_id>0).map(e=>{delete e._wp;delete e._cur;return e;});
+          await sbUp('employee_sales',ce);
+          await sbUp('upload_log',[{report_date:rdate,file_type:'employees',file_name:emWb?.name||'employees',date_from:rdate,records_count:ce.length}]);
+          totalSaved+=ce.length;
+        }
+        // Save branch sales
+        const bs=bsData||(empData?.bSubs?Object.fromEntries(Object.entries(empData.bSubs).map(([k,v])=>[k,{sub:v,karats:{}}])):null);
+        if(bs){
+          const bsRows=Object.entries(bs).filter(([k])=>k!=='_df'&&k!=='_dt').map(([code,d])=>{
+            const name=BM[code]||code;const sub=d.sub||{};
+            const k18=d.karats?.['18']||{};const k21=d.karats?.['21']||{};const k24=d.karats?.['24']||{};
+            return{report_date:rdate,branch_code:code,branch_name:name,region:RM[name]||'—',
+              total_sar:sub.total||0,total_weight_g:sub.wt_net||sub.wt_safe||0,wt_pure_g:sub.wt_pure||0,
+              total_pieces:sub.pieces||0,
+              sale_rate:sub.total>0&&(sub.wt_net||sub.wt_safe)>0?Math.round(sub.total/(sub.wt_net||sub.wt_safe)*10000)/10000:0,
+              k18_sar:k18.total||0,k18_weight_g:k18.wt_net||0,k21_sar:k21.total||0,k21_weight_g:k21.wt_net||0,
+              k24_sar:k24.total||0,k24_weight_g:k24.wt_net||0};
+          }).filter(r=>r.total_sar!==0);
+          if(bsRows.length){
+            await fetch(`${SB_URL}/rest/v1/branch_sales?report_date=eq.${rdate}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+            await sbUp('branch_sales',bsRows);
+            await sbUp('upload_log',[{report_date:rdate,file_type:'bsales',file_name:bsWb?.name||'bsales',date_from:rdate,records_count:bsRows.length}]);
+            totalSaved+=bsRows.length;
+          }
         }
       }
     }
