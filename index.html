@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774670000 -->
+<meta charset="UTF-8"><!-- BUILD:1774671000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور القابضة ✦ لوحة التحكم</title>
@@ -138,6 +138,13 @@ nav{padding:10px 8px;flex:1}
 .hf-btn{padding:6px 14px;background:var(--s2);border:1px solid var(--bd);color:var(--mu);border-radius:20px;font-size:11px;cursor:pointer;font-family:var(--font);transition:all .2s}
 .hf-btn:hover{background:var(--s3);color:var(--tx)}
 .hf-active{background:var(--ac)!important;color:#0a0a0a!important;border-color:var(--ac)!important}
+.rp-btn{padding:14px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r2);color:var(--tx);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .2s;text-align:center}
+.rp-btn:hover{border-color:var(--ac);background:rgba(201,169,110,.06);transform:translateY(-1px)}
+.rp-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px}
+.rp-tbl th{text-align:right;padding:8px 10px;background:var(--s2);color:var(--mu);font-size:10px;font-weight:600;border-bottom:1px solid var(--bd);white-space:nowrap}
+.rp-tbl td{padding:7px 10px;border-bottom:1px solid rgba(42,42,50,.4);white-space:nowrap}
+.rp-tbl tr:hover td{background:rgba(201,169,110,.03)}
+.rp-title{font-size:15px;font-weight:700;color:var(--ac);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--bd)}
 .pw{display:none;margin-bottom:12px}
 .pb2-track{height:4px;background:var(--s3);border-radius:2px;overflow:hidden}
 .pb2{height:100%;background:var(--ac);border-radius:2px;transition:width .3s;width:0}
@@ -289,6 +296,7 @@ nav{padding:10px 8px;flex:1}
       <button class="sbb" id="sb-tg" onclick="sw('tg',this)"><span class="i">🎯</span><span>الأهداف</span></button>
       <button class="sbb" id="sb-up" onclick="sw('up',this)"><span class="i">📤</span><span>رفع البيانات</span></button>
       <button class="sbb" id="sb-mg" onclick="sw('mg',this)"><span class="i">🔗</span><span>دمج المشتريات</span></button>
+      <button class="sbb" id="sb-rp" onclick="sw('rp',this)"><span class="i">📊</span><span>التقارير</span></button>
       <button class="sbb" id="sb-admin" style="display:none" onclick="sw('ad',this)"><span class="i">⚙️</span><span>المستخدمون</span></button>
     </nav>
     <div class="sb-footer">
@@ -572,6 +580,23 @@ nav{padding:10px 8px;flex:1}
         </div>
       </div>
 
+
+      <!-- التقارير -->
+      <div class="sc" id="sc-rp">
+        <div class="cd">
+          <div class="ct">📊 التقارير</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px">
+            <button class="rp-btn" onclick="genReport('emp-perf')">👤 أداء الموظفين الشهري</button>
+            <button class="rp-btn" onclick="genReport('top-branches')">🏆 أفضل/أسوأ 5 فروع</button>
+            <button class="rp-btn" onclick="genReport('peak-days')">📅 أيام الذروة</button>
+            <button class="rp-btn" onclick="genReport('gold-exposure')">⚖️ الانكشاف الذهبي</button>
+            <button class="rp-btn" onclick="genReport('returns')">🔄 تقرير المرتجعات</button>
+            <button class="rp-btn" onclick="genReport('missing')">⚠️ البيانات الناقصة</button>
+            <button class="rp-btn" onclick="genReport('export')">📥 تصدير Excel</button>
+          </div>
+          <div id="rp-output"></div>
+        </div>
+      </div>
 
       <!-- دمج المشتريات -->
       <div class="sc" id="sc-mg">
@@ -2442,6 +2467,238 @@ function showApp(){
   }
   initFilters();
   init();
+}
+
+// ══ REPORTS ══
+function genReport(type){
+  const out=document.getElementById('rp-output');
+  if(!out)return;
+  const bs=DATA._allBranches||DATA.branches||[];
+  const emps=DATA.employees||[];
+  const mothan=DATA.mothan||[];
+  let html='';
+
+  if(type==='emp-perf'){
+    // ── أداء الموظفين الشهري ──
+    const sorted=[...emps].sort((a,b)=>(b.profit_margin||0)-(a.profit_margin||0));
+    html=`<div class="rp-title">👤 تقرير أداء الموظفين — مرتب بهامش الربح</div>
+    <div class="tbl-wrap"><table class="rp-tbl">
+    <thead><tr><th>#</th><th>الموظف</th><th>الفرع</th><th>المنطقة</th><th>المبيعات</th><th>الوزن</th><th>معدل البيع</th><th>معدل الشراء</th><th>فرق المعدل</th><th>هامش الربح</th><th>المرتجعات</th><th>التصنيف</th></tr></thead>
+    <tbody>${sorted.map((e,i)=>{
+      const star=e.savg>=700?'⭐ ممتاز':e.savg>=600?'✅ جيد':e.savg>=500?'⚠️ متوسط':'❌ ضعيف';
+      return`<tr>
+        <td>${i+1}</td><td style="font-weight:600">${e.n}</td><td>${e.b}</td><td style="font-size:10px">${e.r}</td>
+        <td style="color:var(--ac)">${sar(e.sar)}</td><td>${wt(e.wn)}</td>
+        <td>${sf(e.savg,2)}</td><td>${e.pavg>0?sf(e.pavg,2):'—'}</td>
+        <td><span class="pl ${pcc(e.diff)}">${sf(e.diff,1)}</span></td>
+        <td style="font-weight:700;color:${(e.profit_margin||0)>0?'var(--gn)':'var(--rd)'}">${e.profit_margin?sar(e.profit_margin):'—'}</td>
+        <td>${(e.returns||0)>0?'<span class="pl pr">'+sar(e.returns)+'</span>':'—'}</td>
+        <td>${star}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    <div style="margin-top:12px;font-size:11px;color:var(--mu)">إجمالي الموظفين: ${sorted.length} | إجمالي هامش الربح: ${sar(sorted.reduce((s,e)=>s+(e.profit_margin||0),0))}</div>`;
+
+  }else if(type==='top-branches'){
+    // ── أفضل/أسوأ 5 فروع ──
+    const bySar=[...bs].sort((a,b)=>b.sar-a.sar);
+    const byDiff=[...bs].filter(b=>b.diff_rate!==0).sort((a,b)=>b.diff_rate-a.diff_rate);
+    const mkTbl=(title,list,icon)=>`<div class="rp-title">${icon} ${title}</div>
+      <div class="tbl-wrap"><table class="rp-tbl">
+      <thead><tr><th>#</th><th>الفرع</th><th>المنطقة</th><th>المبيعات</th><th>الوزن</th><th>المشتريات</th><th>معدل البيع</th><th>معدل الشراء</th><th>فرق المعدل</th></tr></thead>
+      <tbody>${list.map((b,i)=>`<tr>
+        <td>${i+1}</td><td style="font-weight:600">${b.name}</td><td style="font-size:10px">${b.region}</td>
+        <td style="color:var(--ac)">${sar(b.sar)}</td><td>${wt(b.wn)}</td><td>${sar(b.purch_combined||0)}</td>
+        <td>${sf(b.sale_rate,2)}</td><td>${b.purch_rate>0?sf(b.purch_rate,2):'—'}</td>
+        <td><span class="pl ${pcc(b.diff_rate)}">${sf(b.diff_rate,1)}</span></td></tr>`).join('')}</tbody></table></div>`;
+    html=mkTbl('أفضل 5 فروع مبيعاً',bySar.slice(0,5),'🏆');
+    html+=mkTbl('أقل 5 فروع مبيعاً',bySar.slice(-5).reverse(),'📉');
+    html+=mkTbl('أفضل 5 فروع فرق معدل',byDiff.slice(0,5),'⚡');
+    html+=mkTbl('أسوأ 5 فروع فرق معدل',byDiff.slice(-5).reverse(),'⚠️');
+
+  }else if(type==='peak-days'){
+    // ── أيام الذروة ──
+    const dayNames=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    const salesByDay={};const salesByDate={};
+    bs.forEach(b=>{/* branches are already aggregated */});
+    // We need raw sales data — use what we have from branch_sales
+    // Aggregate from DATA source
+    html=`<div class="rp-title">📅 تحليل أيام الذروة</div>`;
+    // Try to compute from available data
+    const dateMap={};
+    // Fetch from Supabase
+    html+=`<div style="text-align:center;padding:20px;color:var(--mu)">⏳ جاري التحميل...</div>`;
+    setTimeout(async()=>{
+      try{
+        const sales=await sbQ('branch_sales','select=report_date,total_sar,total_weight_g&limit=10000');
+        const byDate={};
+        sales.forEach(r=>{
+          const d=r.report_date;
+          if(!byDate[d])byDate[d]={sar:0,wt:0,count:0};
+          byDate[d].sar+=+r.total_sar||0;byDate[d].wt+=+r.total_weight_g||0;byDate[d].count++;
+        });
+        const byDay={0:{sar:0,wt:0,n:0},1:{sar:0,wt:0,n:0},2:{sar:0,wt:0,n:0},3:{sar:0,wt:0,n:0},4:{sar:0,wt:0,n:0},5:{sar:0,wt:0,n:0},6:{sar:0,wt:0,n:0}};
+        Object.entries(byDate).forEach(([d,v])=>{
+          const day=new Date(d).getDay();
+          byDay[day].sar+=v.sar;byDay[day].wt+=v.wt;byDay[day].n++;
+        });
+        const dates=Object.entries(byDate).sort((a,b)=>b[1].sar-a[1].sar);
+        let h2=`<div class="rp-title">📅 أفضل 10 أيام مبيعاً</div>
+          <div class="tbl-wrap"><table class="rp-tbl">
+          <thead><tr><th>#</th><th>التاريخ</th><th>اليوم</th><th>المبيعات</th><th>الوزن</th><th>عدد الفروع</th></tr></thead><tbody>`;
+        dates.slice(0,10).forEach((r,i)=>{
+          const day=dayNames[new Date(r[0]).getDay()];
+          h2+=`<tr><td>${i+1}</td><td>${r[0]}</td><td>${day}</td><td style="color:var(--ac)">${sar(r[1].sar)}</td><td>${wt(r[1].wt)}</td><td>${r[1].count}</td></tr>`;
+        });
+        h2+=`</tbody></table></div>`;
+        h2+=`<div class="rp-title" style="margin-top:16px">📊 متوسط المبيعات حسب يوم الأسبوع</div>
+          <div class="tbl-wrap"><table class="rp-tbl">
+          <thead><tr><th>اليوم</th><th>عدد المرات</th><th>متوسط المبيعات</th><th>متوسط الوزن</th></tr></thead><tbody>`;
+        [6,0,1,2,3,4,5].forEach(d=>{
+          const v=byDay[d];
+          h2+=`<tr><td style="font-weight:600">${dayNames[d]}</td><td>${v.n}</td><td style="color:var(--ac)">${v.n?sar(v.sar/v.n):'—'}</td><td>${v.n?wt(v.wt/v.n):'—'}</td></tr>`;
+        });
+        h2+=`</tbody></table></div>`;
+        document.getElementById('rp-output').innerHTML=h2;
+      }catch(e){document.getElementById('rp-output').innerHTML='❌ '+e.message;}
+    },100);
+
+  }else if(type==='gold-exposure'){
+    // ── الانكشاف الذهبي ──
+    const rows=bs.map(b=>{
+      const sellWt=Math.abs(+b.wp||0);// وزن نقي مبيعات
+      const purchWt=(+b.purch_wt||0)+(+b.mothan_wt||0);// وزن نقي مشتريات
+      const exposure=sellWt-purchWt;
+      const status=exposure>1?'🔴 مكشوف':exposure<-1?'🟢 فائض':'✅ متوازن';
+      const pct=sellWt>0?Math.round(purchWt/sellWt*100):0;
+      return{...b,sellWt,purchWt,exposure,status,pct};
+    }).sort((a,b)=>b.exposure-a.exposure);
+    const totSell=rows.reduce((s,r)=>s+r.sellWt,0);
+    const totPurch=rows.reduce((s,r)=>s+r.purchWt,0);
+    const totExp=totSell-totPurch;
+    html=`<div class="rp-title">⚖️ تقرير الانكشاف الذهبي (الوزن النقي — عيار 24)</div>
+    <div class="kpi-grid" style="margin-bottom:16px">
+      <div class="kc" style="--kc:var(--ac)"><span class="ki">📤</span><div class="kl">وزن المبيعات النقي</div><div class="kv">${wt(totSell)} جم</div></div>
+      <div class="kc" style="--kc:var(--am)"><span class="ki">📥</span><div class="kl">وزن المشتريات النقي</div><div class="kv">${wt(totPurch)} جم</div></div>
+      <div class="kc" style="--kc:${totExp>0?'var(--rd)':'var(--gn)'}"><span class="ki">${totExp>0?'🔴':'🟢'}</span><div class="kl">الانكشاف</div><div class="kv">${wt(totExp)} جم</div><div class="ks">${totExp>0?'مكشوف — المخزون ينقص':'فائض — المخزون يزيد'}</div></div>
+      <div class="kc" style="--kc:var(--teal)"><span class="ki">📊</span><div class="kl">نسبة التغطية</div><div class="kv">${totSell>0?Math.round(totPurch/totSell*100):0}%</div><div class="ks">${totSell>0&&totPurch/totSell>=1?'ممتاز':'يحتاج تغطية'}</div></div>
+    </div>
+    <div class="tbl-wrap"><table class="rp-tbl">
+    <thead><tr><th>#</th><th>الفرع</th><th>المنطقة</th><th>وزن المبيعات</th><th>وزن المشتريات</th><th>الانكشاف</th><th>التغطية</th><th>الحالة</th></tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr>
+      <td>${i+1}</td><td style="font-weight:600">${r.name}</td><td style="font-size:10px">${r.region}</td>
+      <td>${wt(r.sellWt)}</td><td>${wt(r.purchWt)}</td>
+      <td style="color:${r.exposure>0?'var(--rd)':'var(--gn)'};font-weight:600">${wt(r.exposure)}</td>
+      <td>${r.pct}%</td>
+      <td>${r.status}</td></tr>`).join('')}</tbody></table></div>`;
+
+  }else if(type==='returns'){
+    // ── تقرير المرتجعات ──
+    const retBranches=bs.filter(b=>(+b.returns||0)>0).sort((a,b)=>(+b.returns||0)-(+a.returns||0));
+    const retEmps=emps.filter(e=>(+e.returns||0)>0).sort((a,b)=>(+b.returns||0)-(+a.returns||0));
+    const totBr=retBranches.reduce((s,b)=>s+(+b.returns||0),0);
+    const totEm=retEmps.reduce((s,e)=>s+(+e.returns||0),0);
+    html=`<div class="rp-title">🔄 تقرير المرتجعات</div>
+    <div class="kpi-grid" style="margin-bottom:16px">
+      <div class="kc" style="--kc:var(--rd)"><span class="ki">🏪</span><div class="kl">فروع بمرتجعات</div><div class="kv">${retBranches.length}</div><div class="ks">من ${bs.length} فرع</div></div>
+      <div class="kc" style="--kc:var(--rd)"><span class="ki">💰</span><div class="kl">إجمالي مرتجعات الفروع</div><div class="kv">${sar(totBr)}</div></div>
+      <div class="kc" style="--kc:var(--am)"><span class="ki">👤</span><div class="kl">موظفين بمرتجعات</div><div class="kv">${retEmps.length}</div></div>
+      <div class="kc" style="--kc:var(--am)"><span class="ki">💰</span><div class="kl">إجمالي مرتجعات الموظفين</div><div class="kv">${sar(totEm)}</div></div>
+    </div>`;
+    if(retBranches.length){
+      html+=`<div style="font-weight:600;margin:12px 0 8px">مرتجعات الفروع:</div>
+      <div class="tbl-wrap"><table class="rp-tbl">
+      <thead><tr><th>#</th><th>الفرع</th><th>المنطقة</th><th>قيمة المرتجعات</th><th>عدد الأيام</th></tr></thead>
+      <tbody>${retBranches.map((b,i)=>`<tr><td>${i+1}</td><td style="font-weight:600">${b.name}</td><td>${b.region}</td><td style="color:var(--rd)">${sar(b.returns)}</td><td>${b.return_days}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+    if(retEmps.length){
+      html+=`<div style="font-weight:600;margin:12px 0 8px">مرتجعات الموظفين:</div>
+      <div class="tbl-wrap"><table class="rp-tbl">
+      <thead><tr><th>#</th><th>الموظف</th><th>الفرع</th><th>قيمة المرتجعات</th></tr></thead>
+      <tbody>${retEmps.map((e,i)=>`<tr><td>${i+1}</td><td style="font-weight:600">${e.n}</td><td>${e.b}</td><td style="color:var(--rd)">${sar(e.returns)}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+    if(!retBranches.length&&!retEmps.length)html+=`<div class="empty">لا توجد مرتجعات في الفترة المحددة ✅</div>`;
+
+  }else if(type==='missing'){
+    // ── البيانات الناقصة ──
+    html=`<div class="rp-title">⚠️ تقرير البيانات الناقصة</div>`;
+    setTimeout(async()=>{
+      try{
+        const sales=await sbQ('branch_sales','select=report_date,branch_code&limit=10000');
+        const allBranches=Object.keys(BM);
+        const dateMap={};
+        sales.forEach(r=>{
+          if(!dateMap[r.report_date])dateMap[r.report_date]=new Set();
+          dateMap[r.report_date].add(r.branch_code);
+        });
+        const dates=Object.keys(dateMap).sort();
+        let h2=`<div class="rp-title">⚠️ الفروع الناقصة حسب التاريخ</div>`;
+        let hasMissing=false;
+        const missingRows=[];
+        dates.forEach(d=>{
+          const present=dateMap[d];
+          const missing=allBranches.filter(bc=>!present.has(bc));
+          if(missing.length){
+            hasMissing=true;
+            missingRows.push({date:d,missing:missing.map(bc=>BM[bc]||bc),count:missing.length});
+          }
+        });
+        if(hasMissing){
+          h2+=`<div class="tbl-wrap"><table class="rp-tbl">
+          <thead><tr><th>التاريخ</th><th>عدد الناقص</th><th>الفروع الناقصة</th></tr></thead><tbody>`;
+          missingRows.forEach(r=>{
+            h2+=`<tr><td>${r.date}</td><td style="color:var(--rd)">${r.count}</td><td style="font-size:10px">${r.missing.join('، ')}</td></tr>`;
+          });
+          h2+=`</tbody></table></div>`;
+        }else{
+          h2+=`<div class="empty">كل الفروع موجودة في كل الأيام ✅</div>`;
+        }
+        h2+=`<div style="margin-top:12px;font-size:11px;color:var(--mu)">إجمالي الأيام: ${dates.length} | إجمالي الفروع: ${allBranches.length}</div>`;
+        document.getElementById('rp-output').innerHTML=h2;
+      }catch(e){document.getElementById('rp-output').innerHTML='❌ '+e.message;}
+    },100);
+
+  }else if(type==='export'){
+    // ── تصدير Excel ──
+    html=`<div class="rp-title">📥 تصدير البيانات</div><div style="text-align:center;padding:16px">⏳ جاري إنشاء الملف...</div>`;
+    out.innerHTML=html;
+    setTimeout(()=>{
+      try{
+        const wb2=XLSX.utils.book_new();
+        // Sheet 1: Branches
+        const bsData=bs.map(b=>({
+          'الفرع':b.name,'الرمز':b.code,'المنطقة':b.region,
+          'المبيعات':b.sar,'الوزن الصافي':b.wn,'الوزن النقي':b.wp,
+          'المشتريات (فروع)':b.purch,'المشتريات (موطن)':b.mothan,
+          'إجمالي المشتريات':b.purch_combined||0,
+          'معدل البيع':b.sale_rate,'معدل الشراء':b.purch_rate,'فرق المعدل':b.diff_rate,
+          'الصافي':b.net,'المرتجعات':b.returns||0
+        }));
+        const ws1=XLSX.utils.json_to_sheet(bsData);
+        XLSX.utils.book_append_sheet(wb2,ws1,'الفروع');
+        // Sheet 2: Employees
+        const emData=emps.map(e=>({
+          'الموظف':e.n,'الرقم':e.id,'الفرع':e.b,'المنطقة':e.r,
+          'المبيعات':e.sar,'الوزن':e.wn,'الفواتير':e.pcs,
+          'معدل البيع':e.savg,'معدل الشراء':e.pavg,'فرق المعدل':e.diff,
+          'هامش الربح':e.profit_margin||0,'المرتجعات':e.returns||0
+        }));
+        const ws2=XLSX.utils.json_to_sheet(emData);
+        XLSX.utils.book_append_sheet(wb2,ws2,'الموظفين');
+        // Sheet 3: Mothan
+        const mData=mothan.map(r=>({
+          'التاريخ':r.transaction_date,'الفرع':r.branch_name,'الرمز':r.branch_code,
+          'المبلغ':r.amount_sar,'الوزن':r.weight_debit_g,'الوصف':r.description
+        }));
+        const ws3=XLSX.utils.json_to_sheet(mData);
+        XLSX.utils.book_append_sheet(wb2,ws3,'موطن الذهب');
+        // Download
+        XLSX.writeFile(wb2,'منصور_للذهب_تقرير_'+new Date().toISOString().split('T')[0]+'.xlsx');
+        document.getElementById('rp-output').innerHTML=`<div class="rp-title">📥 تصدير البيانات</div><div class="empty" style="color:var(--gn)">✅ تم تنزيل الملف بنجاح</div>`;
+      }catch(e){document.getElementById('rp-output').innerHTML='❌ '+e.message;}
+    },200);
+    return;
+  }
+
+  out.innerHTML=html;
 }
 
 function initBranchCbs(){
