@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774669000 -->
+<meta charset="UTF-8"><!-- BUILD:1774670000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور القابضة ✦ لوحة التحكم</title>
@@ -1533,27 +1533,53 @@ function rf(file,t){
 // ══ FORMAT DETECTION ══
 // الصيغة الجديدة: 16 عمود، col0=رقم تسلسلي، col6=تاريخ لكل معاملة
 function isAggFormat(wb){
-  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false});
   for(const r of rows.slice(10,20)){
-    if(String(r[0]).match(/^\d+$/)&&String(r[6]).match(/\d{2}\/\d{2}\/\d{4}/)&&String(r[1]).trim().match(/^\d{4}$/))return true;
+    const c0=String(r[0]).trim(),c1=String(r[1]).trim(),c6=r[6];
+    const isSeq=c0.match(/^\d+$/);
+    const isBranch=c1.match(/^\d{4}$/);
+    // Date can be string DD/MM/YYYY or Excel serial number or ISO date
+    const isDate=String(c6).match(/\d{2}\/\d{2}\/\d{4}/)||(typeof c6==='number'&&c6>40000&&c6<60000)||String(c6).match(/^\d{4}-\d{2}-\d{2}/);
+    if(isSeq&&isBranch&&isDate)return true;
   }
   return false;
 }
 function getAggDateRange(wb){
-  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
-  for(const r of rows.slice(0,10)){
-    const m=String(r[0]||'').match(/From\s+(\d{4}-\d{2}-\d{2})\s+To\s+(\d{4}-\d{2}-\d{2})/);
-    if(m)return{df:m[1],dt:m[2]};
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false});
+  for(const r of rows.slice(0,15)){
+    for(let c=0;c<16;c++){
+      const v=String(r[c]||'');
+      const m=v.match(/From\s+(\d{4}-\d{2}-\d{2})\s+To\s+(\d{4}-\d{2}-\d{2})/);
+      if(m)return{df:m[1],dt:m[2]};
+    }
   }
   return{df:'',dt:''};
 }
-function parseAggDate(d){const m=String(d).match(/(\d{2})\/(\d{2})\/(\d{4})/);return m?`${m[3]}-${m[2]}-${m[1]}`:'';}
-const AGG_KM={'0.750000':'18','0.875000':'21','0.916000':'22','1.000000':'24','0.75':'18','0.875':'21','1':'24','1.0':'24'};
+function parseAggDate(d){
+  // Handle string date DD/MM/YYYY
+  const s=String(d||'').trim();
+  const m=s.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m)return`${m[3]}-${m[2]}-${m[1]}`;
+  // Handle Excel serial date number
+  if(typeof d==='number'||s.match(/^\d{4,5}$/)){
+    const n=typeof d==='number'?d:parseInt(s);
+    const dt=new Date((n-25569)*86400000);
+    if(!isNaN(dt.getTime())){
+      const y=dt.getFullYear(),mo=String(dt.getMonth()+1).padStart(2,'0'),da=String(dt.getDate()).padStart(2,'0');
+      return`${y}-${mo}-${da}`;
+    }
+  }
+  // Handle ISO date
+  const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m2)return s.slice(0,10);
+  return'';
+}const AGG_KM={'0.750000':'18','0.875000':'21','0.916000':'22','1.000000':'24','0.75':'18','0.875':'21','1':'24','1.0':'24'};
 
 // ══ AGG PARSER: Branch Sales ══
 function parseAggBranchSales(wb){
-  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false});
   const dr=getAggDateRange(wb);
+  console.log('🔍 parseAggBranchSales: rows='+rows.length+' df='+dr.df+' dt='+dr.dt+' sample col6='+rows[13]?.[6]);
   const map={};// key: bc|date
   for(const r of rows){
     if(!String(r[0]).match(/^\d+$/))continue;
@@ -1578,8 +1604,9 @@ function parseAggBranchSales(wb){
 
 // ══ AGG PARSER: Employee Sales ══
 function parseAggEmpSales(wb){
-  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false});
   const dr=getAggDateRange(wb);
+  console.log('🔍 parseAggEmpSales: rows='+rows.length+' df='+dr.df+' dt='+dr.dt);
   const map={};// key: empId|bc|date
   for(const r of rows){
     if(!String(r[0]).match(/^\d+$/))continue;
@@ -1603,8 +1630,9 @@ function parseAggEmpSales(wb){
 
 // ══ AGG PARSER: Purchases ══
 function parseAggPurchases(wb){
-  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false});
   const dr=getAggDateRange(wb);
+  console.log('🔍 parseAggPurchases: rows='+rows.length+' df='+dr.df+' dt='+dr.dt);
   const map={};// key: bc|date
   for(const r of rows){
     if(!String(r[0]).match(/^\d+$/))continue;
@@ -1843,6 +1871,7 @@ async function processAndSave(){
     for(let i=0;i<purchFiles.length;i++){
       sp(5+Math.round(i/Math.max(purchFiles.length,1)*20),'💾 المشتريات '+(i+1)+'/'+purchFiles.length+'...');
       const isAgg=isAggFormat(purchFiles[i].wb);
+      console.log('📦 Purchases format:',isAgg?'AGG':'OLD');
       if(isAgg){
         const pd=parseAggPurchases(purchFiles[i].wb);
         if(pd.rows.length){
@@ -1908,6 +1937,7 @@ async function processAndSave(){
       const bsWb=bsalesFiles[i]||null;const emWb=salesFiles[i]||null;
       const bsIsAgg=bsWb&&isAggFormat(bsWb.wb);
       const emIsAgg=emWb&&isAggFormat(emWb.wb);
+      console.log('📊 Sales format: bsales=',bsIsAgg?'AGG':'OLD','emps=',emIsAgg?'AGG':'OLD');
 
       // Get purchase rates for employee enrichment
       const savedRatesAll=await sbQ('branch_purchase_rates','select=*');
