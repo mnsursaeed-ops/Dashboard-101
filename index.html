@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><!-- BUILD:1774671000 -->
+<meta charset="UTF-8"><!-- BUILD:1774672000 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>منصور القابضة ✦ لوحة التحكم</title>
@@ -1622,7 +1622,7 @@ function parseAggBranchSales(wb){
     m.sar+=t;m.wn+=wn;m.wp+=wp;m.pcs+=pcs;
     // Karat
     const k=AGG_KM[String(r[11]).trim()];
-    if(k&&m['k'+k]){m['k'+k].s+=Math.abs(t);m['k'+k].w+=Math.abs(wn);}
+    if(k&&m['k'+k]){m['k'+k].s+=Math.abs(t);m['k'+k].w+=Math.abs(wp);}
   }
   return{rows:Object.values(map),df:dr.df,dt:dr.dt};
 }
@@ -1671,7 +1671,7 @@ function parseAggPurchases(wb){
     const wp=Math.abs(parseFloat(String(r[12]).replace(/,/g,'')||0));
     m.sar+=t;m.wn+=wn;m.wp+=wp;
     const k=AGG_KM[String(r[11]).trim()];
-    if(k&&m['k'+k]){m['k'+k].s+=t;m['k'+k].w+=wn;}
+    if(k&&m['k'+k]){m['k'+k].s+=t;m['k'+k].w+=wp;}
   }
   return{rows:Object.values(map),df:dr.df,dt:dr.dt};
 }
@@ -1906,7 +1906,7 @@ async function processAndSave(){
           }
           const pRows=pd.rows.map(r=>({
             report_date:r.dt,branch_code:r.bc,branch_name:r.name,region:r.region,
-            total_sar:Math.round(r.sar*100)/100,total_weight_g:Math.round(r.wn*1000)/1000,wt_pure_g:Math.round(r.wp*1000)/1000,
+            total_sar:Math.round(r.sar*100)/100,total_weight_g:Math.round(r.wp*1000)/1000,wt_pure_g:Math.round(r.wp*1000)/1000,
             purchase_rate:r.wp>0?Math.round(r.sar/r.wp*10000)/10000:0,
             k18_sar:r.k18.s,k18_weight_g:r.k18.w,k21_sar:r.k21.s,k21_weight_g:r.k21.w,k24_sar:r.k24.s,k24_weight_g:r.k24.w
           })).filter(r=>r.total_sar>0);
@@ -1977,9 +1977,9 @@ async function processAndSave(){
             if(bd.df&&bd.dt)await fetch(`${SB_URL}/rest/v1/branch_sales?report_date=gte.${bd.df}&report_date=lte.${bd.dt}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
             const bsRows=bd.rows.map(r=>({
               report_date:r.dt,branch_code:r.bc,branch_name:r.name,region:r.region,
-              total_sar:Math.round(r.sar*100)/100,total_weight_g:Math.round(r.wn*1000)/1000,wt_pure_g:Math.round(r.wp*1000)/1000,
+              total_sar:Math.round(r.sar*100)/100,total_weight_g:Math.round(r.wp*1000)/1000,wt_pure_g:Math.round(r.wp*1000)/1000,
               total_pieces:Math.abs(r.pcs),
-              sale_rate:Math.abs(r.wn)>0?Math.round(Math.abs(r.sar)/Math.abs(r.wn)*10000)/10000:0,
+              sale_rate:Math.abs(r.wp)>0?Math.round(Math.abs(r.sar)/Math.abs(r.wp)*10000)/10000:0,
               k18_sar:r.k18.s,k18_weight_g:r.k18.w,k21_sar:r.k21.s,k21_weight_g:r.k21.w,k24_sar:r.k24.s,k24_weight_g:r.k24.w
             })).filter(r=>r.total_sar!==0);
             await sbUp('branch_sales',bsRows);
@@ -1994,10 +1994,10 @@ async function processAndSave(){
             if(ed.df&&ed.dt)await fetch(`${SB_URL}/rest/v1/employee_sales?report_date=gte.${ed.df}&report_date=lte.${ed.dt}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
             const eRows=ed.rows.map(r=>{
               const pa=purchMap2[r.bc]||0;
-              const sa=Math.abs(r.wn)>0?Math.round(Math.abs(r.sar)/Math.abs(r.wn)*10000)/10000:0;
+              const sa=Math.abs(r.wp)>0?Math.round(Math.abs(r.sar)/Math.abs(r.wp)*10000)/10000:0;
               return{
                 report_date:r.dt,emp_id:r.eid,emp_name:r.ename,branch_code:r.bc,branch_name:r.name,region:r.region,
-                total_sar:Math.round(r.sar*100)/100,weight_net_g:Math.round(r.wn*1000)/1000,weight_pure_g:Math.round(r.wp*1000)/1000,
+                total_sar:Math.round(r.sar*100)/100,weight_net_g:Math.round(r.wp*1000)/1000,weight_pure_g:Math.round(r.wp*1000)/1000,
                 pieces:Math.abs(r.pcs),avg_invoice_sar:Math.abs(r.pcs)>0?Math.round(Math.abs(r.sar)/Math.abs(r.pcs)*100)/100:0,
                 sale_rate_g:sa,branch_purchase_avg:pa,diff_avg:Math.round((sa-pa)*10000)/10000,achieved_target:sa>pa
               };
